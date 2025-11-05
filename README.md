@@ -1,42 +1,41 @@
 # SIATA
 
-(*TEMPORARY SELAMA DEVELOPMENT*)
+(*TEMPORARY SELAMA DEVELOPMENT*)  
 Branching Workflow
 
 ## 1. Struktur Branch
 ```
 main -> versi produksi / stabil
-develop -> versi pengembangan (tempat integrasi semua fitur)
+(fitur) -> tempat kerja per fitur untuk meminimalisir merge conflict
 ```
 
-## 2. Penamaan Branch
+Satu branch bisa digunakan oleh dua orang (frontend dan backend). Foldernya dipisah antara frontend dan backend untuk meminimalisir merge conflict.
+
+## 2. Alur Kerja
+
+#### Set user.email dan user.name
+Pakai Git Bash
 ```
-(namafitur) -> branch untuk develop Backend
-(namafitur)_ui -> branch untuk develop Frontend
+git config user.email "you@example.com"
+git config user.name "Your Name"
 ```
 
-## 3. Alur Kerja
+Ini adalah identitas yang tertulis saat melakukan commit.
+
 
 #### CLONE REPO KE LOCAL (HANYA DILAKUKAN PERTAMA KALI)
-Pakai git bash terus cd ke folder yang diinginkan.
-Clone repository ini.
-Untuk bekerja di suatu branch, tidak perlu membuat branch baru, langsung checkout ke branch yang tersedia di remote repository.
-
+Pakai Git Bash
 ```
-git clone (url)
-cd (folder-hasil-clone)
-git checkout (namabranch)
+cd (mis: C:/xampp/htdocs) -> folder untuk menyimpan project ini
+git clone () -> download project ini ke folder di atas, kalau berhasil akan muncul folder baru
+cd (folder-hasil-clone) -> pindah ke folder hasil clone
 ```
 
-
-#### MERGE FRONTEND DAN BACKEND
-Karena suatu fitur memiliki branch yang berbeda antara frontend dan backend, maka perlu dilakukan merge agar kode yang ditulis up-to-date.
-
-Nama branch yang ingin dimerge: kalau sedang mengerjakan frontend, maka merge backend, dan sebaliknya
+#### CARA MULAI KERJA DI SUATU BRANCH
+Buka folder yang berhasil diclone di Intellij IDEA. Buka terminalnya Intellij atau Git Bash (opsional)
 ```
-git pull
-git checkout (nama-branch-yang-sedang-dikerjakan)
-git merge (nama-branch-yang-ingin-dimerge)
+git checkout (mis: dashboard) -> pindah ke suatu branch untuk dipull atau diambil jika ada update di branch tersebut.
+git pull -> sangat disarankan agar working directory kita selalu up-to-date dan tidak terjadi error saat commit.
 ```
 
 Setelah di merge, testing di aplikasinya, jika ada bug, perbaiki dahulu sebelum di push ke main
