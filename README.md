@@ -7,6 +7,8 @@ Branching Workflow
 ```
 main -> versi produksi / stabil
 (fitur) -> tempat kerja per fitur untuk meminimalisir merge conflict
+
+git branch -r untuk melihat branch apa aja yang ada di remote repository.
 ```
 
 Satu branch bisa digunakan oleh dua orang (frontend dan backend). Foldernya dipisah antara frontend dan backend untuk meminimalisir merge conflict.
