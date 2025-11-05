@@ -27,24 +27,39 @@ Ini adalah identitas yang tertulis saat melakukan commit.
 Pakai Git Bash
 ```
 cd (mis: C:/xampp/htdocs) -> folder untuk menyimpan project ini
-git clone () -> download project ini ke folder di atas, kalau berhasil akan muncul folder baru
-cd (folder-hasil-clone) -> pindah ke folder hasil clone
+git clone "https://git.stis.ac.id/kelompok-6-rpl/siata.git" -> download project ini dan tempatkan ke folder di atas, kalau berhasil akan muncul folder baru
+cd siata -> pindah ke folder hasil clone
 ```
 
 #### CARA MULAI KERJA DI SUATU BRANCH
 Buka folder yang berhasil diclone di Intellij IDEA. Buka terminalnya Intellij atau Git Bash (opsional)
+
+##### Memastikan working directory kita up-to-date, disarankan untuk melakukan ini setiap mulai kerja.
 ```
 git checkout (mis: dashboard) -> pindah ke suatu branch untuk dipull atau diambil jika ada update di branch tersebut.
 git pull -> sangat disarankan agar working directory kita selalu up-to-date dan tidak terjadi error saat commit.
+(jika ada conflict, resolve dengan manual)
 ```
 
-Setelah di merge, testing di aplikasinya, jika ada bug, perbaiki dahulu sebelum di push ke main
-
-#### PUSH KE MAIN
-Siapkan folder yang ingin di push.
-Melakukan commit dan push ke remote repo.
+##### Setiap selesai kerja, disarankan melakukan ini.
 ```
+(pastikan branch sesuai)
+git pull
+(jika ada conflict, resolve dengan manual)
 git add .
-git commit -m (message)
+git commit -m "(apa yang dikerjakan)"
+git push
+```
+
+Kenapa tidak wajib dan hanya disarankan? Karena itu dilakukan untuk meminimalkan merge conflict (dimana working directorymu tidak sesuai dengan apa yang ada di remote repository, alhasil apa yang kamu kerjakan tidak relevan) dan tidak error saat melakukan push (karena jika local repository tidak sesuai dengan remote repository, tidak akan bisa dipush)
+
+#### Kalau fiturnya udah jadi (kerjaan di branch tersebut udah final dan tidak ada bug), lakukan ini.
+Ini untuk menggabungkan branch kita ke branch main (aplikasi yang udah stable)
+```
+git checkout main
+git pull
+(jika ada conflict, resolve dengan manual)
+git add .
+git commit -m "(apa yang dikerjakan)"
 git push
 ```
