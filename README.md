@@ -90,5 +90,3 @@ git push
 - Untuk tiap fitur baru, buat branch baru agar pengembangan terpisah dan lebih aman.
 
 ---
-
-![](download.jpg)
