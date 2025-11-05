@@ -3,6 +3,8 @@
 (*TEMPORARY SELAMA DEVELOPMENT*)  
 Branching Workflow
 
+Kalau belum familiar dengan git, disarankan untuk melihat tutorial dahulu.
+
 ## 1. Struktur Branch
 ```
 main -> versi produksi / stabil
