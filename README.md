@@ -88,3 +88,7 @@ git push
 - Selalu **pastikan branch lokal up-to-date** sebelum bekerja.  
 - **Jangan commit langsung ke main** kecuali untuk rilis versi stabil.  
 - Untuk tiap fitur baru, buat branch baru agar pengembangan terpisah dan lebih aman.
+
+---
+
+![](download.jpg)
