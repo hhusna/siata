@@ -20,9 +20,9 @@ git branch -r
 ```
 
 Satu branch dapat digunakan oleh dua orang (frontend dan backend).  
-Folder frontend dan backend **dipisah** agar meminimalkan merge conflict.
-Frontend = Mayoritas isinya adalah JavaFX, tidak menggunakan Spring Boot.
-Backend = Mayoritas isinya adalah Web Service, menggunakan Spring Boot.
+Folder frontend dan backend **dipisah** agar meminimalkan merge conflict.  
+Frontend = Mayoritas isinya adalah JavaFX, tidak menggunakan Spring Boot.  
+Backend = Mayoritas isinya adalah Web Service, menggunakan Spring Boot.  
 ---
 
 ## 2. Alur Kerja
