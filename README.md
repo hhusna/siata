@@ -3,8 +3,6 @@
 (*TEMPORARY SELAMA DEVELOPMENT*)  
 ## Branching Workflow
 
-Kalau belum familiar dengan Git, disarankan untuk mempelajari dasar-dasarnya terlebih dahulu.
-
 ---
 
 ## 1. Struktur Branch
@@ -54,7 +52,7 @@ Gunakan terminal di IntelliJ atau Git Bash.
 #### Pastikan Working Directory Selalu Up-to-Date
 ```bash
 git checkout (nama-branch)   # contoh: git checkout dashboard
-git pull                     # ambil update terbaru dari branch tersebut
+git pull                     # ambil update terbaru dari branch tersebut jika tidak up-to-date
 # jika ada conflict, resolve manual
 ```
 
@@ -63,7 +61,7 @@ git pull                     # ambil update terbaru dari branch tersebut
 ### Setelah Selesai Bekerja
 ```bash
 # pastikan berada di branch yang benar
-git pull                     # ambil update terbaru sebelum commit
+git pull                     # ambil update terbaru sebelum commit jika tidak up to date
 # jika ada conflict, resolve manual
 git add .
 git commit -m "deskripsi pekerjaan"
@@ -79,6 +77,7 @@ Lakukan merge ke branch `main`:
 ```bash
 git checkout main
 git pull
+git merge (nama-branch)
 # jika ada conflict, resolve manual
 git add .
 git commit -m "merge fitur X ke main"
