@@ -9,8 +9,10 @@
 
 ```
 main     -> versi produksi / stabil  
-(fitur)  -> tempat kerja per fitur untuk meminimalisir merge conflict
+dev  -> tempat testing fitur
 ```
+
+Silahkan buat branch sendiri jika memang diperlukan lalu push ke remote repository untuk dibuat upstreamnya.
 
 Gunakan perintah berikut untuk melihat daftar branch yang ada di remote repository:
 ```bash
