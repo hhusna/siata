@@ -8,7 +8,7 @@ import org.springframework.web.bind.annotation.*;
 import siata.siata.entity.Pegawai;
 import siata.siata.entity.User;
 import siata.siata.service.PegawaiService;
-import siata.siata.dto.MatriksAsetDTO; // Tambahkan import
+import siata.siata.dto.MatriksAsetDTO;
 
 import java.util.List;
 
@@ -31,7 +31,7 @@ public class PegawaiController {
     }
 
     @GetMapping("/matriks")
-    @PreAuthorize("hasAnyRole('TIM_MANAJEMEN_ASET', 'DIREKTUR')")
+    @PreAuthorize("hasAnyRole('TIM_MANAJEMEN_ASET', 'PPBJ', 'PPK', 'DIREKTUR')")
     public List<MatriksAsetDTO> getMatriks() {
         return pegawaiService.getMatriksAset();
     }
