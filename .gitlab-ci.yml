@@ -14,12 +14,10 @@ deploy_to_github:
     GITHUB_REPO: "SIATA_Documentation" 
     GITHUB_PAGES_BRANCH: "main" 
     DOCS_DIR: "dokumentasi" 
-
-  before_script:
+    
+  script:
     - git config user.name "GitLab CI Runner"
     - export REMOTE_URL="https://${GITHUB_USER}:${GITHUB_TOKEN}@github.com/${GITHUB_USER}/${GITHUB_REPO}.git"
-
-  script:
     - echo "--- Mulai Deployment Dokumentasi ke GitHub ---" 
     - git clone --branch ${GITHUB_PAGES_BRANCH} $REMOTE_URL temp_repo
     - cd temp_repo
