@@ -6,6 +6,8 @@ stages:
 # -----------------------------------------------------------
 deploy_to_github:
   stage: deploy
+  tags:
+    - deploy-student-docker
   image: alpine/git:latest
   variables:
     GITHUB_USER: "azelvon" 
