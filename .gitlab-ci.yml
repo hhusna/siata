@@ -1,27 +1,21 @@
 stages:
-  - deploy # Pastikan kamu punya stage deploy atau ganti sesuai kebutuhan
+  - deploy
 
 # -----------------------------------------------------------
 # JOB: Deploy Dokumentasi ke GitHub Pages
 # -----------------------------------------------------------
 deploy_to_github:
   stage: deploy
-  image: alpine/git:latest # Menggunakan image ringan yang sudah ada Git
+  image: alpine/git:latest
   variables:
-    # Ganti dengan username GitHub kamu
     GITHUB_USER: "azelvon" 
-    # Ganti dengan nama repositori GitHub tujuan (misalnya "nama_github_kamu.github.io")
     GITHUB_REPO: "SIATA_Documentation" 
-    # Branch yang dipakai GitHub Pages untuk publikasi (biasanya main atau gh-pages)
     GITHUB_PAGES_BRANCH: "main" 
-    # Folder lokal yang berisi file dokumentasi kamu (tempat index.html berada)
     DOCS_DIR: "dokumentasi" 
 
   before_script:
-    # Mengatur kredensial Git agar bisa otentikasi menggunakan token
     - git config user.name "GitLab CI Runner"
     - git config user.email "ci-runner@gitlab.com"
-    # URL lengkap repositori GitHub yang menggunakan token sebagai password
     - export REMOTE_URL="https://${GITHUB_USER}:${GITHUB_TOKEN}@github.com/${GITHUB_USER}/${GITHUB_REPO}.git"
 
   script:
@@ -35,5 +29,4 @@ deploy_to_github:
     - git push $REMOTE_URL ${GITHUB_PAGES_BRANCH} --force
     - echo "--- Deployment Selesai. Cek GitHub Pages kamu ---"
   
-  # Hanya jalankan jika job sebelumnya berhasil
   dependencies: []
