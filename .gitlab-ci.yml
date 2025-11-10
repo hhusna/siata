@@ -16,7 +16,8 @@ deploy_to_github:
     DOCS_DIR: "dokumentasi" 
     
   script:
-    - git config user.name "GitLab CI Runner"
+    - git config --global user.name "GitLab CI Runner"
+    - git config --global user.email "bramantyo05.br@gmail.com"
     - export REMOTE_URL="https://${GITHUB_USER}:${GITHUB_TOKEN}@github.com/${GITHUB_USER}/${GITHUB_REPO}.git"
     - echo "--- Mulai Deployment Dokumentasi ke GitHub ---" 
     - git clone --branch ${GITHUB_PAGES_BRANCH} $REMOTE_URL temp_repo
