@@ -31,7 +31,7 @@ deploy_to_github:
     - git rm -rf .
     - cp -r ../${DOCS_DIR}/. .
     - git add .
-    - git commit -m "CI: Update documentation from GitLab CI" || echo "Tidak ada perubahan untuk di commit"
+    - git commit -m "Update documentation from GitLab CI" || echo "Tidak ada perubahan untuk di commit"
     - git push $REMOTE_URL ${GITHUB_PAGES_BRANCH} --force
     - echo "--- Deployment Selesai. Cek GitHub Pages kamu ---"
   
