@@ -35,8 +35,5 @@ deploy_to_github:
     - git push $REMOTE_URL ${GITHUB_PAGES_BRANCH} --force
     - echo "--- Deployment Selesai. Cek GitHub Pages kamu ---"
   
-  # Hanya jalankan job ini jika ada perubahan di branch utama dan folder dokumentasi
-  only:
-    - main 
   # Hanya jalankan jika job sebelumnya berhasil
   dependencies: []
