@@ -8,7 +8,7 @@ deploy_to_github:
   stage: deploy
   tags:
     - deploy-student-docker
-  image: alpine/git:latest
+  image: docker:git
   variables:
     GITHUB_USER: "azelvon" 
     GITHUB_REPO: "SIATA_Documentation" 
@@ -17,7 +17,6 @@ deploy_to_github:
 
   before_script:
     - git config user.name "GitLab CI Runner"
-    - git config user.email "ci-runner@gitlab.com"
     - export REMOTE_URL="https://${GITHUB_USER}:${GITHUB_TOKEN}@github.com/${GITHUB_USER}/${GITHUB_REPO}.git"
 
   script:
