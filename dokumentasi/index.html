@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Dokumentasi API SIATA</title>
+    <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/swagger-ui-dist@5/swagger-ui.css" />
+    <style>
+        /* Opsional: Hapus header atas yang nggak perlu */
+        .swagger-ui .topbar { display: none; }
+    </style>
+</head>
+<body>
+
+    <div id="swagger-ui"></div>
+
+    <script src="https://cdn.jsdelivr.net/npm/swagger-ui-dist@5/swagger-ui-bundle.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/swagger-ui-dist@5/swagger-ui-standalone-preset.js"></script>
+
+    <script>
+        window.onload = function() {
+            // Kita inisialisasi Swagger UI di elemen div#swagger-ui
+            window.ui = SwaggerUIBundle({
+                // Ini adalah kunci utamanya: Tentukan lokasi file spesifikasi kamu.
+                // Karena index.html dan openapi.json ada di folder yang sama,
+                // kita cukup panggil nama file-nya.
+                url: "api-docs.json", 
+                
+                // Elemen DOM tempat UI akan ditampilkan
+                dom_id: '#swagger-ui',
+                
+                // Gunakan preset bawaan (termasuk tombol Try it out)
+                presets: [
+                    SwaggerUIBundle.presets.apis,
+                    SwaggerUIStandalonePreset
+                ],
+                
+                // Mengaktifkan fitur Standalone
+                layout: "StandaloneLayout"
+            });
+        };
+    </script>
+
+</body>
+</html>
