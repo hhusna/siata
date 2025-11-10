@@ -25,23 +25,14 @@ deploy_to_github:
     - export REMOTE_URL="https://${GITHUB_USER}:${GITHUB_TOKEN}@github.com/${GITHUB_USER}/${GITHUB_REPO}.git"
 
   script:
-    - echo "--- Mulai Deployment Dokumentasi ke GitHub ---"
-    
-    # 1. Clone repositori tujuan GitHub
+    - echo "--- Mulai Deployment Dokumentasi ke GitHub ---" 
     - git clone --branch ${GITHUB_PAGES_BRANCH} $REMOTE_URL temp_repo
-    
-    # 2. Kosongkan folder dokumentasi lama di repo tujuan
     - cd temp_repo
     - git rm -rf .
-    
-    # 3. Salin file baru dari folder lokal ke folder clone
     - cp -r ../${DOCS_DIR}/. .
-    
-    # 4. Tambahkan, commit, dan push perubahan
     - git add .
     - git commit -m "CI: Update documentation from GitLab CI" || echo "Tidak ada perubahan untuk di commit"
-    - git push $REMOTE_URL ${GITHUB_PAGES_BRANCH} --force # --force digunakan untuk menimpa history jika perlu
-    
+    - git push $REMOTE_URL ${GITHUB_PAGES_BRANCH} --force
     - echo "--- Deployment Selesai. Cek GitHub Pages kamu ---"
   
   # Hanya jalankan job ini jika ada perubahan di branch utama dan folder dokumentasi
