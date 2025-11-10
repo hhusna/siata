@@ -1,55 +1,51 @@
 stages:
-  - deploy
+  - deploy # Pastikan kamu punya stage deploy atau ganti sesuai kebutuhan
 
-pages:
+# -----------------------------------------------------------
+# JOB: Deploy Dokumentasi ke GitHub Pages
+# -----------------------------------------------------------
+deploy_to_github:
   stage: deploy
-  image: alpine:latest
+  image: alpine/git:latest # Menggunakan image ringan yang sudah ada Git
+  variables:
+    # Ganti dengan username GitHub kamu
+    GITHUB_USER: "azelvon" 
+    # Ganti dengan nama repositori GitHub tujuan (misalnya "nama_github_kamu.github.io")
+    GITHUB_REPO: "SIATA_Documentation" 
+    # Branch yang dipakai GitHub Pages untuk publikasi (biasanya main atau gh-pages)
+    GITHUB_PAGES_BRANCH: "main" 
+    # Folder lokal yang berisi file dokumentasi kamu (tempat index.html berada)
+    DOCS_DIR: "dokumentasi" 
+
   before_script:
-    - apk add --no-cache git bash
+    # Mengatur kredensial Git agar bisa otentikasi menggunakan token
+    - git config user.name "GitLab CI Runner"
+    - git config user.email "ci-runner@gitlab.com"
+    # URL lengkap repositori GitHub yang menggunakan token sebagai password
+    - export REMOTE_URL="https://${GITHUB_USER}:${GITHUB_TOKEN}@github.com/${GITHUB_USER}/${GITHUB_REPO}.git"
+
   script:
-    # buat folder public
-    - mkdir -p public
-
-    # generate index.html
-    - | 
-      cat <<'EOF' > public/index.html
-      <!DOCTYPE html>
-      <html>
-      <head>
-      <title>API Docs (Swagger)</title>
-      <link rel="stylesheet" type="text/css" href="https://cdnjs.cloudflare.com/ajax/libs/swagger-ui/5.10.3/swagger-ui.css">
-      </head>
-      <body>
-      <div id="swagger-ui"></div>
-      <script src="https://cdnjs.cloudflare.com/ajax/libs/swagger-ui/5.10.3/swagger-ui-bundle.js"></script>
-      <script>
-      window.onload = function() {
-        window.ui = SwaggerUIBundle({
-            url: "./openapi.yaml",
-            dom_id: "#swagger-ui",
-            deepLinking: true,
-            presets: [SwaggerUIBundle.presets.apis, SwaggerUIBundle.SwaggerUIStandalonePreset],
-            layout: "BaseLayout"
-        });
-      };
-      </script>
-      </body>
-      </html>
-      EOF
-
-    # clone branch gh-pages
-    - git clone --branch gh-pages https://github.com/<USERNAME>/<REPO>.git gh-pages-temp || git clone https://github.com/<USERNAME>/<REPO>.git gh-pages-temp
-    - rm -rf gh-pages-temp/*
-
-    # copy public ke gh-pages
-    - cp -r public/* gh-pages-temp/
-
-    # commit & push
-    - cd gh-pages-temp
-    - git config user.name "GitLab CI"
-    - git config user.email "ci@example.com"
+    - echo "--- Mulai Deployment Dokumentasi ke GitHub ---"
+    
+    # 1. Clone repositori tujuan GitHub
+    - git clone --branch ${GITHUB_PAGES_BRANCH} $REMOTE_URL temp_repo
+    
+    # 2. Kosongkan folder dokumentasi lama di repo tujuan
+    - cd temp_repo
+    - git rm -rf .
+    
+    # 3. Salin file baru dari folder lokal ke folder clone
+    - cp -r ../${DOCS_DIR}/. .
+    
+    # 4. Tambahkan, commit, dan push perubahan
     - git add .
-    - git commit -m "Update GitHub Pages index.html from CI $CI_COMMIT_SHORT_SHA" || echo "No changes to commit"
-    - git push https://<GITHUB_TOKEN>@github.com/<USERNAME>/<REPO>.git gh-pages
+    - git commit -m "CI: Update documentation from GitLab CI" || echo "Tidak ada perubahan untuk di commit"
+    - git push $REMOTE_URL ${GITHUB_PAGES_BRANCH} --force # --force digunakan untuk menimpa history jika perlu
+    
+    - echo "--- Deployment Selesai. Cek GitHub Pages kamu ---"
+  
+  # Hanya jalankan job ini jika ada perubahan di branch utama dan folder dokumentasi
   only:
-    - main
+    - main 
+  # Hanya jalankan jika job sebelumnya berhasil
+  dependencies: []
