@@ -1,0 +1,55 @@
+stages:
+  - deploy
+
+pages:
+  stage: deploy
+  image: alpine:latest
+  before_script:
+    - apk add --no-cache git bash
+  script:
+    # buat folder public
+    - mkdir -p public
+
+    # generate index.html
+    - | 
+      cat <<'EOF' > public/index.html
+      <!DOCTYPE html>
+      <html>
+      <head>
+      <title>API Docs (Swagger)</title>
+      <link rel="stylesheet" type="text/css" href="https://cdnjs.cloudflare.com/ajax/libs/swagger-ui/5.10.3/swagger-ui.css">
+      </head>
+      <body>
+      <div id="swagger-ui"></div>
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/swagger-ui/5.10.3/swagger-ui-bundle.js"></script>
+      <script>
+      window.onload = function() {
+        window.ui = SwaggerUIBundle({
+            url: "./openapi.yaml",
+            dom_id: "#swagger-ui",
+            deepLinking: true,
+            presets: [SwaggerUIBundle.presets.apis, SwaggerUIBundle.SwaggerUIStandalonePreset],
+            layout: "BaseLayout"
+        });
+      };
+      </script>
+      </body>
+      </html>
+      EOF
+
+    # clone branch gh-pages
+    - git clone --branch gh-pages https://github.com/<USERNAME>/<REPO>.git gh-pages-temp || git clone https://github.com/<USERNAME>/<REPO>.git gh-pages-temp
+    - rm -rf gh-pages-temp/*
+
+    # copy public ke gh-pages
+    - cp -r public/* gh-pages-temp/
+
+    # commit & push
+    - cd gh-pages-temp
+    - git config user.name "GitLab CI"
+    - git config user.email "ci@example.com"
+    - git add .
+    - git commit -m "Update GitHub Pages index.html from CI $CI_COMMIT_SHORT_SHA" || echo "No changes to commit"
+    - git push https://<GITHUB_TOKEN>@github.com/<USERNAME>/<REPO>.git gh-pages
+  only:
+    - main
