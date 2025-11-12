@@ -6,6 +6,8 @@ stages:
 # -----------------------------------------------------------
 deploy_to_github:
   stage: deploy
+  only:
+    - main
   tags:
     - deploy-student-docker
   image: docker:git
@@ -28,5 +30,6 @@ deploy_to_github:
     - git commit -m "Update documentation from GitLab CI"
     - git push $REMOTE_URL ${GITHUB_PAGES_BRANCH} --force
     - echo "--- Deployment Selesai. Cek GitHub Pages kamu ---"
+    
   
   dependencies: []
