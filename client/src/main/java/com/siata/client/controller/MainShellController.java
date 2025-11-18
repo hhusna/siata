@@ -77,10 +77,33 @@ public class MainShellController {
 
     private Node resolveContent(MainPage page) {
         if (pageContent.containsKey(page)) return pageContent.get(page);
+
+//        Node content = switch (page) {
+//            case DASHBOARD -> new DashboardContentView();
+//            case RECAPITULATION -> new RecapitulationView();
+//            case ASSET_MANAGEMENT -> new AssetManagementView();
+//            case EMPLOYEE_MANAGEMENT -> new EmployeeManagementView();
+//            case ASSET_REQUEST -> new AssetRequestView();
+//            case ASSET_APPROVAL -> new AssetApprovalView();
+//            case ASSET_REMOVAL -> new AssetRemovalView();
+//            case LOGBOOK -> new LogbookView();
+//        };
+
+//        Node content = switch (page) {
+//            case DASHBOARD -> loadFXML("/com.siata.client/view/DashboardContentView.fxml");
+//            case RECAPITULATION -> loadFXML("/com.siata.client/view/RecapitulationView.fxml");
+//            case ASSET_MANAGEMENT -> loadFXML("/com.siata.client/view/AssetManagementView.fxml");
+//            case EMPLOYEE_MANAGEMENT -> loadFXML("/com.siata.client/view/EmployeeManagementView.fxml");
+//            case ASSET_REQUEST -> loadFXML("/com.siata.client/view/AssetRequestView.fxml");
+//            case ASSET_APPROVAL -> new AssetApprovalView();
+//            case ASSET_REMOVAL -> new AssetRemovalView();
+//            case LOGBOOK -> new LogbookView();
+//        };
+
         Node content = switch (page) {
-            case DASHBOARD -> loadFXML("/com.siata.client/view/DashboardContentView.fxml");
-            case RECAPITULATION -> loadFXML("/com.siata.client/view/RecapitulationView.fxml");
-            case ASSET_MANAGEMENT -> loadFXML("/com.siata.client/view/AssetManagementView.fxml");
+            case DASHBOARD -> loadFXML("/com/siata/client/controller/DashboardContentView.fxml");
+            case RECAPITULATION -> loadFXML("/com/siata/client/controller/RecapitulationView.fxml");
+            case ASSET_MANAGEMENT -> new AssetManagementView();
             case EMPLOYEE_MANAGEMENT -> new EmployeeManagementView();
             case ASSET_REQUEST -> new AssetRequestView();
             case ASSET_APPROVAL -> new AssetApprovalView();

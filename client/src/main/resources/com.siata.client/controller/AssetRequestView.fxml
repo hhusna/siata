@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.layout.*?>
+<?import javafx.scene.control.*?>
+<?import javafx.geometry.*?>
+
+<VBox fx:id="root" spacing="24" xmlns="http://javafx.com/javafx/23.0.1" xmlns:fx="http://javafx.com/fxml/1"
+      fx:controller="com.siata.client.controller.AssetRequestController">
+
+    <!-- Header -->
+    <HBox spacing="16" alignment="CENTER_LEFT">
+        <VBox spacing="4">
+            <Label text="Pengajuan Aset" styleClass="page-intro-title"/>
+            <Label text="Catat dan kelola pengajuan &amp; permohonan aset pegawai" styleClass="page-intro-description"/>
+        </VBox>
+        <Region HBox.hgrow="ALWAYS"/>
+        <HBox spacing="10" alignment="CENTER_RIGHT">
+            <Button fx:id="addPengajuanButton" text="+ Tambah Pengajuan Aset" styleClass="secondary-button"/>
+            <Button fx:id="addPermohonanButton" text="+ Tambah Permohonan" styleClass="primary-button"/>
+        </HBox>
+    </HBox>
+
+    <!-- Permohonan Section -->
+    <VBox fx:id="permohonanSection"/>
+
+    <!-- Pengajuan Section -->
+    <VBox fx:id="pengajuanSection"/>
+</VBox>

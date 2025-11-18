@@ -1,12 +1,9 @@
 package com.siata.client;
 
 import com.siata.client.controller.MainShellController;
-import com.siata.client.view.LoginView;
-import com.siata.client.view.MainShellView;
 import com.siata.client.controller.LoginController;
 
 import javafx.application.Application;
-import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
@@ -30,7 +27,7 @@ public class MainApplication extends Application {
 //        stage.setScene(scene);
 
         try {
-            FXMLLoader loader = new FXMLLoader(getClass().getResource("/com.siata.client/view/LoginView.fxml"));
+            FXMLLoader loader = new FXMLLoader(getClass().getResource("/com.siata.client/controller/LoginView.fxml"));
             Parent root = loader.load();
             LoginController controller = loader.getController();
             controller.setOnLogin(() -> showDashboard(stage));
@@ -54,7 +51,7 @@ public class MainApplication extends Application {
 //        stage.setScene(scene);
 
         try {
-            FXMLLoader loader = new FXMLLoader(getClass().getResource("/com.siata.client/view/MainShellView.fxml"));
+            FXMLLoader loader = new FXMLLoader(getClass().getResource("/com.siata.client/controller/MainShellView.fxml"));
             Parent root = loader.load();
             MainShellController controller = loader.getController();
             controller.setOnLogout(() -> showLogin(stage));

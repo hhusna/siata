@@ -1,30 +1,105 @@
 package com.siata.client.controller;
 
 import javafx.collections.FXCollections;
+import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
+import javafx.fxml.FXMLLoader;
+import javafx.fxml.Initializable;
 import javafx.geometry.Insets;
-import javafx.scene.Node;
-import javafx.scene.control.Label;
-import javafx.scene.control.TableColumn;
-import javafx.scene.control.TableView;
+import javafx.geometry.Pos;
+import javafx.scene.Scene;
+import javafx.scene.control.*;
 import javafx.scene.layout.GridPane;
+import javafx.scene.layout.HBox;
+import javafx.scene.layout.Priority;
+import javafx.scene.layout.Region;
 import javafx.scene.layout.VBox;
+import javafx.stage.Modality;
+import javafx.stage.Stage;
 
+import java.io.IOException;
+import java.net.URL;
 import java.util.List;
 import java.util.Map;
+import java.util.ResourceBundle;
 
-public class RecapitulationController {
+public class RecapitulationController implements Initializable {
 
-    @FXML private VBox tablesContainer;
+    @FXML private VBox mainContainer;
+    @FXML private Button exportButton;
     @FXML private GridPane statsGrid;
+    @FXML private TableView<Map<String, String>> rencanaPenghapusanTable;
+    @FXML private TableView<Map<String, String>> rekapPemakaianTable;
+    @FXML private TableView<Map<String, String>> keteranganKondisiTable;
+    @FXML private TableView<Map<String, String>> rekapPemeganganTable;
+    @FXML private TableView<Map<String, String>> jumlahPegawaiTable;
+    @FXML private VBox usageTableSection;
+    @FXML private TableView<Map<String, String>> usageTable;
+    @FXML private HBox statusRow;
+    @FXML private VBox legendBox;
+    @FXML private TableView<Map<String, String>> employeeMatrixTable;
 
-    @FXML
-    public void initialize() {
-        buildStats();
-        buildTables();
+    @Override
+    public void initialize(URL location, ResourceBundle resources) {
+        initializeStatsGrid();
+        initializeTables();
+        initializeUsageTableSection();
     }
 
-    private void buildStats() {
+    private void setupExportButton() {
+        exportButton.setOnAction(event -> showExportPdfModal());
+    }
+
+    private void showExportPdfModal() {
+        try {
+            System.out.println("asdasd");
+            FXMLLoader loader = new FXMLLoader(getClass().getResource("/com/siata/client/controller/ExportPdfModal.fxml"));
+            VBox modalContent = loader.load();
+
+            // Get the modal controller and pass reference to this controller
+            ExportPdfModalController modalController = loader.getController();
+            modalController.setParentController(this);
+
+            Stage modalStage = new Stage();
+            modalController.setModalStage(modalStage);
+
+            Scene scene = new Scene(modalContent);
+            modalStage.setScene(scene);
+            modalStage.setTitle("Export PDF - Rekapitulasi");
+            modalStage.initModality(Modality.APPLICATION_MODAL);
+            modalStage.initOwner(exportButton.getScene().getWindow());
+            modalStage.showAndWait();
+
+        } catch (IOException e) {
+            e.printStackTrace();
+            showAlert("Error", "Gagal memuat dialog export PDF.");
+        }
+    }
+
+    public void handleExportPdf(List<String> selectedTables, boolean includeCharts, boolean includeSummary, boolean landscape) {
+        // Implementasi export PDF
+        System.out.println("Memulai export PDF dengan konfigurasi:");
+        System.out.println("Tabel yang dipilih: " + selectedTables);
+        System.out.println("Sertakan grafik: " + includeCharts);
+        System.out.println("Sertakan ringkasan: " + includeSummary);
+        System.out.println("Orientasi landscape: " + landscape);
+
+        // TODO: Implement actual PDF export logic here
+        // Contoh: PdfExportService.exportRecapitulation(selectedTables, includeCharts, includeSummary, landscape);
+
+        showAlert("Sukses", "Laporan PDF berhasil di-generate!");
+    }
+
+    private void showAlert(String title, String message) {
+        Alert alert = new Alert(Alert.AlertType.INFORMATION);
+        alert.setTitle(title);
+        alert.setHeaderText(null);
+        alert.setContentText(message);
+        alert.showAndWait();
+    }
+
+    // ... (methods lainnya tetap sama: initializeStatsGrid, initializeTables, dll.)
+    private void initializeStatsGrid() {
         List<CardData> cards = List.of(
                 new CardData("Total Aset", "263", "unit di seluruh sistem", "🧾"),
                 new CardData("Sedang Digunakan", "233", "88.6% dari total", "✅"),
@@ -37,78 +112,164 @@ public class RecapitulationController {
         }
     }
 
-    private void buildTables() {
-        tablesContainer.getChildren().addAll(
-                createTableSection("Rencana Penghapusan",
-                        new String[]{"Jenis Aset","Harus Masa Pakai","Bersih","Akan Habis 1 Tahun","Total Bersih"},
-                        new int[]{200,150,120,150,120}),
-                createTableSection("Rekap Pemakaian",
-                        new String[]{"Jenis Aset","Dipakai Belum Habis","Dipakai Sudah Habis","Total Dipakai"},
-                        new int[]{200,150,150,150}),
-                createTableSection("Keterangan Kondisi",
-                        new String[]{"Jenis Aset","Rusak Berat","Hilang","Gudang"},
-                        new int[]{200,150,150,150}),
-                createTableSection("Rekap Pemegangan",
-                        new String[]{"Jenis Aset","Tidak Ganda","Ganda","Total Pemegangan"},
-                        new int[]{200,150,150,150}),
-                createTableSection("Jumlah Pegawai per Bagian",
-                        new String[]{"Bagian","ASN","PPNPN","Total"},
-                        new int[]{250,150,150,150}),
-                createTableSection("Matriks Distribusi Aset per Pegawai",
-                        new String[]{"Nama Pegawai","Unit","Laptop","Printer","Meja","Kursi","AC","Proyektor","Total"},
-                        new int[]{180,150,80,80,80,80,80,100,80})
-        );
+    private void initializeTables() {
+        setupTable(rencanaPenghapusanTable, "Rencana Penghapusan",
+                new String[]{"Jenis Aset", "Harus Masa Pakai", "Bersih", "Akan Habis 1 Tahun", "Total Bersih"},
+                new int[]{200, 150, 120, 150, 120});
+
+        setupTable(rekapPemakaianTable, "Rekap Pemakaian",
+                new String[]{"Jenis Aset", "Dipakai Belum Habis", "Dipakai Sudah Habis", "Total Dipakai"},
+                new int[]{200, 150, 150, 150});
+
+        setupTable(keteranganKondisiTable, "Keterangan Kondisi",
+                new String[]{"Jenis Aset", "Rusak Berat", "Hilang", "Gudang"},
+                new int[]{200, 150, 150, 150});
+
+        setupTable(rekapPemeganganTable, "Rekap Pemegangan",
+                new String[]{"Jenis Aset", "Tidak Ganda", "Ganda", "Total Pemegangan"},
+                new int[]{200, 150, 150, 150});
+
+        setupTable(jumlahPegawaiTable, "Jumlah Pegawai per Bagian",
+                new String[]{"Bagian", "ASN", "PPNPN", "Total"},
+                new int[]{250, 150, 150, 150});
+
+        setupTable(employeeMatrixTable, "Matriks Distribusi Aset per Pegawai",
+                new String[]{"Nama Pegawai", "Unit", "Laptop", "Printer", "Meja", "Kursi", "AC", "Proyektor", "Total"},
+                new int[]{180, 150, 80, 80, 80, 80, 80, 100, 80});
     }
 
-    private Node createTableSection(String title, String[] columns, int[] widths) {
-        VBox section = new VBox(12);
-        section.getStyleClass().add("table-container");
-        section.setPadding(new Insets(20));
+    private void initializeUsageTableSection() {
+        setupUsageTable();
+        setupStatusRow();
+        setupLegend();
+    }
 
-        Label sectionTitle = new Label(title);
-        sectionTitle.getStyleClass().add("table-title");
+    private void setupUsageTable() {
+        String[] columns = {"Subdirektorat", "Laptop", "Printer", "Meja", "Kursi", "AC", "Proyektor", "Total"};
+        int[] widths = {180, 100, 100, 100, 100, 100, 100, 100};
 
-        TableView<Map<String, String>> table = new TableView<>();
+        setupTableColumns(usageTable, columns, widths);
+    }
+
+    private void setupStatusRow() {
+        for (int i = 0; i < 6; i++) {
+            Label badge = new Label("✔");
+            badge.getStyleClass().add("status-badge-success");
+            statusRow.getChildren().add(badge);
+        }
+    }
+
+    private void setupLegend() {
+        Label legendOk = new Label("✔ = Data subdirektorat sesuai dengan manajemen aset");
+        Label legendWarn = new Label("⚠ = Ketidaksesuaian data (perlu investigasi)");
+        legendBox.getChildren().addAll(legendOk, legendWarn);
+    }
+
+    private void setupTable(TableView<Map<String, String>> table, String title, String[] columns, int[] widths) {
+        table.setUserData(title);
+        setupTableColumns(table, columns, widths);
         table.setItems(FXCollections.observableArrayList());
-        table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
-        table.getStyleClass().add("data-table");
+    }
+
+    private void setupTableColumns(TableView<Map<String, String>> table, String[] columns, int[] widths) {
+        table.getColumns().clear();
 
         for (int idx = 0; idx < columns.length; idx++) {
             final int colIndex = idx;
-            TableColumn<Map<String, String>, String> col = new TableColumn<>(columns[idx]);
-            col.setPrefWidth(widths[idx]);
-            col.setCellValueFactory(cellData ->
-                    new javafx.beans.property.SimpleStringProperty(cellData.getValue().getOrDefault(columns[colIndex], ""))
-            );
+            TableColumn<Map<String, String>, String> col = new TableColumn<>(columns[colIndex]);
+            col.setPrefWidth(widths[colIndex]);
+            col.setCellValueFactory(cellData -> {
+                Map<String, String> row = cellData.getValue();
+                return new javafx.beans.property.SimpleStringProperty(
+                        row.getOrDefault(columns[colIndex], ""));
+            });
             col.setSortable(false);
-            if (idx > 0) col.setStyle("-fx-alignment: CENTER-RIGHT;");
+            if (colIndex > 0) {
+                col.setStyle("-fx-alignment: CENTER-RIGHT;");
+            }
             table.getColumns().add(col);
         }
-
-        section.getChildren().addAll(sectionTitle, table);
-        return section;
     }
 
-    private Node createStatCard(CardData data) {
+    private VBox createStatCard(CardData data) {
         VBox card = new VBox(12);
         card.getStyleClass().add("stat-card");
         card.setPadding(new Insets(24));
 
-        Label title = new Label(data.title());
-        title.getStyleClass().add("stat-card-title");
+        HBox headerBox = new HBox();
+        headerBox.setAlignment(Pos.CENTER_LEFT);
+        HBox.setHgrow(headerBox, Priority.ALWAYS);
 
-        Label value = new Label(data.value());
-        value.getStyleClass().add("stat-card-value");
+        Label titleLabel = new Label(data.title());
+        titleLabel.getStyleClass().add("stat-card-title");
 
-        Label desc = new Label(data.description());
-        desc.getStyleClass().add("stat-card-description");
+        Region spacer = new Region();
+        HBox.setHgrow(spacer, Priority.ALWAYS);
 
-        Label icon = new Label(data.icon());
-        icon.getStyleClass().add("stat-card-icon");
+        Label iconLabel = new Label(data.icon());
+        iconLabel.getStyleClass().add("stat-card-icon");
 
-        card.getChildren().addAll(title, value, desc, icon);
+        headerBox.getChildren().addAll(titleLabel, spacer, iconLabel);
+
+        Label valueLabel = new Label(data.value());
+        valueLabel.getStyleClass().add("stat-card-value");
+
+        Label descLabel = new Label(data.description());
+        descLabel.getStyleClass().add("stat-card-description");
+
+        card.getChildren().addAll(headerBox, valueLabel, descLabel);
         return card;
     }
 
-    private record CardData(String title, String value, String description, String icon) {}
+    // Public methods untuk update data
+    public void updateRencanaPenghapusanData(List<Map<String, String>> data) {
+        rencanaPenghapusanTable.setItems(FXCollections.observableArrayList(data));
+    }
+
+    public void updateRekapPemakaianData(List<Map<String, String>> data) {
+        rekapPemakaianTable.setItems(FXCollections.observableArrayList(data));
+    }
+
+    public void updateKeteranganKondisiData(List<Map<String, String>> data) {
+        keteranganKondisiTable.setItems(FXCollections.observableArrayList(data));
+    }
+
+    public void updateRekapPemeganganData(List<Map<String, String>> data) {
+        rekapPemeganganTable.setItems(FXCollections.observableArrayList(data));
+    }
+
+    public void updateJumlahPegawaiData(List<Map<String, String>> data) {
+        jumlahPegawaiTable.setItems(FXCollections.observableArrayList(data));
+    }
+
+    public void updateUsageTableData(List<Map<String, String>> data) {
+        usageTable.setItems(FXCollections.observableArrayList(data));
+    }
+
+    public void updateEmployeeMatrixData(List<Map<String, String>> data) {
+        employeeMatrixTable.setItems(FXCollections.observableArrayList(data));
+    }
+
+    public void updateStatsData(List<CardData> newStats) {
+        statsGrid.getChildren().clear();
+        for (int i = 0; i < newStats.size(); i++) {
+            statsGrid.add(createStatCard(newStats.get(i)), i, 0);
+        }
+    }
+
+    // Helper method untuk mendapatkan data tabel yang tersedia
+    public List<String> getAvailableTables() {
+        return List.of(
+                "Rencana Penghapusan",
+                "Rekap Pemakaian",
+                "Keterangan Kondisi",
+                "Rekap Pemegangan",
+                "Jumlah Pegawai per Bagian",
+                "Penggunaan Aset per Subdirektorat",
+                "Matriks Distribusi Aset per Pegawai"
+        );
+    }
+
+    private record CardData(String title, String value, String description, String icon) {
+    }
 }

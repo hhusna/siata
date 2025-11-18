@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.layout.*?>
+<?import javafx.scene.control.*?>
+<?import javafx.geometry.*?>
+
+<VBox fx:id="root" spacing="16" xmlns="http://javafx.com/javafx/23.0.1" xmlns:fx="http://javafx.com/fxml/1"
+      fx:controller="com.siata.client.controller.AssetRequestModalController">
+
+    <!-- Header -->
+    <HBox spacing="8" alignment="CENTER_LEFT">
+        <padding>
+            <Insets top="16" right="16" bottom="16" left="16"/>
+        </padding>
+        <VBox spacing="4">
+            <Label fx:id="titleLabel" text="Judul Modal" styleClass="modal-title"/>
+            <Label fx:id="subtitleLabel" text="Deskripsi modal" styleClass="modal-subtitle"/>
+        </VBox>
+        <Region HBox.hgrow="ALWAYS"/>
+        <Button fx:id="closeButton" text="✕" styleClass="modal-close-button"/>
+    </HBox>
+
+    <ScrollPane fitToWidth="true" prefViewportHeight="450">
+        <VBox fx:id="formContent" spacing="12">
+            <padding>
+                <Insets top="0" right="24" bottom="0" left="24"/>
+            </padding>
+        </VBox>
+    </ScrollPane>
+
+    <HBox spacing="12" alignment="CENTER_RIGHT">
+        <padding>
+            <Insets top="16" right="16" bottom="16" left="16"/>
+        </padding>
+        <Button fx:id="cancelButton" text="Batal" styleClass="secondary-button"/>
+        <Button fx:id="saveButton" text="Simpan" styleClass="primary-button"/>
+    </HBox>
+</VBox>
