@@ -1,14 +1,17 @@
 <?xml version="1.0" encoding="UTF-8"?>
-
-<?import java.lang.*?>
-<?import java.util.*?>
-<?import javafx.scene.*?>
+<?import javafx.geometry.Insets?>
 <?import javafx.scene.control.*?>
 <?import javafx.scene.layout.*?>
+<VBox xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml"
+      fx:controller="com.siata.client.controller.DashboardContentController"
+      spacing="24">
 
-<AnchorPane xmlns="http://javafx.com/javafx"
-            xmlns:fx="http://javafx.com/fxml"
-            fx:controller="$CONTROLLER_NAME$"
-            prefHeight="400.0" prefWidth="600.0" >
+    <!-- Summary Section -->
+    <VBox fx:id="summaryContainer" spacing="16"/>
 
-</AnchorPane>
+    <!-- Charts Section -->
+    <VBox fx:id="chartsColumn" spacing="24"/>
+
+    <!-- Recent Activities Section -->
+    <VBox fx:id="recentActivitiesContainer" spacing="12"/>
+</VBox>

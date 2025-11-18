@@ -1,14 +1,70 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<?import java.lang.*?>
-<?import java.util.*?>
-<?import javafx.scene.*?>
-<?import javafx.scene.control.*?>
-<?import javafx.scene.layout.*?>
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.ScrollPane?>
+<?import javafx.scene.layout.BorderPane?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.Region?>
+<?import javafx.scene.layout.VBox?>
 
-<AnchorPane xmlns="http://javafx.com/javafx"
-            xmlns:fx="http://javafx.com/fxml"
-            fx:controller="$CONTROLLER_NAME$"
-            prefHeight="400.0" prefWidth="600.0" >
+<BorderPane xmlns="http://javafx.com/javafx/23.0.1" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.siata.client.controller.MainShellController">
 
-</AnchorPane>
+    <left>
+        <BorderPane fx:id="sidebar" prefWidth="260" styleClass="sidebar">
+            <top>
+                <VBox spacing="6">
+                    <padding>
+                        <Insets bottom="12" left="24" right="24" top="28" />
+                    </padding>
+                    <Label styleClass="sidebar-title" text="SIADA" />
+                    <Label styleClass="sidebar-subtitle" text="Kementerian Perhubungan" />
+                </VBox>
+            </top>
+            <center>
+                <ScrollPane fx:id="menuScroll" fitToWidth="true" hbarPolicy="NEVER" styleClass="sidebar-scroll">
+                    <content>
+                        <VBox fx:id="menuBox" spacing="10" />
+                    </content>
+                </ScrollPane>
+            </center>
+            <bottom>
+                <Button fx:id="logoutButton" maxWidth="Infinity" styleClass="sidebar-logout-button" text="Logout" />
+            </bottom>
+        </BorderPane>
+    </left>
+
+    <top>
+        <HBox fx:id="header" alignment="CENTER_LEFT" spacing="16" styleClass="dashboard-header">
+            <padding>
+                <Insets bottom="16" left="24" right="24" top="16" />
+            </padding>
+            <Button fx:id="menuButton" styleClass="ghost-button" text="☰" />
+            <VBox spacing="4">
+                <Label fx:id="pageTitle" styleClass="dashboard-title" />
+                <Label fx:id="pageSubtitle" styleClass="dashboard-subtitle" />
+            </VBox>
+            <Region HBox.hgrow="ALWAYS" />
+            <Label styleClass="header-icon" text="🔔" />
+            <VBox alignment="CENTER_RIGHT" spacing="2">
+                <Label styleClass="header-username" text="admin" />
+                <Label styleClass="header-role" text="Admin" />
+            </VBox>
+            <Label styleClass="header-avatar" text="A" />
+        </HBox>
+    </top>
+
+    <center>
+        <ScrollPane fx:id="contentScroll" fitToWidth="true" hbarPolicy="NEVER" styleClass="dashboard-scroll">
+            <content>
+                <VBox fx:id="contentContainer" spacing="24" styleClass="dashboard-content">
+                    <padding>
+                        <Insets bottom="32" left="32" right="32" top="32" />
+                    </padding>
+                </VBox>
+            </content>
+        </ScrollPane>
+    </center>
+
+</BorderPane>
