@@ -5,6 +5,8 @@ import com.siata.client.view.MainShellView;
 import com.siata.client.controller.LoginController;
 
 import javafx.application.Application;
+import javafx.fxml.FXMLLoader;
+import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.stage.Stage;
 
@@ -20,13 +22,25 @@ public class MainApplication extends Application {
     private void showLogin(Stage stage) {
 //        LoginView loginView = new LoginView();
 //        loginView.setOnLogin(() -> showDashboard(stage));
+//        Scene scene = createScene(loginView,
+//                stage.getScene() != null ? stage.getScene().getWidth() : 1280,
+//                stage.getScene() != null ? stage.getScene().getHeight() : 800);
+//        stage.setScene(scene);
 
-        LoginController loginController = new LoginController();
-        loginController.setOnLogin() -> showDashboard(stage);
-        Scene scene = createScene(loginController,
-                stage.getScene() != null ? stage.getScene().getWidth() : 1280,
-                stage.getScene() != null ? stage.getScene().getHeight() : 800);
-        stage.setScene(scene);
+        try {
+            FXMLLoader loader = new FXMLLoader(getClass().getResource("/com.siata.client/view/LoginView.fxml"));
+            Parent root = loader.load();
+            LoginController controller = loader.getController();
+            controller.setOnLogin(() -> showDashboard(stage));
+
+            Scene scene = createScene(root,
+                    stage.getScene() != null ? stage.getScene().getWidth() : 1280,
+                    stage.getScene() != null ? stage.getScene().getHeight() : 800);
+
+            stage.setScene(scene);
+        } catch (Exception e){
+            e.printStackTrace();
+        }
     }
 
     private void showDashboard(Stage stage) {
