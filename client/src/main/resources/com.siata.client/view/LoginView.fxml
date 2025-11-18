@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import javafx.scene.text.*?>
+<StackPane xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml" fx:controller="com.siata.client.controller.LoginController">
+    <children>
+        <Region fx:id="background" styleClass="login-background" StackPane.alignment="CENTER" />
+
+
+        <VBox spacing="20" alignment="TOP_CENTER" StackPane.alignment="CENTER" maxWidth="420" minWidth="360" styleClass="login-card">
+            <padding>
+                <Insets top="32" right="36" bottom="36" left="36" />
+            </padding>
+
+
+            <Label text="✈" styleClass="login-icon" />
+            <Label text="Sistem Informasi Administrasi" styleClass="login-title" />
+
+
+            <VBox spacing="4" alignment="CENTER">
+                <children>
+                    <Label text="Distribusi Aset Pegawai" styleClass="login-subtitle" />
+                    <Label text="Direktorat Angkutan Udara - Kementerian Perhubungan" styleClass="login-department" />
+                </children>
+            </VBox>
+
+
+            <VBox spacing="12" prefWidth="360" fillWidth="true">
+                <children>
+                    <Label text="Username" styleClass="form-label" />
+                    <TextField fx:id="usernameField" promptText="Masukkan username Anda" />
+
+
+                    <Label text="Password" styleClass="form-label" />
+                    <PasswordField fx:id="passwordField" promptText="Masukkan password Anda" />
+
+
+                    <Button text="Login" fx:id="loginButton" styleClass="primary-button" maxWidth="Infinity" />
+                </children>
+            </VBox>
+        </VBox>
+
+
+    </children>
+</StackPane>

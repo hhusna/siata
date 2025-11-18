@@ -2,6 +2,8 @@ package com.siata.client;
 
 import com.siata.client.view.LoginView;
 import com.siata.client.view.MainShellView;
+import com.siata.client.controller.LoginController;
+
 import javafx.application.Application;
 import javafx.scene.Scene;
 import javafx.stage.Stage;
@@ -16,9 +18,12 @@ public class MainApplication extends Application {
     }
 
     private void showLogin(Stage stage) {
-        LoginView loginView = new LoginView();
-        loginView.setOnLogin(() -> showDashboard(stage));
-        Scene scene = createScene(loginView,
+//        LoginView loginView = new LoginView();
+//        loginView.setOnLogin(() -> showDashboard(stage));
+
+        LoginController loginController = new LoginController();
+        loginController.setOnLogin() -> showDashboard(stage);
+        Scene scene = createScene(loginController,
                 stage.getScene() != null ? stage.getScene().getWidth() : 1280,
                 stage.getScene() != null ? stage.getScene().getHeight() : 800);
         stage.setScene(scene);
