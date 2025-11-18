@@ -61,11 +61,15 @@ public class AssetRemovalView extends VBox {
                     Asset asset = getTableView().getItems().get(getIndex());
                     checkBox.setSelected(asset.isDeleted());
                     setGraphic(checkBox);
+                    setAlignment(Pos.CENTER);
                 }
             }
         });
-        checkboxCol.setPrefWidth(50);
-        checkboxCol.setMaxWidth(60);
+        checkboxCol.setMinWidth(35);
+        checkboxCol.setPrefWidth(80);
+        checkboxCol.setMaxWidth(100);
+
+        checkboxCol.setStyle("-fx-alignment: CENTER;");
 
         TableColumn<Asset, String> idCol = new TableColumn<>("ID");
         idCol.setCellValueFactory(cellData -> {

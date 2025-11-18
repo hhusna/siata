@@ -184,7 +184,7 @@ public class AssetRequestView extends VBox {
     private void showAssetRequestModal(String tipe, AssetRequest editableRequest) {
         Stage modalStage = new Stage();
         modalStage.initModality(Modality.APPLICATION_MODAL);
-        modalStage.initStyle(StageStyle.UTILITY);
+        modalStage.initStyle(StageStyle.UNDECORATED);
         modalStage.setTitle(editableRequest == null
             ? ("Permohonan".equals(tipe) ? "Tambah Permohonan" : "Tambah Pengajuan")
             : "Edit " + tipe);
@@ -467,7 +467,7 @@ public class AssetRequestView extends VBox {
     private void showRequestDetail(AssetRequest request) {
         Stage modalStage = new Stage();
         modalStage.initModality(Modality.APPLICATION_MODAL);
-        modalStage.initStyle(StageStyle.UTILITY);
+        modalStage.initStyle(StageStyle.UNDECORATED);
         modalStage.setTitle("Detail " + request.getTipe());
 
         VBox modalContent = new VBox(0);

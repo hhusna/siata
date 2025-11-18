@@ -52,19 +52,22 @@ public class AssetManagementView extends VBox {
         filterBar.setAlignment(Pos.CENTER_LEFT);
         
         TextField searchField = new TextField();
-        searchField.setPromptText("Q Cari");
+        searchField.setPromptText("Cari berdasarkan ID, nama, atau jenis aset...");
         searchField.setPrefWidth(200);
         searchField.textProperty().addListener((obs, oldVal, newVal) -> filterTable(newVal));
+        searchField.getStyleClass().add("filter-combo-box");
         
         ComboBox<String> jenisCombo = new ComboBox<>();
         jenisCombo.getItems().addAll("Semua Jenis", "Laptop", "Printer", "Meja", "Kursi", "AC", "Monitor", "Scanner");
         jenisCombo.setValue("Semua Jenis");
         jenisCombo.setPrefWidth(150);
+        jenisCombo.getStyleClass().add("filter-combo-box");
         
         ComboBox<String> statusCombo = new ComboBox<>();
         statusCombo.getItems().addAll("Semua Status", "Tersedia", "Digunakan", "Rusak");
         statusCombo.setValue("Semua Status");
         statusCombo.setPrefWidth(150);
+        statusCombo.getStyleClass().add("filter-combo-box");
         
         filterBar.getChildren().addAll(searchField, jenisCombo, statusCombo);
 
@@ -183,7 +186,7 @@ public class AssetManagementView extends VBox {
     private void showAssetForm(Asset editableAsset) {
         Stage modalStage = new Stage();
         modalStage.initModality(Modality.APPLICATION_MODAL);
-        modalStage.initStyle(StageStyle.UTILITY);
+        modalStage.initStyle(StageStyle.UNDECORATED);
         modalStage.setTitle(editableAsset == null ? "Tambah Aset Baru" : "Edit Aset");
 
         VBox modalContent = new VBox(0);

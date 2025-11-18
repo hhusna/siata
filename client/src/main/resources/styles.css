@@ -608,17 +608,119 @@
     -fx-text-fill: #4a5c86;
 }
 
-.combo-box {
-    -fx-background-radius: 10;
-    -fx-background-color: #f5f7fb;
-    -fx-border-color: rgba(21, 63, 145, 0.08);
-    -fx-border-radius: 10;
-    -fx-padding: 12 14;
+.filter-combo-box,
+.text-field.filter-combo-box {
+    -fx-background-color: white; 
+    -fx-background-radius: 4px; 
+    -fx-border-color: #cccccc; 
+    -fx-border-width: 1px;
+    -fx-border-radius: 4px;
+    -fx-padding: 5px 8px; 
+
+    -fx-prompt-text-fill: #999999;
+}
+
+.filter-combo-box .arrow-button {
+    -fx-background-color: transparent;
+}
+
+.filter-combo-box .list-cell {
+    -fx-text-fill: #333333;
 }
 
 .combo-box:focused {
     -fx-border-color: rgba(21, 63, 145, 0.4);
     -fx-background-color: white;
+}
+
+.combo-box-popup .list-view {
+    -fx-background-color: white; 
+    
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.1), 8, 0.0, 0, 1);
+    
+    -fx-border-color: transparent; 
+}
+
+.combo-box-popup .list-view .list-cell:filled:hover {
+    -fx-background-color: #f0f0f0; 
+    -fx-text-fill: #333333;
+}
+
+.combo-box-popup .list-view .list-cell:filled:selected,
+.combo-box-popup .list-view .list-cell:filled:selected:hover {
+    -fx-background-color: #e6f7ff;
+    -fx-text-fill: #333333;
+    -fx-font-weight: normal; 
+}
+
+/* --- Style untuk DialogPane secara keseluruhan --- */
+.dialog-pane.delete-confirmation-dialog {
+    -fx-background-color: #f7f7f7; /* Latar belakang abu-abu sangat muda */
+    -fx-background-radius: 12px; /* Sudut tumpul */
+    -fx-border-color: transparent; /* Hilangkan border default */
+    -fx-padding: 0; /* Hilangkan padding default agar konten kustom bisa mengisi */
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.2), 15, 0.0, 0, 4); /* Bayangan lembut */
+}
+
+/* --- Style untuk Area Header (jika masih ada) --- */
+.dialog-pane.delete-confirmation-dialog > .header-panel {
+    -fx-background-color: transparent; /* Hilangkan background header */
+    -fx-padding: 0;
+}
+
+/* --- Style untuk Konten Utama (customContent VBox Anda) --- */
+.dialog-pane.delete-confirmation-dialog .content {
+    -fx-background-color: transparent; /* Pastikan konten transparan jika di dalam Alert */
+    -fx-padding: 0;
+}
+
+/* --- Style untuk Judul Pop-up (Konfirmasi Penghapusan) --- */
+.dialog-title {
+    -fx-font-size: 24px; /* Ukuran font lebih besar */
+    -fx-font-weight: bold; /* Tebal */
+    -fx-text-fill: #2c3e50; /* Warna teks gelap */
+    -fx-padding: 20px 20px 10px 20px; /* Padding di atas dan samping */
+    -fx-alignment: center;
+}
+
+/* --- Style untuk Pesan Pop-up --- */
+.dialog-message {
+    -fx-font-size: 14px;
+    -fx-text-fill: #555555; /* Warna teks abu-abu */
+    -fx-padding: 0 30px 20px 30px; /* Padding samping dan bawah */
+    -fx-line-spacing: 5px; /* Spasi antar baris */
+}
+
+/* --- Style untuk Tombol-tombol di ButtonBar --- */
+.dialog-pane.delete-confirmation-dialog .button-bar {
+    -fx-background-color: #f0f0f0; /* Latar belakang abu-abu muda untuk bar tombol */
+    -fx-padding: 15px 20px;
+    -fx-border-radius: 0 0 12px 12px; /* Sudut tumpul hanya di bawah */
+    -fx-background-radius: 0 0 12px 12px;
+}
+
+/* --- Style untuk Tombol Batal --- */
+.dialog-pane .button.cancel-button {
+    -fx-background-color: #e0e0e0; /* Latar belakang abu-abu */
+    -fx-text-fill: #333333;
+    -fx-background-radius: 6px;
+    -fx-font-size: 14px;
+    -fx-padding: 8px 20px;
+}
+.dialog-pane .button.cancel-button:hover {
+    -fx-background-color: #d0d0d0;
+}
+
+/* --- Style untuk Tombol Hapus (Merah) --- */
+.dialog-pane .button.delete-button {
+    -fx-background-color: #e74c3c; /* Merah */
+    -fx-text-fill: white;
+    -fx-background-radius: 6px;
+    -fx-font-size: 14px;
+    -fx-padding: 8px 20px;
+}
+.dialog-pane .button.delete-button:hover {
+    -fx-background-color: #c0392b; /* Merah lebih gelap saat hover */
 }
 
 .text-area {

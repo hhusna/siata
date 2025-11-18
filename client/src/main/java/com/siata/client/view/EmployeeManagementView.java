@@ -171,7 +171,7 @@ public class EmployeeManagementView extends VBox {
     private void showEmployeeForm(Employee editableEmployee) {
         Stage modalStage = new Stage();
         modalStage.initModality(Modality.APPLICATION_MODAL);
-        modalStage.initStyle(StageStyle.UTILITY);
+        modalStage.initStyle(StageStyle.UNDECORATED);
         modalStage.setTitle(editableEmployee == null ? "Tambah Pegawai Baru" : "Edit Pegawai");
 
         VBox modalContent = new VBox(0);
