@@ -1,5 +1,6 @@
 package siata.siata.controller;
 
+import jakarta.annotation.security.PermitAll;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -14,7 +15,7 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/pegawai")
-@PreAuthorize("hasRole('TIM_MANAJEMEN_ASET')")
+//@PreAuthorize("hasRole('TIM_MANAJEMEN_ASET')")
 public class PegawaiController {
 
     @Autowired

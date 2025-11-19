@@ -13,8 +13,10 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import siata.siata.dto.JwtAuthenticationResponse;
 import siata.siata.dto.LoginRequest;
+import siata.siata.dto.RegisterRequest;
 import siata.siata.entity.User;
 import siata.siata.security.JwtTokenProvider;
+import siata.siata.service.UserService;
 
 @RestController
 @RequestMapping("/api/auth")
@@ -26,9 +28,11 @@ public class AuthController {
     @Autowired
     JwtTokenProvider tokenProvider;
 
+    @Autowired
+    UserService userService;
+
     @PostMapping("/login")
     public ResponseEntity<?> authenticateUser(@Valid @RequestBody LoginRequest loginRequest) {
-
         Authentication authentication = authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(
                         loginRequest.getUsername(),
@@ -42,4 +46,12 @@ public class AuthController {
 
         return ResponseEntity.ok(new JwtAuthenticationResponse(jwt, user.getUsername(), user.getRole()));
     }
+
+    @PostMapping("/register")
+    public ResponseEntity<?> registerUser(@Valid @RequestBody RegisterRequest request) {
+        User createdUser = userService.registerUser(request);
+        return ResponseEntity.ok("User " + createdUser.getUsername() + " registered successfully");
+    }
+
+
 }

@@ -17,7 +17,7 @@ import java.util.Date;
 
 @RestController
 @RequestMapping("/api/laporan")
-@PreAuthorize("hasAnyRole('TIM_MANAJEMEN_ASET', 'PPBJ', 'PPK', 'DIREKTUR')")
+//@PreAuthorize("hasAnyRole('TIM_MANAJEMEN_ASET', 'PPBJ', 'PPK', 'DIREKTUR')")
 public class LaporanController {
 
     @Autowired

@@ -14,7 +14,7 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/aset")
-@PreAuthorize("hasRole('TIM_MANAJEMEN_ASET')")
+//@PreAuthorize("hasRole('TIM_MANAJEMEN_ASET')")
 public class AsetController {
 
     @Autowired
