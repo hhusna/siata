@@ -270,6 +270,8 @@ public class EmployeeManagementView extends VBox {
                 modalStage.close();
             }
 
+            refreshTable();
+
         });
 
         buttonBox.getChildren().addAll(cancelButton, saveButton);
