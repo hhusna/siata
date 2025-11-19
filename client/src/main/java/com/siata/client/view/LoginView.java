@@ -72,7 +72,7 @@ public class LoginView extends StackPane {
                 userApi.login(usernameField.getText(), passwordField.getText());
                 System.out.println("JWT DI LOGIN VIEW" + LoginSession.getJwt());
 
-                if (LoginSession.getJwt() != "") {
+                if (LoginSession.getJwt() != null) {
                     System.out.println("SUKSES LOGIN HARUSNYA??");
                     onLogin.ifPresent(Runnable::run);
                 } else {

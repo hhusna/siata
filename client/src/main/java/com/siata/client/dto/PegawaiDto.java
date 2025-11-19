@@ -1,5 +1,6 @@
 package com.siata.client.dto;
 
+import com.fasterxml.jackson.annotation.JsonAlias;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
@@ -9,7 +10,8 @@ public class PegawaiDto {
     private String nama;
 
     @JsonProperty("nama_subdir")
-    private String nama_subdir;
+    @JsonAlias("namaSubdir")
+    private String namaSubdir;
     private String jabatan;
 
     public PegawaiDto() {
@@ -18,7 +20,7 @@ public class PegawaiDto {
     public PegawaiDto(int nip, String nama, String namaSubdir, String jabatan) {
         this.nip = nip;
         this.nama = nama;
-        this.nama_subdir = namaSubdir;
+        this.namaSubdir = namaSubdir;
         this.jabatan = jabatan;
     }
 
@@ -39,13 +41,15 @@ public class PegawaiDto {
     }
 
     @JsonProperty("nama_subdir")
+    @JsonAlias("namaSubdir")
     public String getNamaSubdir() {
-        return nama_subdir;
+        return namaSubdir;
     }
 
     @JsonProperty("nama_subdir")
+    @JsonAlias("namaSubdir")
     public void setNamaSubdir(String namaSubdir) {
-        this.nama_subdir = namaSubdir;
+        this.namaSubdir = namaSubdir;
     }
 
     public String getJabatan() {

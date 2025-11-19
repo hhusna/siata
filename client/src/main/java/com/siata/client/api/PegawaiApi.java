@@ -10,9 +10,50 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 import java.util.prefs.Preferences;
 
 public class PegawaiApi {
+    String jwt = LoginSession.getJwt();
+
+    public PegawaiDto[] getPegawai() {
+        PegawaiDto[] listPegawai = {};
+
+        try {
+            ObjectMapper mapper = new ObjectMapper();
+
+            HttpClient client = HttpClient.newBuilder()
+                    .connectTimeout(Duration.ofSeconds(10))
+                    .build();
+
+            String targetUrl = "http://localhost:8080/api/pegawai";
+
+            HttpRequest request = HttpRequest.newBuilder()
+                    .uri(URI.create(targetUrl))
+                    .header("Content-Type", "application/json")
+                    .header("Authorization", "Bearer " + jwt)
+                    .GET()
+                    .build();
+
+            HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+
+            if (response.statusCode() == 200) {
+                String jsonResponse = response.body();
+
+                listPegawai = mapper.readValue(jsonResponse, PegawaiDto[].class);
+
+                return listPegawai;
+            }
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return listPegawai;
+    }
+
+
     public boolean addPegawai(int nip, String nama, String namaSubdir, String jabatan) {
         try {
             PegawaiDto payload = new PegawaiDto();
@@ -30,8 +71,6 @@ public class PegawaiApi {
                     .connectTimeout(Duration.ofSeconds(10))
                     .build();
 
-            String jwt = LoginSession.getJwt();
-            Preferences.userNodeForPackage(MainApplication.class).flush();
             System.out.println("JWT DI PEGAWAIAPI:"+jwt);
             String targetUrl = "http://localhost:8080/api/pegawai";
             HttpRequest request = HttpRequest.newBuilder()

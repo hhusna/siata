@@ -1,5 +1,7 @@
 package com.siata.client.service;
 
+import com.siata.client.api.PegawaiApi;
+import com.siata.client.dto.PegawaiDto;
 import com.siata.client.model.Activity;
 import com.siata.client.model.Asset;
 import com.siata.client.model.AssetRequest;
@@ -8,11 +10,13 @@ import com.siata.client.model.Employee;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class DataService {
     private static final DataService instance = new DataService();
+    private final PegawaiApi pegawaiApi = new PegawaiApi();
 
     private final List<Asset> assets = new ArrayList<>();
     private final List<Employee> employees = new ArrayList<>();
@@ -56,10 +60,19 @@ public class DataService {
         return assets.stream().filter(Asset::isDeleted).toList();
     }
 
-    public List<Employee> getEmployees() {
-        return new ArrayList<>(employees);
-    }
+//    public List<Employee> getEmployees() {
+//        return new ArrayList<>(employees);
+//    }
 
+    public List<Employee> getEmployees() {
+        PegawaiDto[] pegawaiDto = pegawaiApi.getPegawai();
+        List<Employee> employeeList = new ArrayList<>();
+        for (PegawaiDto dto : pegawaiDto) {
+            Employee emp = new Employee(Integer.toString(dto.getNip()), dto.getNama(), dto.getJabatan(), dto.getNamaSubdir());
+            employeeList.add(emp);
+        }
+        return employeeList;
+    }
     public void addEmployee(Employee employee) {
         employees.add(employee);
         logActivity("admin", "Create", "Menambahkan pegawai baru", "Pegawai #" + employee.getNip(), employee.getNamaLengkap());

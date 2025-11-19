@@ -4,6 +4,7 @@ import com.siata.client.api.AssetApi;
 import com.siata.client.api.PegawaiApi;
 import com.siata.client.model.Employee;
 import com.siata.client.service.DataService;
+import com.siata.client.dto.PegawaiDto;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.geometry.Insets;
@@ -32,7 +33,6 @@ public class EmployeeManagementView extends VBox {
         setSpacing(20);
         dataService = DataService.getInstance();
         employeeList = FXCollections.observableArrayList();
-        
         buildView();
         refreshTable();
     }
