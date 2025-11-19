@@ -37,23 +37,36 @@ public class SecurityConfig {
         return authenticationConfiguration.getAuthenticationManager();
     }
 
+//    @Bean
+//    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+//        http
+//                .csrf(csrf -> csrf.disable()) // Nonaktifkan CSRF
+//                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)) // Gunakan stateless session
+//                .authorizeHttpRequests(auth -> auth
+//                        .requestMatchers("/api/auth/**").permitAll() // Izinkan endpoint login
+//                        .requestMatchers("/public/**").permitAll() // Izinkan endpoint publik lainnya
+//                        .requestMatchers("/swagger-ui/**", "/v3/api-docs/**").permitAll()
+//                        // Izinkan endpoint baru untuk dashboard dan laporan
+//                        .requestMatchers("/api/dashboard/**").permitAll() // Sesuaikan role jika perlu
+//                        .requestMatchers("/api/laporan/**").permitAll() // Sesuaikan role jika perlu
+//
+//                        .anyRequest().authenticated() // Wajibkan autentikasi untuk lainnya
+//                )
+//                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class); // Tambahkan filter JWT
+//
+//        return http.build();
+//    }
+
     @Bean
-    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
                 .csrf(csrf -> csrf.disable()) // Nonaktifkan CSRF
-                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)) // Gunakan stateless session
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/api/auth/**").permitAll() // Izinkan endpoint login
-                        .requestMatchers("/public/**").permitAll() // Izinkan endpoint publik lainnya
-                        .requestMatchers("/swagger-ui/**", "/v3/api-docs/**").permitAll()
-                        // Izinkan endpoint baru untuk dashboard dan laporan
-                        .requestMatchers("/api/dashboard/**").permitAll() // Sesuaikan role jika perlu
-                        .requestMatchers("/api/laporan/**").permitAll() // Sesuaikan role jika perlu
-
-                        .anyRequest().authenticated() // Wajibkan autentikasi untuk lainnya
+                        .anyRequest().permitAll() // Izinkan semua request tanpa autentikasi
                 )
-                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class); // Tambahkan filter JWT
+                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS));
 
         return http.build();
     }
+
 }

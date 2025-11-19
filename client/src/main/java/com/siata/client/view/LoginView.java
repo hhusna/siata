@@ -1,5 +1,8 @@
 package com.siata.client.view;
 
+import com.siata.client.MainApplication;
+import com.siata.client.api.UserApi;
+import com.siata.client.session.LoginSession;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.control.Button;
@@ -11,10 +14,11 @@ import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 
 import java.util.Optional;
+import java.util.prefs.Preferences;
 
 public class LoginView extends StackPane {
-
     private Optional<Runnable> onLogin = Optional.empty();
+    UserApi userApi = new UserApi();
 
     public LoginView() {
         buildView();
@@ -61,7 +65,25 @@ public class LoginView extends StackPane {
         Button loginButton = new Button("Login");
         loginButton.getStyleClass().add("primary-button");
         loginButton.setMaxWidth(Double.MAX_VALUE);
-        loginButton.setOnAction(event -> onLogin.ifPresent(Runnable::run));
+
+
+        loginButton.setOnAction(event -> {
+            try {
+                userApi.login(usernameField.getText(), passwordField.getText());
+                System.out.println("JWT DI LOGIN VIEW" + LoginSession.getJwt());
+
+                if (LoginSession.getJwt() != "") {
+                    System.out.println("SUKSES LOGIN HARUSNYA??");
+                    onLogin.ifPresent(Runnable::run);
+                } else {
+                    System.out.println("GAGAL LOGIN HARUSNYA??");
+                }
+
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        });
+
 
         VBox form = new VBox(12,
                 usernameLabel,

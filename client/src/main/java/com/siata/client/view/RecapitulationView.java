@@ -1,5 +1,6 @@
 package com.siata.client.view;
 
+import com.siata.client.api.ExportPdfApi;
 import javafx.collections.FXCollections;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
@@ -14,18 +15,22 @@ import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.Region;
 import javafx.scene.layout.VBox;
+import javafx.stage.Stage;
 
+import javax.swing.*;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
 
 public class RecapitulationView extends VBox {
 
+    ExportPdfApi exportApi = new ExportPdfApi();
+
     public RecapitulationView() {
         setSpacing(24);
         buildView();
     }
-
-    
 
     private void buildView() {
         getChildren().add(buildHeader());
@@ -55,9 +60,32 @@ public class RecapitulationView extends VBox {
         
         Button exportButton = new Button("Export PDF");
         exportButton.getStyleClass().add("primary-button");
+        exportButton.setOnAction(event -> {
+            Stage stage = (Stage) exportButton.getScene().getWindow(); // ambil stage saat klik
+            exportApi.handle(stage);
+        });
         
         header.getChildren().addAll(textGroup, spacer, exportButton);
         return header;
+    }
+
+    public void exportPdfWithChooser(byte[] pdfBytes) {
+        JFileChooser chooser = new JFileChooser();
+        chooser.setDialogTitle("Simpan PDF");
+        chooser.setSelectedFile(new java.io.File("laporan.pdf")); // default name
+
+        int result = chooser.showSaveDialog(null);
+        if (result == JFileChooser.APPROVE_OPTION) {
+            Path path = chooser.getSelectedFile().toPath();
+            try {
+                Files.write(path, pdfBytes);
+                System.out.println("PDF berhasil disimpan: " + path.toAbsolutePath());
+            } catch (Exception e) {
+                System.err.println("Gagal menyimpan file: " + e.getMessage());
+            }
+        } else {
+            System.out.println("User membatalkan simpan file");
+        }
     }
 
     private Node buildStatsGrid() {

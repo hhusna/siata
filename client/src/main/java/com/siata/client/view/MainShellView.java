@@ -1,5 +1,6 @@
 package com.siata.client.view;
 
+import com.siata.client.MainApplication;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Node;
@@ -15,6 +16,7 @@ import javafx.scene.layout.VBox;
 import java.util.EnumMap;
 import java.util.Map;
 import java.util.Optional;
+import java.util.prefs.Preferences;
 
 public class MainShellView extends BorderPane {
 
@@ -202,6 +204,13 @@ public class MainShellView extends BorderPane {
     }
 
     public void setOnLogout(Runnable onLogout) {
+        try {
+            Preferences prefs = Preferences.userNodeForPackage(MainApplication.class);
+            prefs.clear();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
         this.onLogout = Optional.ofNullable(onLogout);
     }
 }

@@ -1,5 +1,7 @@
 package com.siata.client.view;
 
+import com.siata.client.api.AssetApi;
+import com.siata.client.api.PegawaiApi;
 import com.siata.client.model.Employee;
 import com.siata.client.service.DataService;
 import javafx.collections.FXCollections;
@@ -24,6 +26,7 @@ public class EmployeeManagementView extends VBox {
     private TableView<Employee> table;
     private final ObservableList<Employee> employeeList;
     private final DataService dataService;
+    private final PegawaiApi pegawaiApi = new PegawaiApi();
 
     public EmployeeManagementView() {
         setSpacing(20);
@@ -258,10 +261,15 @@ public class EmployeeManagementView extends VBox {
         Button saveButton = new Button(editableEmployee == null ? "Simpan" : "Simpan Perubahan");
         saveButton.getStyleClass().add("primary-button");
         saveButton.setOnAction(e -> {
-            if (saveEmployee(editableEmployee, nipField.getText(), namaField.getText(),
-                    jabatanField.getText(), unitCombo.getValue(), asetArea.getText())) {
+//            if (saveEmployee(editableEmployee, nipField.getText(), namaField.getText(),
+//                    jabatanField.getText(), unitCombo.getValue(), asetArea.getText())) {
+//                modalStage.close();
+//            }
+            int nip = Integer.parseInt(nipField.getText());
+            if (pegawaiApi.addPegawai(nip, namaField.getText(), unitCombo.getValue(), jabatanField.getText())) {
                 modalStage.close();
             }
+
         });
 
         buttonBox.getChildren().addAll(cancelButton, saveButton);
