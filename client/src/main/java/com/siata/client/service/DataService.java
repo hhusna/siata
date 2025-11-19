@@ -83,7 +83,8 @@ public class DataService {
     }
 
     public void removeEmployee(Employee employee) {
-        employees.remove(employee);
+//        employees.remove(employee);
+        pegawaiApi.deletePegawai(employee.getNip());
     }
 
     public void deleteEmployee(Employee employee) {
