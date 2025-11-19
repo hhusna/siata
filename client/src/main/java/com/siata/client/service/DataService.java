@@ -1,6 +1,9 @@
 package com.siata.client.service;
 
+import com.siata.client.api.AssetApi;
 import com.siata.client.api.PegawaiApi;
+import com.siata.client.dto.AssetDto;
+import com.siata.client.dto.AssetDtoForRequest;
 import com.siata.client.dto.PegawaiDto;
 import com.siata.client.model.Activity;
 import com.siata.client.model.Asset;
@@ -17,6 +20,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 public class DataService {
     private static final DataService instance = new DataService();
     private final PegawaiApi pegawaiApi = new PegawaiApi();
+    private final AssetApi assetApi = new AssetApi();
 
     private final List<Asset> assets = new ArrayList<>();
     private final List<Employee> employees = new ArrayList<>();
@@ -33,13 +37,56 @@ public class DataService {
     }
 
     public List<Asset> getAssets() {
-        return assets.stream()
-            .filter(asset -> !asset.isDeleted())
-            .toList();
+//        return assets.stream()
+//            .filter(asset -> !asset.isDeleted())
+//            .toList();
+
+        List<Asset> listAsset = new ArrayList<>();
+        for (AssetDto assetDto : assetApi.getAsset()) {
+            Asset assetValue = new Asset();
+            assetValue.setIdAset(assetDto.getIdAset());
+            assetValue.setKodeAset(assetDto.getKodeAset());
+            assetValue.setJenisAset(assetDto.getJenisAset());
+            assetValue.setMerkBarang(assetDto.getMerkAset());
+            assetValue.setTanggalPerolehan(assetDto.getTanggalPerolehan());
+            assetValue.setNilaiRupiah(assetDto.getHargaAset());
+            assetValue.setKondisi(assetDto.getKondisi());
+            assetValue.setStatus(assetDto.getStatusPemakaian());
+            assetValue.setKeterangan(Integer.toString(assetDto.getPegawaiDto().getNip()));
+            assetValue.setSubdit(assetDto.getPegawaiDto().getNamaSubdir());
+            listAsset.add(assetValue);
+        }
+
+        return listAsset;
     }
 
     public void addAsset(Asset asset) {
         assets.add(asset);
+        AssetDtoForRequest assetToDto = new AssetDtoForRequest();
+        boolean result;
+        try {
+            Integer.parseInt(asset.getKeterangan());
+            result = true;
+        } catch (NumberFormatException e) {
+            System.out.println("====== FALSE");
+            result = false;
+        }
+        if (result == true) {
+            PegawaiDto pegawaiDto = pegawaiApi.getPegawaiByNip(Integer.parseInt(asset.getKeterangan()));
+            assetToDto.setPegawaiDto(pegawaiDto);
+
+            System.out.println("======" + pegawaiDto.getNama());
+        }
+
+        assetToDto.setKodeAset(asset.getKodeAset());
+        assetToDto.setJenisAset(asset.getJenisAset());
+        assetToDto.setMerkAset(asset.getMerkBarang());
+        assetToDto.setTanggalPerolehan(asset.getTanggalPerolehan());
+        assetToDto.setHargaAset((long) asset.getNilaiRupiah());
+        assetToDto.setKondisi(asset.getKondisi());
+        assetToDto.setStatusPemakaian(asset.getStatus());
+
+        assetApi.tambahAsset(assetToDto);
         logActivity("admin", "Create", "Menambahkan aset baru", "Aset #" + asset.getKodeAset(), asset.getNamaAset());
     }
 
@@ -48,7 +95,10 @@ public class DataService {
     }
 
     public void deleteAsset(Asset asset) {
+//        asset.setDeleted(true);
+
         asset.setDeleted(true);
+        assetApi.deleteAssetById(asset.getIdAset());
         logActivity("admin", "Delete", "Menghapus aset", "Aset #" + asset.getKodeAset(), asset.getNamaAset());
     }
 

@@ -1,17 +1,21 @@
 package com.siata.client.model;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
+
 import java.time.LocalDate;
 
 public class Asset {
+    private int idAset;
     private String kodeAset;
     private String jenisAset;
     private String merkBarang;
-    private String keterangan; // Pemegang
-    private String subdit;
+
     private LocalDate tanggalPerolehan;
     private double nilaiRupiah;
     private String kondisi;
     private String status;
+    private String keterangan; // Pemegang
+    private String subdit;
     private boolean deleted; // Flag untuk penghapusan
 
     public Asset() {
@@ -33,6 +37,14 @@ public class Asset {
         this.kondisi = kondisi;
         this.status = status;
         this.deleted = false;
+    }
+
+    public int getIdAset() {
+        return idAset;
+    }
+
+    public void setIdAset(int idAset) {
+        this.idAset = idAset;
     }
 
     public String getKodeAset() {

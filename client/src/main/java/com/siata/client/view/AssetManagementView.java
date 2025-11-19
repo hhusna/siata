@@ -10,6 +10,7 @@ import javafx.scene.Node;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.control.cell.PropertyValueFactory;
+import javafx.scene.input.ScrollEvent;
 import javafx.scene.layout.*;
 import javafx.scene.text.Text;
 import javafx.stage.Modality;
@@ -227,7 +228,7 @@ public class AssetManagementView extends VBox {
         kodeHint.getStyleClass().add("form-hint");
         if (editableAsset != null) {
             kodeField.setText(editableAsset.getKodeAset());
-            kodeField.setDisable(true);
+//            kodeField.setDisable(true);
         }
 
         ComboBox<String> jenisCombo = new ComboBox<>();
@@ -329,7 +330,7 @@ public class AssetManagementView extends VBox {
         scrollPane.setPrefViewportHeight(450);
         scrollPane.setMaxHeight(450);
         scrollPane.getStyleClass().add("modal-scroll-pane");
-        
+
         modalContent.getChildren().addAll(headerBox, scrollPane, buttonBox);
 
         Scene modalScene = new Scene(modalContent);

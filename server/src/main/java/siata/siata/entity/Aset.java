@@ -38,7 +38,7 @@ public class Aset {
     @Column(name = "status_pemakaian", length = 50)
     private String statusPemakaian;
 
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "nip_pegawai", referencedColumnName = "nip")
     private Pegawai pegawai;
 

@@ -6,6 +6,9 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 
 @JsonIgnoreProperties
 public class PegawaiDto {
+
+    @JsonProperty("nip_pegawai")
+    @JsonAlias("nip")
     private int nip;
     private String nama;
 

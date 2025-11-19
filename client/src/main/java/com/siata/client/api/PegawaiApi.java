@@ -18,6 +18,46 @@ import java.util.prefs.Preferences;
 public class PegawaiApi {
     String jwt = LoginSession.getJwt();
 
+    public PegawaiDto getPegawaiByNip(int nip) {
+        System.out.println("PegawaiApi:getPegawaiByNip BISMILLAH JALAN NI BANG");
+        PegawaiDto pegawaiDto = new PegawaiDto();
+
+        try {
+            ObjectMapper mapper = new ObjectMapper();
+
+            HttpClient client = HttpClient.newBuilder()
+                    .connectTimeout(Duration.ofSeconds(10))
+                    .build();
+
+            String targetUrl = "http://localhost:8080/api/pegawai/" + Integer.toString(nip);
+
+            HttpRequest request = HttpRequest.newBuilder()
+                    .uri(URI.create(targetUrl))
+                    .header("Content-Type", "application/json")
+                    .header("Authorization", "Bearer " + jwt)
+                    .GET()
+                    .build();
+
+            HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+
+            if (response.statusCode()==200) {
+                System.out.println("PegawaiApi: Pegawai ditemukan!");
+
+                String jsonResponse = response.body();
+
+                pegawaiDto = mapper.readValue(jsonResponse, PegawaiDto.class);
+
+                return pegawaiDto;
+            } else {
+                System.out.println("PegawaiApi: Pegawai gagal ditemukan!" + response.statusCode());
+            }
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return pegawaiDto;
+    }
+
     public PegawaiDto[] getPegawai() {
         PegawaiDto[] listPegawai = {};
 

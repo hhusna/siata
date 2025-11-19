@@ -1,21 +1,22 @@
 package com.siata.client.dto;
 
 import com.fasterxml.jackson.annotation.JsonAlias;
+import com.fasterxml.jackson.annotation.JsonFormat;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.siata.client.model.Employee;
 
 import java.time.LocalDate;
 import java.util.Date;
-import java.util.Locale;
 
 @JsonIgnoreProperties
-public class AssetDto {
+public class AssetDtoForRequest {
 
-    private int idAset;
     private String KodeAset;
     private String jenisAset;
     private String merkAset;
+
+    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd")
     private LocalDate tanggalPerolehan;
     private long hargaAset;
     private String kondisi;
@@ -24,15 +25,7 @@ public class AssetDto {
     @JsonProperty("pegawai")
     private PegawaiDto pegawaiDto;
 
-    public AssetDto() {
-    }
-
-    public int getIdAset() {
-        return idAset;
-    }
-
-    public void setIdAset(int idAset) {
-        this.idAset = idAset;
+    public AssetDtoForRequest() {
     }
 
     public String getKodeAset() {
