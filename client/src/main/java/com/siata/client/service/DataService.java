@@ -259,11 +259,49 @@ public class DataService {
     }
 
     public List<AssetRequest> getPermohonanAset() {
-        return assetRequests.stream().filter(r -> "Permohonan".equals(r.getTipe())).toList();
+//        return assetRequests.stream().filter(r -> "Permohonan".equals(r.getTipe())).toList();
+
+        PermohonanDto[] permohonanDtos = permohonanApi.getPermohonan();
+        List<AssetRequest> assetRequestList = new ArrayList<>();
+
+        for (PermohonanDto dto : permohonanDtos) {
+            AssetRequest assetRequest = new AssetRequest();
+            assetRequest.setNoPermohonan(dto.getKodePermohonan());
+            assetRequest.setTanggal(dto.getTimestamp());
+            assetRequest.setPemohon(dto.getPegawaiDto().getNama());
+            assetRequest.setJumlah(dto.getJumlah());
+            assetRequest.setPrioritas(dto.getPrioritas());
+            assetRequest.setTipe("Permohonan");
+            assetRequest.setStatus(dto.getStatusPersetujuan());
+            assetRequest.setDeskripsi(dto.getDeskripsi());
+            assetRequest.setTujuanPenggunaan(dto.getTujuanPenggunaan());
+            assetRequestList.add(assetRequest);
+        }
+
+        return assetRequestList;
     }
 
     public List<AssetRequest> getPengajuanAset() {
-        return assetRequests.stream().filter(r -> "Pengajuan".equals(r.getTipe())).toList();
+//        return assetRequests.stream().filter(r -> "Pengajuan".equals(r.getTipe())).toList();
+
+        PengajuanDto[] pengajuanDtos = pengajuanApi.getPengajuan();
+        List<AssetRequest> assetRequestList = new ArrayList<>();
+
+        for (PengajuanDto dto : pengajuanDtos) {
+            AssetRequest assetRequest = new AssetRequest();
+            assetRequest.setNoPermohonan(dto.getKodePengajuan());
+            assetRequest.setTanggal(dto.getTimestamp());
+            assetRequest.setPemohon(dto.getPegawaiDto().getNama());
+            assetRequest.setJumlah(dto.getJumlah());
+            assetRequest.setPrioritas(dto.getPrioritas());
+            assetRequest.setTipe("Permohonan");
+            assetRequest.setStatus(dto.getStatusPersetujuan());
+            assetRequest.setDeskripsi(dto.getDeskripsi());
+            assetRequest.setTujuanPenggunaan(dto.getTujuanPenggunaan());
+            assetRequestList.add(assetRequest);
+        }
+
+        return assetRequestList;
     }
 
     public List<Activity> getActivities() {

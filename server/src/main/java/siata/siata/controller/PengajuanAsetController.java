@@ -26,19 +26,19 @@ public class PengajuanAsetController {
     }
 
     @GetMapping
-    @PreAuthorize("hasAnyRole('TIM_MANAJEMEN_ASET', 'PPBJ', 'PPK', 'DIREKTUR')")
+//    @PreAuthorize("hasAnyRole('TIM_MANAJEMEN_ASET', 'PPBJ', 'PPK', 'DIREKTUR')")
     public List<PengajuanAset> getAll() {
         return pengajuanAsetService.getAll();
     }
 
     @PostMapping
-    @PreAuthorize("hasRole('TIM_MANAJEMEN_ASET')")
+//    @PreAuthorize("hasRole('TIM_MANAJEMEN_ASET')")
     public PengajuanAset create(@RequestBody PengajuanAset pengajuanAset, Authentication authentication) {
         return pengajuanAsetService.save(pengajuanAset, getPegawaiFromAuth(authentication));
     }
 
     @PatchMapping("/{id}/status")
-    @PreAuthorize("hasAnyRole('PPBJ', 'PPK', 'DIREKTUR')")
+//    @PreAuthorize("hasAnyRole('PPBJ', 'PPK', 'DIREKTUR')")
     public ResponseEntity<PengajuanAset> updateStatus(@PathVariable Long id, @RequestBody Map<String, String> statusUpdate, Authentication authentication) {
         try {
             String status = statusUpdate.get("status");
@@ -49,7 +49,7 @@ public class PengajuanAsetController {
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasRole('TIM_MANAJEMEN_ASET')")
+//    @PreAuthorize("hasRole('TIM_MANAJEMEN_ASET')")
     public ResponseEntity<Void> delete(@PathVariable Long id, Authentication authentication) {
         pengajuanAsetService.delete(id, getPegawaiFromAuth(authentication));
         return ResponseEntity.ok().build();

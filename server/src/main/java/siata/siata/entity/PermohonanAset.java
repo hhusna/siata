@@ -21,7 +21,7 @@ public class PermohonanAset {
     @Column(name = "kode_permohonan", length = 100)
     private String kodePermohonan;
 
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "nip", referencedColumnName = "nip")
     private Pegawai pegawai;
 
