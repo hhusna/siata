@@ -125,12 +125,12 @@ public class DashboardContentView extends VBox {
         VBox card = createChartShell("Jumlah Aset per Jenis");
 
         Map<String, Integer> histogramData = new LinkedHashMap<>();
-        histogramData.put("Laptop", 45);
-        histogramData.put("Printer", 28);
-        histogramData.put("Meja", 62);
-        histogramData.put("Kursi", 78);
-        histogramData.put("AC", 35);
-        histogramData.put("Proyektor", 15);
+        histogramData.put("Laptop", dataService.getAssetByJenis("Laptop"));
+        histogramData.put("Printer", dataService.getAssetByJenis("Printer"));
+        histogramData.put("Meja", dataService.getAssetByJenis("Meja"));
+        histogramData.put("Kursi", dataService.getAssetByJenis("Kursi"));
+        histogramData.put("AC", dataService.getAssetByJenis("AC"));
+        histogramData.put("Proyektor", dataService.getAssetByJenis("Proyektor"));
 
         CategoryAxis xAxis = new CategoryAxis();
         xAxis.setCategories(FXCollections.observableArrayList(histogramData.keySet()));
@@ -155,10 +155,10 @@ public class DashboardContentView extends VBox {
         VBox card = createChartShell("Distribusi Aset per Subdirektorat");
 
         Map<String, Integer> pieData = new LinkedHashMap<>();
-        pieData.put("Subdit Teknis", 32);
-        pieData.put("Subdit Operasional", 25);
-        pieData.put("Subdit Keamanan", 20);
-        pieData.put("Subdit SDM", 22);
+        pieData.put("Subdit Teknis", dataService.getAssetBySubdit("Subdit Teknis"));
+        pieData.put("Subdit Operasional", dataService.getAssetBySubdit("Subdit Operasional"));
+        pieData.put("Subdit Keamanan", dataService.getAssetBySubdit("Subdit Keamanan"));
+        pieData.put("Subdit SDM", dataService.getAssetBySubdit("Subdit SDM"));
 
         PieChart pieChart = new PieChart();
         pieChart.setLabelsVisible(true);

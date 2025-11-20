@@ -1,29 +1,43 @@
 package com.siata.client.dto;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
+
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+
 public class PengajuanDto {
     private Long idPengajuan;
+    private String kodePengajuan;
+
+    @JsonProperty("pegawai")
     private PegawaiDto pegawaiDto;
+
     private String namaPengaju;
     private String jenisAset;
-    private Long jumlah;
+    private int jumlah;
     private String deskripsi;
     private String tujuanPenggunaan;
     private String prioritas;
     private String statusPersetujuan;
+    private LocalDate timestamp;
 
-    public PengajuanDto() {
+    public String getKodePengajuan() {
+        return kodePengajuan;
     }
 
-    public PengajuanDto(Long idPengajuan, PegawaiDto pegawaiDto, String namaPengaju, String jenisAset, Long jumlah, String deskripsi, String tujuanPenggunaan, String prioritas, String statusPersetujuan) {
-        this.idPengajuan = idPengajuan;
-        this.pegawaiDto = pegawaiDto;
-        this.namaPengaju = namaPengaju;
-        this.jenisAset = jenisAset;
-        this.jumlah = jumlah;
-        this.deskripsi = deskripsi;
-        this.tujuanPenggunaan = tujuanPenggunaan;
-        this.prioritas = prioritas;
-        this.statusPersetujuan = statusPersetujuan;
+    public void setKodePengajuan(String kodePengajuan) {
+        this.kodePengajuan = kodePengajuan;
+    }
+
+    public LocalDate getTimestamp() {
+        return timestamp;
+    }
+
+    public void setTimestamp(LocalDate timestamp) {
+        this.timestamp = timestamp;
+    }
+
+    public PengajuanDto() {
     }
 
     public Long getIdPengajuan() {
@@ -58,11 +72,11 @@ public class PengajuanDto {
         this.jenisAset = jenisAset;
     }
 
-    public Long getJumlah() {
+    public int getJumlah() {
         return jumlah;
     }
 
-    public void setJumlah(Long jumlah) {
+    public void setJumlah(int jumlah) {
         this.jumlah = jumlah;
     }
 

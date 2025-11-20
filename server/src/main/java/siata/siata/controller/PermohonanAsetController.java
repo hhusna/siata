@@ -26,13 +26,13 @@ public class PermohonanAsetController {
     }
 
     @GetMapping
-    @PreAuthorize("hasAnyRole('TIM_MANAJEMEN_ASET', 'PPBJ', 'PPK', 'DIREKTUR')")
+//    @PreAuthorize("hasAnyRole('TIM_MANAJEMEN_ASET', 'PPBJ', 'PPK', 'DIREKTUR')")
     public List<PermohonanAset> getAll() {
         return permohonanAsetService.getAll();
     }
 
     @PostMapping
-    @PreAuthorize("hasRole('TIM_MANAJEMEN_ASET')")
+//    @PreAuthorize("hasRole('TIM_MANAJEMEN_ASET')")
     public PermohonanAset create(@RequestBody PermohonanAset permohonanAset, Authentication authentication) {
         return permohonanAsetService.save(permohonanAset, getPegawaiFromAuth(authentication));
     }
@@ -49,7 +49,7 @@ public class PermohonanAsetController {
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasRole('TIM_MANAJEMEN_ASET')")
+//    @PreAuthorize("hasRole('TIM_MANAJEMEN_ASET')")
     public ResponseEntity<Void> delete(@PathVariable Long id, Authentication authentication) {
         permohonanAsetService.delete(id, getPegawaiFromAuth(authentication));
         return ResponseEntity.ok().build();

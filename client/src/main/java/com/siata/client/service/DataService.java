@@ -1,16 +1,12 @@
 package com.siata.client.service;
 
-import com.siata.client.api.AssetApi;
-import com.siata.client.api.LogApi;
-import com.siata.client.api.PegawaiApi;
-import com.siata.client.dto.AssetDto;
-import com.siata.client.dto.AssetDtoForRequest;
-import com.siata.client.dto.LogDto;
-import com.siata.client.dto.PegawaiDto;
+import com.siata.client.api.*;
+import com.siata.client.dto.*;
 import com.siata.client.model.Activity;
 import com.siata.client.model.Asset;
 import com.siata.client.model.AssetRequest;
 import com.siata.client.model.Employee;
+import com.siata.client.session.LoginSession;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -23,6 +19,8 @@ public class DataService {
     private final PegawaiApi pegawaiApi = new PegawaiApi();
     private final AssetApi assetApi = new AssetApi();
     private final LogApi logApi = new LogApi();
+    private final PermohonanApi permohonanApi = new PermohonanApi();
+    private final PengajuanApi pengajuanApi = new PengajuanApi();
 
     private final List<Asset> assets = new ArrayList<>();
     private final List<Employee> employees = new ArrayList<>();
@@ -64,6 +62,30 @@ public class DataService {
         }
 
         return listAsset;
+    }
+
+    public int getAssetBySubdit(String subdit) {
+        List<Asset> assetList = getAssets();
+        int count = 0;
+        for (Asset asset : assetList) {
+            if (asset.getSubdit().equals(subdit)) {
+                count++;
+            }
+        }
+
+        return count;
+    }
+
+    public int getAssetByJenis(String jenis) {
+        List<Asset> assetList = getAssets();
+        int count = 0;
+        for (Asset asset : assetList) {
+            if (asset.getJenisAset().equals(jenis)) {
+                count++;
+            }
+        }
+        System.out.println("DataService: " + count);
+        return count;
     }
 
     public void addAsset(Asset asset) {
@@ -175,6 +197,41 @@ public class DataService {
     }
 
     public void addAssetRequest(AssetRequest request) {
+        LogDto[] logDtos = logApi.getLog();
+        LogDto logDto = new LogDto();
+
+        for (LogDto log : logDtos) {
+            if (log.getPegawaiDto().getNama().equals(LoginSession.getPegawaiDto().getNama())) {
+                logDto = log;
+                break;
+            }
+        }
+
+        if ("Permohonan".equals(request.getTipe())) {
+            PermohonanDto permohonanDto = new PermohonanDto();
+            permohonanDto.setKodePermohonan(request.getNoPermohonan());
+            permohonanDto.setPegawaiDto(LoginSession.getPegawaiDto());
+            permohonanDto.setJenisAset(request.getJenisAset());
+            permohonanDto.setJumlah(request.getJumlah());
+            permohonanDto.setDeskripsi(request.getDeskripsi());
+            permohonanDto.setTujuanPenggunaan(request.getTujuanPenggunaan());
+            permohonanDto.setPrioritas(request.getPrioritas());
+            permohonanDto.setTimestamp(LocalDate.now());
+            permohonanApi.createPermohonan(permohonanDto);
+        } else {
+            PengajuanDto pengajuanDto = new PengajuanDto();
+            pengajuanDto.setKodePengajuan(request.getNoPermohonan());
+            pengajuanDto.setPegawaiDto(LoginSession.getPegawaiDto());
+            pengajuanDto.setJenisAset(request.getJenisAset());
+            pengajuanDto.setJumlah(request.getJumlah());
+            pengajuanDto.setDeskripsi(request.getDeskripsi());
+            pengajuanDto.setTujuanPenggunaan(request.getTujuanPenggunaan());
+            pengajuanDto.setPrioritas(request.getPrioritas());
+            pengajuanDto.setStatusPersetujuan(request.getStatus());
+            pengajuanDto.setTimestamp(LocalDate.now());
+            pengajuanApi.createPengajuan(pengajuanDto);
+        }
+
         assetRequests.add(request);
         String actionType = "Permohonan".equals(request.getTipe()) ? "Create" : "Create";
         logActivity("admin", actionType, 
@@ -240,35 +297,34 @@ public class DataService {
     }
 
     public List<Activity> getRecentActivities(int limit) {
-        return activities.stream()
-            .sorted((a, b) -> b.getTimestamp().compareTo(a.getTimestamp()))
-            .limit(limit)
-            .toList();
-//        List<Activity> activityList = new ArrayList<>();
-//        LogDto[] logDtos = logApi.getLog();
-//        for (LogDto dto : logDtos) {
-//            Activity activity = new Activity();
-//            activity.setId(Long.toString(dto.getIdLog()));
-//
-//            if (dto.getPegawaiDto() != null) {
-//                activity.setUser(dto.getPegawaiDto().getNama());
-//            } else if (dto.getAssetDto() != null) {
-//                activity.setUser(dto.getAssetDto().getPegawaiDto().getNama());
-//            } else if (dto.getPermohonanDto() != null) {
-//                activity.setUser(dto.getPermohonanDto().getPegawaiDto().getNama());
-//            } else if (dto.getPengajuanDto() != null) {
-//                activity.setUser(dto.getPengajuanDto().getPegawaiDto().getNama());
-//            }
-//
-//            activity.setActionType(dto.getJenisLog());
-//            activity.setDescription(dto.getIsiLog());
-//            activity.setTarget("TESTING AJA");
-//            activity.setDetails("TESTING AJA");
-//            activity.setTimestamp(dto.getTimestamp());
-//            activityList.add(activity);
-//        }
-//
-//        return activityList;
+        List<Activity> activityList = new ArrayList<>();
+        LogDto[] logDtos = logApi.getLog();
+        for (LogDto dto : logDtos) {
+            Activity activity = new Activity();
+            activity.setId(Long.toString(dto.getIdLog()));
+
+            if (dto.getPegawaiDto() != null) {
+                activity.setUser(dto.getPegawaiDto().getNama());
+            } else if (dto.getAssetDto() != null) {
+                activity.setUser(dto.getAssetDto().getPegawaiDto().getNama());
+            } else if (dto.getPermohonanDto() != null) {
+                activity.setUser(dto.getPermohonanDto().getPegawaiDto().getNama());
+            } else if (dto.getPengajuanDto() != null) {
+                activity.setUser(dto.getPengajuanDto().getPegawaiDto().getNama());
+            }
+
+            activity.setActionType(dto.getJenisLog());
+            activity.setDescription(dto.getIsiLog());
+            activity.setTarget("TESTING AJA");
+            activity.setDetails("TESTING AJA");
+            activity.setTimestamp(dto.getTimestamp());
+            activityList.add(activity);
+        }
+
+        return activityList.stream()
+                .sorted((a, b) -> b.getTimestamp().compareTo(a.getTimestamp()))
+                .limit(limit)
+                .toList();
     }
 
     private void logActivity(String user, String actionType, String description, String target, String details) {

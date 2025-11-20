@@ -71,12 +71,12 @@ public class AssetRemovalView extends VBox {
 
         checkboxCol.setStyle("-fx-alignment: CENTER;");
 
-        TableColumn<Asset, String> idCol = new TableColumn<>("ID");
+        TableColumn<Asset, String> idCol = new TableColumn<>("Kode");
         idCol.setCellValueFactory(cellData -> {
             // Generate ID based on index or use existing
             Asset asset = cellData.getValue();
             int index = table.getItems().indexOf(asset);
-            return new javafx.beans.property.SimpleStringProperty("AST" + String.format("%03d", assetIdCounter.get() + index));
+            return new javafx.beans.property.SimpleStringProperty(asset.getKodeAset());
         });
 
         TableColumn<Asset, String> namaCol = new TableColumn<>("Nama Aset");

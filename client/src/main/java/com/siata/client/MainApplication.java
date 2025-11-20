@@ -14,15 +14,6 @@ public class MainApplication extends Application {
 
     @Override
     public void start(Stage primaryStage) {
-        Runtime.getRuntime().addShutdownHook(new Thread(() -> {
-            try {
-                prefs.clear(); // hapus semua key di node ini
-                // atau prefs.removeNode(); untuk hapus node beserta subnode
-                System.out.println("Prefs dihapus saat aplikasi close");
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
-        }));
         primaryStage.setTitle("SIAD - Direktorat Angkutan Udara");
         showLogin(primaryStage);
         primaryStage.show();

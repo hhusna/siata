@@ -3,6 +3,9 @@ package siata.siata.entity;
 import jakarta.persistence.*;
 import lombok.Data;
 import com.fasterxml.jackson.annotation.JsonIgnore;
+
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Data
@@ -14,6 +17,9 @@ public class PengajuanAset {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "id_pengajuan")
     private Long idPengajuan;
+
+    @Column(name = "kode_pengajuan", length = 100)
+    private String kodePengajuan;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "nip", referencedColumnName = "nip")
@@ -39,6 +45,9 @@ public class PengajuanAset {
 
     @Column(name = "status_persetujuan", length = 50)
     private String statusPersetujuan;
+
+    @Column(name = "timestamp", nullable = false)
+    private LocalDate timestamp;
 
     @JsonIgnore
     @OneToMany(mappedBy = "pengajuan", cascade = CascadeType.ALL)

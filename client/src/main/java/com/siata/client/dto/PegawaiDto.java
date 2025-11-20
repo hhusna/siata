@@ -12,8 +12,8 @@ public class PegawaiDto {
     private int nip;
     private String nama;
 
-    @JsonProperty("nama_subdir")
-    @JsonAlias("namaSubdir")
+    @JsonProperty("namaSubdir")
+    @JsonAlias("nama_subdir")
     private String namaSubdir;
     private String jabatan;
 
@@ -43,14 +43,14 @@ public class PegawaiDto {
         this.nama = nama;
     }
 
-    @JsonProperty("nama_subdir")
-    @JsonAlias("namaSubdir")
+    @JsonProperty("namaSubdir")
+    @JsonAlias("nama_subdir")
     public String getNamaSubdir() {
         return namaSubdir;
     }
 
-    @JsonProperty("nama_subdir")
-    @JsonAlias("namaSubdir")
+    @JsonProperty("namaSubdir")
+    @JsonAlias("nama_subdir")
     public void setNamaSubdir(String namaSubdir) {
         this.namaSubdir = namaSubdir;
     }

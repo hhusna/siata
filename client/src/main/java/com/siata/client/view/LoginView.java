@@ -70,6 +70,7 @@ public class LoginView extends StackPane {
         loginButton.setOnAction(event -> {
             try {
                 userApi.login(usernameField.getText(), passwordField.getText());
+                LoginSession.setPegawaiDto(userApi.getPegawaionSession());
                 System.out.println("JWT DI LOGIN VIEW" + LoginSession.getJwt());
 
                 if (LoginSession.getJwt() != null) {

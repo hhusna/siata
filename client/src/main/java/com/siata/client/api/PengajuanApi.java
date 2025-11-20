@@ -1,10 +1,9 @@
 package com.siata.client.api;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.siata.client.MainApplication;
-import com.siata.client.dto.PegawaiDto;
-import com.siata.client.dto.UserDto;
-import com.siata.client.response.LoginResponse;
+import com.fasterxml.jackson.databind.SerializationFeature;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import com.siata.client.dto.PengajuanDto;
 import com.siata.client.session.LoginSession;
 
 import java.net.URI;
@@ -12,22 +11,21 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
-import java.util.prefs.Preferences;
 
-public class UserApi {
+public class PengajuanApi {
+    String jwt = LoginSession.getJwt();
 
-    public PegawaiDto getPegawaionSession() {
-
-        String jwt = LoginSession.getJwt();
-        PegawaiDto pegawaiDto = new PegawaiDto();
+    public PengajuanDto[] getPengajuan() {
+        PengajuanDto[] pengajuanDtos = {};
         try {
             ObjectMapper mapper = new ObjectMapper();
+            mapper.registerModule(new JavaTimeModule());
 
             HttpClient client = HttpClient.newBuilder()
                     .connectTimeout(Duration.ofSeconds(10))
                     .build();
 
-            String targetUrl = "http://localhost:8080/api/auth/pegawai";
+            String targetUrl = "http://localhost:8080/api/pengajuan";
 
             HttpRequest request = HttpRequest.newBuilder()
                     .uri(URI.create(targetUrl))
@@ -38,57 +36,50 @@ public class UserApi {
 
             HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
 
-            if (response.statusCode()==200) {
-                pegawaiDto = mapper.readValue(response.body(), PegawaiDto.class);
-                System.out.println("UserApi: PEGAWAI NAMANYA "+pegawaiDto.getNama());
-                LoginSession.setPegawaiDto(pegawaiDto);
-                return pegawaiDto;
-            } else {
-                System.out.println("UserApi: GAGAL MENDAPATKAN PEGAWAI "+ response.statusCode());
+            if (response.statusCode() == 200) {
+                pengajuanDtos = mapper.readValue(response.body(), PengajuanDto[].class);
+
+                return pengajuanDtos;
             }
         } catch (Exception e) {
             e.printStackTrace();
         }
-        return pegawaiDto;
+
+        return pengajuanDtos;
     }
-    public void login(String username, String password) {
+
+    public boolean createPengajuan(PengajuanDto payload) {
         try {
-            UserDto payload = new UserDto();
-            payload.setUsername(username);
-            payload.setPassword(password);
-
             ObjectMapper mapper = new ObjectMapper();
-
+            mapper.registerModule(new JavaTimeModule());
+            mapper.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
             String requestBodyJson = mapper.writeValueAsString(payload);
-            System.out.println("Mengirim Payload: " + requestBodyJson);
 
             HttpClient client = HttpClient.newBuilder()
                     .connectTimeout(Duration.ofSeconds(10))
                     .build();
 
-            String targetUrl = "http://localhost:8080/api/auth/login";
+            String targetUrl = "http://localhost:8080/api/pengajuan";
 
             HttpRequest request = HttpRequest.newBuilder()
                     .uri(URI.create(targetUrl))
                     .header("Content-Type", "application/json")
+                    .header("Authorization", "Bearer "+jwt)
                     .POST(HttpRequest.BodyPublishers.ofString(requestBodyJson))
                     .build();
 
             HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
 
-            if (response.statusCode() == 201 || response.statusCode() == 200) {
-                LoginResponse loginResponse = mapper.readValue(response.body(), LoginResponse.class);
-                System.out.println("Sukses! Login sebagai: " + loginResponse.getRole());
-
-                LoginSession.setJwt(loginResponse.getAccessToken());
-                LoginSession.setRole(loginResponse.getRole());
-                LoginSession.setUsername(loginResponse.getUsername());
-
+            if (response.statusCode() == 200) {
+                System.out.println("PengajuanApi: Pengajuan berhasil ditambahkan!");
+                return true;
+            } else {
+                System.out.println("PengajuanApi: Pengajuan gagal ditambahkan!" + response.statusCode());
             }
-
         } catch (Exception e) {
             e.printStackTrace();
         }
-    }
 
+        return false;
+    }
 }

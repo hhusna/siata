@@ -1,24 +1,37 @@
 package com.siata.client.dto;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
+
+import java.time.LocalDate;
+
 public class PermohonanDto {
     private Long idPermohonan;
+    private String kodePermohonan;
+
+    @JsonProperty("pegawai")
     private PegawaiDto pegawaiDto;
     private String jenisAset;
-    private Long jumlah;
+    private int jumlah;
     private String deskripsi;
     private String tujuanPenggunaan;
     private String prioritas;
-    private String statusPengajuan;
+    private String statusPersetujuan;
+    private LocalDate timestamp;
 
-    public PermohonanDto(Long idPermohonan, PegawaiDto pegawaiDto, String jenisAset, Long jumlah, String deskripsi, String tujuanPenggunaan, String prioritas, String statusPengajuan) {
-        this.idPermohonan = idPermohonan;
-        this.pegawaiDto = pegawaiDto;
-        this.jenisAset = jenisAset;
-        this.jumlah = jumlah;
-        this.deskripsi = deskripsi;
-        this.tujuanPenggunaan = tujuanPenggunaan;
-        this.prioritas = prioritas;
-        this.statusPengajuan = statusPengajuan;
+    public String getKodePermohonan() {
+        return kodePermohonan;
+    }
+
+    public void setKodePermohonan(String kodePermohonan) {
+        this.kodePermohonan = kodePermohonan;
+    }
+
+    public LocalDate getTimestamp() {
+        return timestamp;
+    }
+
+    public void setTimestamp(LocalDate timestamp) {
+        this.timestamp = timestamp;
     }
 
     public PermohonanDto() {
@@ -48,11 +61,11 @@ public class PermohonanDto {
         this.jenisAset = jenisAset;
     }
 
-    public Long getJumlah() {
+    public int getJumlah() {
         return jumlah;
     }
 
-    public void setJumlah(Long jumlah) {
+    public void setJumlah(int jumlah) {
         this.jumlah = jumlah;
     }
 
@@ -80,11 +93,11 @@ public class PermohonanDto {
         this.prioritas = prioritas;
     }
 
-    public String getStatusPengajuan() {
-        return statusPengajuan;
+    public String getStatusPersetujuan() {
+        return statusPersetujuan;
     }
 
-    public void setStatusPengajuan(String statusPengajuan) {
-        this.statusPengajuan = statusPengajuan;
+    public void setStatusPersetujuan(String statusPersetujuan) {
+        this.statusPersetujuan = statusPersetujuan;
     }
 }

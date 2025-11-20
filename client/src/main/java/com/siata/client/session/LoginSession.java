@@ -1,9 +1,20 @@
 package com.siata.client.session;
 
+import com.siata.client.dto.PegawaiDto;
+
 public class LoginSession {
     private static String jwt;
     private static String role;
     private static String username;
+    private static PegawaiDto pegawaiDto;
+
+    public static PegawaiDto getPegawaiDto() {
+        return pegawaiDto;
+    }
+
+    public static void setPegawaiDto(PegawaiDto pegawaiDto) {
+        LoginSession.pegawaiDto = pegawaiDto;
+    }
 
     public LoginSession() {
     }
