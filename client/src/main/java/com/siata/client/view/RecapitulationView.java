@@ -1,6 +1,8 @@
 package com.siata.client.view;
 
+import com.siata.client.api.AssetApi;
 import com.siata.client.api.ExportPdfApi;
+import com.siata.client.dto.AssetDto;
 import javafx.collections.FXCollections;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
@@ -20,12 +22,15 @@ import javafx.stage.Stage;
 import javax.swing.*;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.LocalDate;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Map;
 
 public class RecapitulationView extends VBox {
 
     ExportPdfApi exportApi = new ExportPdfApi();
+    AssetApi assetApi = new AssetApi();
 
     public RecapitulationView() {
         setSpacing(24);
@@ -100,8 +105,8 @@ public class RecapitulationView extends VBox {
         }
 
         List<CardData> cards = List.of(
-                new CardData("Total Aset", "263", "unit di seluruh sistem", "🧾"),
-                new CardData("Sedang Digunakan", "233", "88.6% dari total", "✅"),
+                new CardData("Total Aset", Integer.toString(getTotalAsset()), "unit di seluruh sistem", "🧾"),
+                new CardData("Sedang Digunakan", Integer.toString(getSedangDigunakan()), Float.toString(getSedangDigunakanPersen()) + "% dari total", "✅"),
                 new CardData("Tersedia", "21", "8.0% dari total", "📦"),
                 new CardData("Rusak", "9", "3.4% dari total", "⚠")
         );
@@ -111,6 +116,75 @@ public class RecapitulationView extends VBox {
         }
 
         return statsGrid;
+    }
+
+    private float getSedangDigunakanPersen() {
+        AssetDto[] assetDtos = assetApi.getAsset();
+        int count = 0;
+        float persen = 0f;
+        for (AssetDto dto : assetDtos) {
+            if (dto.getStatusPemakaian().equals("Digunakan")) {
+                count += 1;
+            }
+        }
+
+        int jumlahSemuaSet = getTotalAsset();
+
+        if (count > 0) {
+            persen = ((float) count/jumlahSemuaSet)*100;
+            float persenPretty = Math.round(persen * 10f) / 10f;;
+            return persenPretty;
+        }
+
+        return persen;
+    }
+
+    private int getSedangDigunakan() {
+        AssetDto[] assetDtos = assetApi.getAsset();
+        int count = 5;
+        for (AssetDto dto : assetDtos) {
+            if (dto.getStatusPemakaian().equals("Digunakan")) {
+                count += 1;
+            }
+        }
+
+        return count;
+    }
+
+    private int getTotalAsset() {
+        AssetDto[] assetDtos = assetApi.getAsset();
+        int count = 0;
+        for (AssetDto dto : assetDtos) {
+            count += 1;
+        }
+        return count;
+    }
+
+    private int getSiapDilelang() {
+        AssetDto[] assetDtos = assetApi.getAsset();
+        int count = 0;
+        LocalDate timeNow = LocalDate.now();
+        for (AssetDto dto : assetDtos) {
+            Long selisihHari = ChronoUnit.DAYS.between(dto.getTanggalPerolehan(), timeNow);
+
+            if (selisihHari >= 1460) {
+                count += 1;
+            }
+        }
+
+        return count;
+    }
+
+    private int getRusakBerat() {
+        AssetDto[] assetDtos = assetApi.getAsset();
+        int count = 0;
+        for (AssetDto dto : assetDtos) {
+            if (dto.getKondisi().equals("Rusak Berat")) {
+                count += 1;
+            }
+        }
+
+        return count;
     }
 
     private Node createRencanaPenghapusanTable() {

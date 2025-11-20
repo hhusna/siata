@@ -11,7 +11,6 @@ import java.util.Locale;
 
 @JsonIgnoreProperties
 public class AssetDto {
-
     private int idAset;
     private String KodeAset;
     private String jenisAset;

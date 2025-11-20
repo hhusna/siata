@@ -7,8 +7,8 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 @JsonIgnoreProperties
 public class PegawaiDto {
 
-    @JsonProperty("nip_pegawai")
-    @JsonAlias("nip")
+    @JsonProperty("nip")
+    @JsonAlias("nip_pegawai")
     private int nip;
     private String nama;
 

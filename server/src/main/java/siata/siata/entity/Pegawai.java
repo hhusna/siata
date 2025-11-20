@@ -38,4 +38,9 @@ public class Pegawai {
     @JsonIgnore
     @OneToMany(mappedBy = "pegawai", cascade = CascadeType.ALL)
     private List<PengajuanAset> pengajuanList;
+
+    @Override
+    public String toString() {
+        return "Pegawai{nip=" + nip+ ", nama=" + nama + ", namaSubdir= " + namaSubdir +", jabatan=" + jabatan + "}";
+    }
 }

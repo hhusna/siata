@@ -1,5 +1,7 @@
 package com.siata.client.view;
 
+import com.siata.client.api.AssetApi;
+import com.siata.client.dto.AssetDto;
 import com.siata.client.model.Activity;
 import com.siata.client.service.DataService;
 import javafx.collections.FXCollections;
@@ -20,6 +22,8 @@ import javafx.scene.layout.Region;
 import javafx.scene.layout.VBox;
 
 import java.time.Duration;
+import java.time.LocalDate;
+import java.time.temporal.ChronoUnit;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -27,6 +31,7 @@ import java.util.Map;
 public class DashboardContentView extends VBox {
 
     private final DataService dataService = DataService.getInstance();
+    private final AssetApi assetApi = new AssetApi();
 
     public DashboardContentView() {
         setSpacing(24);
@@ -58,9 +63,9 @@ public class DashboardContentView extends VBox {
         }
 
         List<CardData> cards = List.of(
-                new CardData("Total Aset", "Semua jenis aset terdaftar", "263", "🧱"),
-                new CardData("Siap Dilelang", "Aset dalam proses lelang", "18", "♻"),
-                new CardData("Rusak Berat", "Memerlukan penghapusan", "12", "⚠"),
+                new CardData("Total Aset", "Semua jenis aset terdaftar", Integer.toString(getTotalAsset()), "🧱"),
+                new CardData("Siap Dilelang", "Aset dalam proses lelang", Integer.toString(getSiapDilelang()), "♻"),
+                new CardData("Rusak Berat", "Memerlukan penghapusan", Integer.toString(getRusakBerat()), "⚠"),
                 new CardData("Sedang Diproses", "Permohonan menunggu persetujuan", "7", "🔄")
         );
 
@@ -71,6 +76,42 @@ public class DashboardContentView extends VBox {
 
         VBox container = new VBox(16, title, sectionTitle, statsGrid);
         return container;
+    }
+
+    private int getTotalAsset() {
+        AssetDto[] assetDtos = assetApi.getAsset();
+        int count = 0;
+        for (AssetDto dto : assetDtos) {
+            count += 1;
+        }
+        return count;
+    }
+
+    private int getSiapDilelang() {
+        AssetDto[] assetDtos = assetApi.getAsset();
+        int count = 0;
+        LocalDate timeNow = LocalDate.now();
+        for (AssetDto dto : assetDtos) {
+            Long selisihHari = ChronoUnit.DAYS.between(dto.getTanggalPerolehan(), timeNow);
+
+            if (selisihHari >= 1460) {
+                count += 1;
+            }
+        }
+
+        return count;
+    }
+
+    private int getRusakBerat() {
+        AssetDto[] assetDtos = assetApi.getAsset();
+        int count = 0;
+        for (AssetDto dto : assetDtos) {
+            if (dto.getKondisi().equals("Rusak Berat")) {
+                count += 1;
+            }
+        }
+
+        return count;
     }
 
     private Node buildChartsColumn() {

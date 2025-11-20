@@ -1,9 +1,11 @@
 package com.siata.client.service;
 
 import com.siata.client.api.AssetApi;
+import com.siata.client.api.LogApi;
 import com.siata.client.api.PegawaiApi;
 import com.siata.client.dto.AssetDto;
 import com.siata.client.dto.AssetDtoForRequest;
+import com.siata.client.dto.LogDto;
 import com.siata.client.dto.PegawaiDto;
 import com.siata.client.model.Activity;
 import com.siata.client.model.Asset;
@@ -13,7 +15,6 @@ import com.siata.client.model.Employee;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -21,6 +22,7 @@ public class DataService {
     private static final DataService instance = new DataService();
     private final PegawaiApi pegawaiApi = new PegawaiApi();
     private final AssetApi assetApi = new AssetApi();
+    private final LogApi logApi = new LogApi();
 
     private final List<Asset> assets = new ArrayList<>();
     private final List<Employee> employees = new ArrayList<>();
@@ -54,7 +56,11 @@ public class DataService {
             assetValue.setStatus(assetDto.getStatusPemakaian());
             assetValue.setKeterangan(Integer.toString(assetDto.getPegawaiDto().getNip()));
             assetValue.setSubdit(assetDto.getPegawaiDto().getNamaSubdir());
-            listAsset.add(assetValue);
+
+            if (!(assetValue.getStatus().equals("Diajukan Hapus"))) {
+                listAsset.add(assetValue);
+            }
+
         }
 
         return listAsset;
@@ -107,7 +113,29 @@ public class DataService {
     }
     
     public List<Asset> getDeletedAssets() {
-        return assets.stream().filter(Asset::isDeleted).toList();
+//        return assets.stream().filter(Asset::isDeleted).toList();
+
+        List<Asset> listAsset = new ArrayList<>();
+        for (AssetDto assetDto : assetApi.getAsset()) {
+            Asset assetValue = new Asset();
+            assetValue.setIdAset(assetDto.getIdAset());
+            assetValue.setKodeAset(assetDto.getKodeAset());
+            assetValue.setJenisAset(assetDto.getJenisAset());
+            assetValue.setMerkBarang(assetDto.getMerkAset());
+            assetValue.setTanggalPerolehan(assetDto.getTanggalPerolehan());
+            assetValue.setNilaiRupiah(assetDto.getHargaAset());
+            assetValue.setKondisi(assetDto.getKondisi());
+            assetValue.setStatus(assetDto.getStatusPemakaian());
+            assetValue.setKeterangan(Integer.toString(assetDto.getPegawaiDto().getNip()));
+            assetValue.setSubdit(assetDto.getPegawaiDto().getNamaSubdir());
+
+            if (assetValue.getStatus().equals("Diajukan Hapus")) {
+                listAsset.add(assetValue);
+            }
+
+        }
+
+        return listAsset;
     }
 
 //    public List<Employee> getEmployees() {
@@ -182,7 +210,33 @@ public class DataService {
     }
 
     public List<Activity> getActivities() {
-        return new ArrayList<>(activities);
+//        return new ArrayList<>(activities);
+
+        List<Activity> activityList = new ArrayList<>();
+        LogDto[] logDtos = logApi.getLog();
+        for (LogDto dto : logDtos) {
+            Activity activity = new Activity();
+            activity.setId(Long.toString(dto.getIdLog()));
+
+            if (dto.getPegawaiDto() != null) {
+                activity.setUser(dto.getPegawaiDto().getNama());
+            } else if (dto.getAssetDto() != null) {
+                activity.setUser(dto.getAssetDto().getPegawaiDto().getNama());
+            } else if (dto.getPermohonanDto() != null) {
+                activity.setUser(dto.getPermohonanDto().getPegawaiDto().getNama());
+            } else if (dto.getPengajuanDto() != null) {
+                activity.setUser(dto.getPengajuanDto().getPegawaiDto().getNama());
+            }
+
+            activity.setActionType(dto.getJenisLog());
+            activity.setDescription(dto.getIsiLog());
+            activity.setTarget("TESTING AJA");
+            activity.setDetails("TESTING AJA");
+            activity.setTimestamp(dto.getTimestamp());
+            activityList.add(activity);
+        }
+
+        return activityList;
     }
 
     public List<Activity> getRecentActivities(int limit) {
@@ -190,6 +244,31 @@ public class DataService {
             .sorted((a, b) -> b.getTimestamp().compareTo(a.getTimestamp()))
             .limit(limit)
             .toList();
+//        List<Activity> activityList = new ArrayList<>();
+//        LogDto[] logDtos = logApi.getLog();
+//        for (LogDto dto : logDtos) {
+//            Activity activity = new Activity();
+//            activity.setId(Long.toString(dto.getIdLog()));
+//
+//            if (dto.getPegawaiDto() != null) {
+//                activity.setUser(dto.getPegawaiDto().getNama());
+//            } else if (dto.getAssetDto() != null) {
+//                activity.setUser(dto.getAssetDto().getPegawaiDto().getNama());
+//            } else if (dto.getPermohonanDto() != null) {
+//                activity.setUser(dto.getPermohonanDto().getPegawaiDto().getNama());
+//            } else if (dto.getPengajuanDto() != null) {
+//                activity.setUser(dto.getPengajuanDto().getPegawaiDto().getNama());
+//            }
+//
+//            activity.setActionType(dto.getJenisLog());
+//            activity.setDescription(dto.getIsiLog());
+//            activity.setTarget("TESTING AJA");
+//            activity.setDetails("TESTING AJA");
+//            activity.setTimestamp(dto.getTimestamp());
+//            activityList.add(activity);
+//        }
+//
+//        return activityList;
     }
 
     private void logActivity(String user, String actionType, String description, String target, String details) {
