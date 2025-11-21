@@ -2,6 +2,7 @@ package com.siata.client.view;
 
 import com.siata.client.model.AssetRequest;
 import com.siata.client.service.DataService;
+import com.siata.client.session.LoginSession;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.geometry.Insets;
@@ -115,6 +116,7 @@ public class AssetApprovalView extends VBox {
                 super.updateItem(status, empty);
                 if (empty || status == null) {
                     setGraphic(null);
+
                 } else {
                     Label badge = new Label();
                     badge.setPadding(new Insets(4, 12, 4, 12));
@@ -184,8 +186,7 @@ public class AssetApprovalView extends VBox {
                 approveButton.setOnAction(e -> {
                     AssetRequest request = getTableView().getItems().get(getIndex());
                     if (confirmDecision("Setujui", request)) {
-                        String status = isPermohonan ? "Disetujui Direktur" : "Disetujui PPK";
-                        dataService.updateAssetRequestStatus(request, status, "admin");
+                        dataService.updateAssetRequestStatus(request, "Disetujui "+LoginSession.getRole(), LoginSession.getPegawaiDto().getNama());
                         refreshTables();
                     }
                 });
@@ -193,7 +194,7 @@ public class AssetApprovalView extends VBox {
                 rejectButton.setOnAction(e -> {
                     AssetRequest request = getTableView().getItems().get(getIndex());
                     if (confirmDecision("Tolak", request)) {
-                        dataService.updateAssetRequestStatus(request, "Ditolak", "admin");
+                        dataService.updateAssetRequestStatus(request, "Ditolak "+LoginSession.getRole(), LoginSession.getPegawaiDto().getNama());
                         refreshTables();
                     }
                 });

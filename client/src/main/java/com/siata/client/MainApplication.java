@@ -4,16 +4,16 @@ import com.siata.client.view.LoginView;
 import com.siata.client.view.MainShellView;
 import javafx.application.Application;
 import javafx.scene.Scene;
+import javafx.scene.text.Font;
 import javafx.stage.Stage;
 
 import java.util.prefs.Preferences;
 
 public class MainApplication extends Application {
 
-    private static final Preferences prefs = Preferences.userNodeForPackage(MainApplication.class);
-
     @Override
     public void start(Stage primaryStage) {
+        Font.loadFont(getClass().getResourceAsStream("/Poppins-Regular.ttf"),12);
         primaryStage.setTitle("SIAD - Direktorat Angkutan Udara");
         showLogin(primaryStage);
         primaryStage.show();

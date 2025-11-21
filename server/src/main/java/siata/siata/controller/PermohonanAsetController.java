@@ -38,10 +38,10 @@ public class PermohonanAsetController {
     }
 
     @PatchMapping("/{id}/status")
-    @PreAuthorize("hasAnyRole('PPBJ', 'PPK', 'DIREKTUR')")
+//    @PreAuthorize("hasAnyRole('PPBJ', 'PPK', 'DIREKTUR')")
     public ResponseEntity<PermohonanAset> updateStatus(@PathVariable Long id, @RequestBody Map<String, String> statusUpdate, Authentication authentication) {
         try {
-            String status = statusUpdate.get("status");
+            String status = statusUpdate.get("statusPersetujuan");
             return ResponseEntity.ok(permohonanAsetService.updateStatus(id, status, getPegawaiFromAuth(authentication)));
         } catch (Exception e) {
             return ResponseEntity.notFound().build();

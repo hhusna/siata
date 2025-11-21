@@ -249,8 +249,8 @@ public class AssetManagementView extends VBox {
         }
 
         TextField pemegangField = new TextField();
-        pemegangField.setPromptText("Nama pegawai atau ruangan");
-        Label pemegangLabel = new Label("Pemegang (Keterangan)");
+        pemegangField.setPromptText("NIP pegawai atau Kode Subdit");
+        Label pemegangLabel = new Label("NIP Pemegang (Keterangan)");
         pemegangLabel.getStyleClass().add("form-label");
         Text pemegangHint = new Text("Kosongkan jika aset belum memiliki pemegang");
         pemegangHint.getStyleClass().add("form-hint");

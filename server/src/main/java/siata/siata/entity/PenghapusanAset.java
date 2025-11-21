@@ -15,7 +15,7 @@ public class PenghapusanAset {
     @Column(name = "id_penghapusan")
     private Long idPenghapusan;
 
-    @OneToOne(fetch = FetchType.LAZY)
+    @OneToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "id_aset", referencedColumnName = "id_aset")
     private Aset aset;
 

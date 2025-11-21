@@ -41,7 +41,7 @@ public class PengajuanAsetController {
 //    @PreAuthorize("hasAnyRole('PPBJ', 'PPK', 'DIREKTUR')")
     public ResponseEntity<PengajuanAset> updateStatus(@PathVariable Long id, @RequestBody Map<String, String> statusUpdate, Authentication authentication) {
         try {
-            String status = statusUpdate.get("status");
+            String status = statusUpdate.get("statusPersetujuan");
             return ResponseEntity.ok(pengajuanAsetService.updateStatus(id, status, getPegawaiFromAuth(authentication)));
         } catch (Exception e) {
             return ResponseEntity.notFound().build();

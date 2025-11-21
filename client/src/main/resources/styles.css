@@ -1,5 +1,8 @@
 .root {
-    -fx-font-family: "Segoe UI", "Roboto", "Helvetica Neue", Arial, sans-serif;
+    /*-fx-font-family: "Segoe UI", "Roboto", "Helvetica Neue", Arial, sans-serif;*/
+    -fx-font-family: "Poppins", sans-serif;
+    -fx-font-weight: 400;
+    -fx-font-style: normal;
     -fx-text-fill: #1f1f1f;
 }
 

@@ -4,10 +4,12 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 public class AssetRequest {
+    private Long id;
     private String noPermohonan;
     private LocalDate tanggal;
     private String pemohon;
     private String unit;
+    private String namaPengaju;
     private String jenisAset;
     private int jumlah;
     private String prioritas; // Tinggi, Sedang, Rendah
@@ -15,6 +17,22 @@ public class AssetRequest {
     private String status; // Pending, Disetujui Direktur, Disetujui PPK, Ditolak
     private String deskripsi;
     private String tujuanPenggunaan;
+
+    public String getNamaPengaju() {
+        return namaPengaju;
+    }
+
+    public void setNamaPengaju(String namaPengaju) {
+        this.namaPengaju = namaPengaju;
+    }
+
+    public Long getId() {
+        return id;
+    }
+
+    public void setId(Long id) {
+        this.id = id;
+    }
 
     public AssetRequest() {
     }

@@ -52,7 +52,9 @@ public class DataService {
             assetValue.setNilaiRupiah(assetDto.getHargaAset());
             assetValue.setKondisi(assetDto.getKondisi());
             assetValue.setStatus(assetDto.getStatusPemakaian());
-            assetValue.setKeterangan(Integer.toString(assetDto.getPegawaiDto().getNip()));
+            if (assetDto.getPegawaiDto() != null) {
+                assetValue.setKeterangan(Integer.toString(assetDto.getPegawaiDto().getNip()));
+            }
             assetValue.setSubdit(assetDto.getPegawaiDto().getNamaSubdir());
 
             if (!(assetValue.getStatus().equals("Diajukan Hapus"))) {
@@ -223,6 +225,7 @@ public class DataService {
             pengajuanDto.setKodePengajuan(request.getNoPermohonan());
             pengajuanDto.setPegawaiDto(LoginSession.getPegawaiDto());
             pengajuanDto.setJenisAset(request.getJenisAset());
+            pengajuanDto.setNamaPengaju(LoginSession.getPegawaiDto().getNama());
             pengajuanDto.setJumlah(request.getJumlah());
             pengajuanDto.setDeskripsi(request.getDeskripsi());
             pengajuanDto.setTujuanPenggunaan(request.getTujuanPenggunaan());
@@ -242,6 +245,11 @@ public class DataService {
 
     public void updateAssetRequestStatus(AssetRequest request, String newStatus, String approver) {
         request.setStatus(newStatus);
+        if (request.getTipe().equals("Permohonan")) {
+            permohonanApi.patchStatus(request.getId(), newStatus);
+        } else {
+            pengajuanApi.patchStatus(request.getId(), newStatus);
+        }
         String actionType = newStatus.contains("Disetujui") ? "Approve" : "Reject";
         logActivity(approver, actionType, 
             newStatus.contains("Disetujui") ? "Menyetujui permohonan aset" : "Menolak permohonan aset",
@@ -266,6 +274,7 @@ public class DataService {
 
         for (PermohonanDto dto : permohonanDtos) {
             AssetRequest assetRequest = new AssetRequest();
+            assetRequest.setId(dto.getIdPermohonan());
             assetRequest.setNoPermohonan(dto.getKodePermohonan());
             assetRequest.setTanggal(dto.getTimestamp());
             assetRequest.setPemohon(dto.getPegawaiDto().getNama());
@@ -289,12 +298,13 @@ public class DataService {
 
         for (PengajuanDto dto : pengajuanDtos) {
             AssetRequest assetRequest = new AssetRequest();
+            assetRequest.setId(dto.getIdPengajuan());
             assetRequest.setNoPermohonan(dto.getKodePengajuan());
             assetRequest.setTanggal(dto.getTimestamp());
             assetRequest.setPemohon(dto.getPegawaiDto().getNama());
             assetRequest.setJumlah(dto.getJumlah());
             assetRequest.setPrioritas(dto.getPrioritas());
-            assetRequest.setTipe("Permohonan");
+            assetRequest.setTipe("Pengajuan");
             assetRequest.setStatus(dto.getStatusPersetujuan());
             assetRequest.setDeskripsi(dto.getDeskripsi());
             assetRequest.setTujuanPenggunaan(dto.getTujuanPenggunaan());
