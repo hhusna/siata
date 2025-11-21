@@ -17,6 +17,8 @@ public class PermohonanDto {
     private String prioritas;
     private String statusPersetujuan;
     private LocalDate timestamp;
+    private String namaPemohon;
+    private String unit;
 
     public String getKodePermohonan() {
         return kodePermohonan;
@@ -99,5 +101,21 @@ public class PermohonanDto {
 
     public void setStatusPersetujuan(String statusPersetujuan) {
         this.statusPersetujuan = statusPersetujuan;
+    }
+
+    public String getNamaPemohon() {
+        return namaPemohon;
+    }
+
+    public void setNamaPemohon(String namaPemohon) {
+        this.namaPemohon = namaPemohon;
+    }
+
+    public String getUnit() {
+        return unit;
+    }
+
+    public void setUnit(String unit) {
+        this.unit = unit;
     }
 }

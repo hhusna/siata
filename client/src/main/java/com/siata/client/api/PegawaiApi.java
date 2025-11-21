@@ -167,4 +167,44 @@ public class PegawaiApi {
         return false;
     }
 
+    public boolean updatePegawai(int nip, String nama, String namaSubdir, String jabatan) {
+        try {
+            PegawaiDto payload = new PegawaiDto();
+            payload.setNip(nip);
+            payload.setNama(nama);
+            payload.setNamaSubdir(namaSubdir);
+            payload.setJabatan(jabatan);
+
+            ObjectMapper mapper = new ObjectMapper();
+            String requestBodyJson = mapper.writeValueAsString(payload);
+
+            HttpClient client = HttpClient.newBuilder()
+                    .connectTimeout(Duration.ofSeconds(10))
+                    .build();
+
+            // URL endpoint PUT: /api/pegawai/{nip}
+            String targetUrl = "http://localhost:8080/api/pegawai/" + nip;
+
+            HttpRequest request = HttpRequest.newBuilder()
+                    .uri(URI.create(targetUrl))
+                    .header("Content-Type", "application/json")
+                    .header("Authorization", "Bearer " + jwt)
+                    .PUT(HttpRequest.BodyPublishers.ofString(requestBodyJson)) // Menggunakan Method PUT
+                    .build();
+
+            HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+
+            if (response.statusCode() == 200) {
+                System.out.println("PegawaiApi: Update Berhasil!");
+                return true;
+            } else {
+                System.err.println("Gagal update data. Status: " + response.statusCode());
+                return false;
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            return false;
+        }
+    }
+
 }

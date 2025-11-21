@@ -54,4 +54,25 @@ public class PermohonanAsetController {
         permohonanAsetService.delete(id, getPegawaiFromAuth(authentication));
         return ResponseEntity.ok().build();
     }
+
+    @PutMapping("/{id}")
+//    @PreAuthorize("hasRole('TIM_MANAJEMEN_ASET')")
+    public ResponseEntity<PermohonanAset> update(@PathVariable Long id, @RequestBody PermohonanAset permohonanDetails, Authentication authentication) {
+        return permohonanAsetService.getById(id)
+                .map(existing -> {
+                    // Update field sesuai ERD
+                    existing.setNamaPemohon(permohonanDetails.getNamaPemohon());
+                    existing.setUnit(permohonanDetails.getUnit());
+                    existing.setJenisAset(permohonanDetails.getJenisAset());
+                    existing.setJumlah(permohonanDetails.getJumlah());
+                    existing.setDeskripsi(permohonanDetails.getDeskripsi());
+                    existing.setTujuanPenggunaan(permohonanDetails.getTujuanPenggunaan());
+                    existing.setPrioritas(permohonanDetails.getPrioritas());
+                    existing.setTimestamp(permohonanDetails.getTimestamp());
+
+                    // Simpan perubahan
+                    return ResponseEntity.ok(permohonanAsetService.save(existing, getPegawaiFromAuth(authentication)));
+                })
+                .orElse(ResponseEntity.notFound().build());
+    }
 }

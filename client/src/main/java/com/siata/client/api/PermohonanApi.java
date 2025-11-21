@@ -155,4 +155,40 @@ public class PermohonanApi {
         }
         return true;
     }
+
+    public boolean editPermohonan(PermohonanDto payload) {
+        try {
+            ObjectMapper mapper = new ObjectMapper();
+            mapper.registerModule(new JavaTimeModule());
+            mapper.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
+
+            String requestBody = mapper.writeValueAsString(payload);
+
+            HttpClient client = HttpClient.newBuilder()
+                    .connectTimeout(Duration.ofSeconds(10))
+                    .build();
+
+            // Endpoint: PUT /api/permohonan/{id}
+            String targetUrl = "http://localhost:8080/api/permohonan/" + payload.getIdPermohonan();
+
+            HttpRequest request = HttpRequest.newBuilder()
+                    .uri(URI.create(targetUrl))
+                    .header("Content-Type", "application/json")
+                    .header("Authorization", "Bearer " + jwt)
+                    .PUT(HttpRequest.BodyPublishers.ofString(requestBody))
+                    .build();
+
+            HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+
+            if (response.statusCode() == 200) {
+                System.out.println("PermohonanApi: Update berhasil!");
+                return true;
+            } else {
+                System.out.println("PermohonanApi: Gagal update " + response.statusCode());
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return false;
+    }
 }

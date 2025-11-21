@@ -38,6 +38,9 @@ public class Aset {
     @Column(name = "status_pemakaian", length = 50)
     private String statusPemakaian;
 
+    @Column(name = "subdirektorat", length = 100)
+    private String subdirektorat;
+
     @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "nip_pegawai", referencedColumnName = "nip")
     private Pegawai pegawai;

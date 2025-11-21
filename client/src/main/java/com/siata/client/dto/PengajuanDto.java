@@ -3,7 +3,6 @@ package com.siata.client.dto;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 
 public class PengajuanDto {
     private Long idPengajuan;
@@ -12,7 +11,6 @@ public class PengajuanDto {
     @JsonProperty("pegawai")
     private PegawaiDto pegawaiDto;
 
-    private String namaPengaju;
     private String jenisAset;
     private int jumlah;
     private String deskripsi;
@@ -20,6 +18,8 @@ public class PengajuanDto {
     private String prioritas;
     private String statusPersetujuan;
     private LocalDate timestamp;
+    private String namaPengaju;
+    private String unit;
 
     public String getKodePengajuan() {
         return kodePengajuan;
@@ -54,14 +54,6 @@ public class PengajuanDto {
 
     public void setPegawaiDto(PegawaiDto pegawaiDto) {
         this.pegawaiDto = pegawaiDto;
-    }
-
-    public String getNamaPengaju() {
-        return namaPengaju;
-    }
-
-    public void setNamaPengaju(String namaPengaju) {
-        this.namaPengaju = namaPengaju;
     }
 
     public String getJenisAset() {
@@ -110,5 +102,21 @@ public class PengajuanDto {
 
     public void setStatusPersetujuan(String statusPersetujuan) {
         this.statusPersetujuan = statusPersetujuan;
+    }
+
+    public String getNamaPengaju() {
+        return namaPengaju;
+    }
+
+    public void setNamaPengaju(String namaPengaju) {
+        this.namaPengaju = namaPengaju;
+    }
+
+    public String getUnit() {
+        return unit;
+    }
+
+    public void setUnit(String unit) {
+        this.unit = unit;
     }
 }

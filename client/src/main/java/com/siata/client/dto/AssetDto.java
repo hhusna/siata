@@ -19,6 +19,7 @@ public class AssetDto {
     private long hargaAset;
     private String kondisi;
     private String statusPemakaian;
+    private String subdirektorat;
 
     @JsonProperty("pegawai")
     private PegawaiDto pegawaiDto;
@@ -96,5 +97,13 @@ public class AssetDto {
 
     public void setPegawaiDto(PegawaiDto pegawaiDto) {
         this.pegawaiDto = pegawaiDto;
+    }
+
+    public String getSubdirektorat() {
+        return subdirektorat;
+    }
+
+    public void setSubdirektorat(String subdirektorat) {
+        this.subdirektorat = subdirektorat;
     }
 }

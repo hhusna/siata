@@ -261,17 +261,21 @@ public class EmployeeManagementView extends VBox {
         Button saveButton = new Button(editableEmployee == null ? "Simpan" : "Simpan Perubahan");
         saveButton.getStyleClass().add("primary-button");
         saveButton.setOnAction(e -> {
-//            if (saveEmployee(editableEmployee, nipField.getText(), namaField.getText(),
-//                    jabatanField.getText(), unitCombo.getValue(), asetArea.getText())) {
-//                modalStage.close();
-//            }
             int nip = Integer.parseInt(nipField.getText());
-            if (pegawaiApi.addPegawai(nip, namaField.getText(), unitCombo.getValue(), jabatanField.getText())) {
-                modalStage.close();
+            boolean success;
+
+            if (editableEmployee == null) {
+                // Mode Tambah (POST)
+                success = pegawaiApi.addPegawai(nip, namaField.getText(), unitCombo.getValue(), jabatanField.getText());
+            } else {
+                // Mode Edit (PUT) - Method yang baru Anda buat
+                success = pegawaiApi.updatePegawai(nip, namaField.getText(), unitCombo.getValue(), jabatanField.getText());
             }
 
-            refreshTable();
-
+            if (success) {
+                modalStage.close();
+                refreshTable();
+            }
         });
 
         buttonBox.getChildren().addAll(cancelButton, saveButton);

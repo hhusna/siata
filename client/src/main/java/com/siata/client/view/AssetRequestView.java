@@ -34,7 +34,7 @@ public class AssetRequestView extends VBox {
         pengajuanList = FXCollections.observableArrayList();
         permohonanTable = new TableView<>();
         pengajuanTable = new TableView<>();
-        
+
         buildView();
         refreshTables();
     }
@@ -43,7 +43,7 @@ public class AssetRequestView extends VBox {
         Button addPengajuanButton = new Button("+ Tambah Pengajuan Aset");
         addPengajuanButton.getStyleClass().add("secondary-button");
         addPengajuanButton.setOnAction(e -> showAddPengajuanModal());
-        
+
         Button addPermohonanButton = new Button("+ Tambah Permohonan");
         addPermohonanButton.getStyleClass().add("primary-button");
         addPermohonanButton.setOnAction(e -> showAddPermohonanModal());
@@ -52,7 +52,7 @@ public class AssetRequestView extends VBox {
 
         // Permohonan Aset Section
         VBox permohonanSection = createTableSection("Permohonan Aset", permohonanTable, permohonanList, true);
-        
+
         // Daftar Pengajuan Aset Section
         VBox pengajuanSection = createTableSection("Daftar Pengajuan Aset", pengajuanTable, pengajuanList, false);
 
@@ -87,17 +87,17 @@ public class AssetRequestView extends VBox {
         // Search and filter bar
         HBox filterBar = new HBox(12);
         filterBar.setAlignment(Pos.CENTER_LEFT);
-        
+
         TextField searchField = new TextField();
         searchField.setPromptText("Cari berdasarkan nomor, pemohon, atau jenis aset...");
         searchField.setPrefWidth(400);
         searchField.textProperty().addListener((obs, oldVal, newVal) -> filterTable(newVal, list, isPermohonan));
-        
+
         ComboBox<String> prioritasCombo = new ComboBox<>();
         prioritasCombo.getItems().addAll("Semua Prioritas", "Tinggi", "Sedang", "Rendah");
         prioritasCombo.setValue("Semua Prioritas");
         prioritasCombo.setPrefWidth(150);
-        
+
         filterBar.getChildren().addAll(searchField, prioritasCombo);
 
         // Table
@@ -110,31 +110,31 @@ public class AssetRequestView extends VBox {
 
         TableColumn<AssetRequest, String> pemohonCol = new TableColumn<>(isPermohonan ? "Pemohon" : "Pengaju");
         pemohonCol.setCellValueFactory(new PropertyValueFactory<>("pemohon"));
-        
+
         TableColumn<AssetRequest, String> tanggalCol = new TableColumn<>("Tanggal");
         tanggalCol.setCellValueFactory(cellData -> {
             LocalDate date = cellData.getValue().getTanggal();
             if (date != null) {
                 return new javafx.beans.property.SimpleStringProperty(
-                    date.format(DateTimeFormatter.ofPattern("d/M/yyyy"))
+                        date.format(DateTimeFormatter.ofPattern("d/M/yyyy"))
                 );
             }
             return new javafx.beans.property.SimpleStringProperty("-");
         });
-        
+
         TableColumn<AssetRequest, String> unitCol = new TableColumn<>("Unit");
         unitCol.setCellValueFactory(new PropertyValueFactory<>("unit"));
-        
+
         TableColumn<AssetRequest, String> jenisAsetCol = new TableColumn<>("Jenis Aset");
         jenisAsetCol.setCellValueFactory(new PropertyValueFactory<>("jenisAset"));
-        
+
         TableColumn<AssetRequest, String> jumlahCol = new TableColumn<>("Jumlah");
-        jumlahCol.setCellValueFactory(cellData -> 
-            new javafx.beans.property.SimpleStringProperty(
-                String.valueOf(cellData.getValue().getJumlah())
-            )
+        jumlahCol.setCellValueFactory(cellData ->
+                new javafx.beans.property.SimpleStringProperty(
+                        String.valueOf(cellData.getValue().getJumlah())
+                )
         );
-        
+
         TableColumn<AssetRequest, String> prioritasCol = new TableColumn<>("Prioritas");
         prioritasCol.setCellValueFactory(new PropertyValueFactory<>("prioritas"));
         prioritasCol.setCellFactory(column -> new TableCell<AssetRequest, String>() {
@@ -159,7 +159,7 @@ public class AssetRequestView extends VBox {
                 }
             }
         });
-        
+
         TableColumn<AssetRequest, Void> aksiCol = buildActionColumn();
 
         table.getColumns().setAll(List.of(nomorCol, tanggalCol, pemohonCol, unitCol, jenisAsetCol, jumlahCol, prioritasCol, aksiCol));
@@ -186,8 +186,8 @@ public class AssetRequestView extends VBox {
         modalStage.initModality(Modality.APPLICATION_MODAL);
         modalStage.initStyle(StageStyle.UNDECORATED);
         modalStage.setTitle(editableRequest == null
-            ? ("Permohonan".equals(tipe) ? "Tambah Permohonan" : "Tambah Pengajuan")
-            : "Edit " + tipe);
+                ? ("Permohonan".equals(tipe) ? "Tambah Permohonan" : "Tambah Pengajuan")
+                : "Edit " + tipe);
 
         VBox modalContent = new VBox(0);
         modalContent.setPrefWidth(480);
@@ -200,25 +200,25 @@ public class AssetRequestView extends VBox {
         headerBox.setAlignment(Pos.CENTER_LEFT);
         headerBox.setPadding(new Insets(24, 24, 16, 24));
         HBox.setHgrow(headerBox, Priority.ALWAYS);
-        
+
         VBox titleBox = new VBox(4);
         Label titleLabel = new Label(editableRequest == null
-            ? ("Permohonan".equals(tipe) ? "Tambah Permohonan" : "Tambah Pengajuan Aset")
-            : "Edit " + tipe);
+                ? ("Permohonan".equals(tipe) ? "Tambah Permohonan" : "Tambah Pengajuan Aset")
+                : "Edit " + tipe);
         titleLabel.getStyleClass().add("modal-title");
         Label subtitle = new Label("Permohonan".equals(tipe)
-            ? "Catat permohonan aset dari pegawai"
-            : "Catat pengajuan aset dari pegawai");
+                ? "Catat permohonan aset dari pegawai"
+                : "Catat pengajuan aset dari pegawai");
         subtitle.getStyleClass().add("modal-subtitle");
         titleBox.getChildren().addAll(titleLabel, subtitle);
-        
+
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
-        
+
         Button closeButton = new Button("✕");
         closeButton.getStyleClass().add("modal-close-button");
         closeButton.setOnAction(e -> modalStage.close());
-        
+
         headerBox.getChildren().addAll(titleBox, spacer, closeButton);
 
         TextField namaField = new TextField();
@@ -285,16 +285,16 @@ public class AssetRequestView extends VBox {
         HBox buttonBox = new HBox(12);
         buttonBox.setAlignment(Pos.CENTER_RIGHT);
         buttonBox.setPadding(new Insets(20, 24, 24, 24));
-        
+
         Button cancelButton = new Button("Batal");
         cancelButton.getStyleClass().add("secondary-button");
         cancelButton.setOnAction(e -> modalStage.close());
-        
+
         Button saveButton = new Button(editableRequest == null ? "Simpan" : "Simpan Perubahan");
         saveButton.getStyleClass().add("primary-button");
         saveButton.setOnAction(e -> {
             if (saveAssetRequest(editableRequest, tipe, namaField.getText(), unitCombo.getValue(), jenisCombo.getValue(),
-                    jumlahField.getText(), deskripsiArea.getText(), tujuanArea.getText(), 
+                    jumlahField.getText(), deskripsiArea.getText(), tujuanArea.getText(),
                     prioritasCombo.getValue(), tanggalPicker.getValue())) {
                 modalStage.close();
             }
@@ -305,14 +305,14 @@ public class AssetRequestView extends VBox {
         VBox formContent = new VBox(16);
         formContent.setPadding(new Insets(0, 24, 0, 24));
         formContent.getChildren().addAll(
-            namaLabelObj, namaField,
-            unitLabel, unitCombo,
-            jenisLabel, jenisCombo,
-            jumlahLabel, jumlahField,
-            deskripsiLabel, deskripsiArea,
-            tujuanLabel, tujuanArea,
-            prioritasLabel, prioritasCombo,
-            tanggalLabel, tanggalPicker
+                namaLabelObj, namaField,
+                unitLabel, unitCombo,
+                jenisLabel, jenisCombo,
+                jumlahLabel, jumlahField,
+                deskripsiLabel, deskripsiArea,
+                tujuanLabel, tujuanArea,
+                prioritasLabel, prioritasCombo,
+                tanggalLabel, tanggalPicker
         );
 
         ScrollPane scrollPane = new ScrollPane(formContent);
@@ -322,7 +322,7 @@ public class AssetRequestView extends VBox {
         scrollPane.setPrefViewportHeight(450);
         scrollPane.setMaxHeight(450);
         scrollPane.getStyleClass().add("modal-scroll-pane");
-        
+
         modalContent.getChildren().addAll(headerBox, scrollPane, buttonBox);
 
         Scene modalScene = new Scene(modalContent);
@@ -332,7 +332,7 @@ public class AssetRequestView extends VBox {
     }
 
     private boolean saveAssetRequest(AssetRequest editableRequest, String tipe, String nama, String unit, String jenis, String jumlahStr,
-                                   String deskripsi, String tujuan, String prioritas, LocalDate tanggal) {
+                                     String deskripsi, String tujuan, String prioritas, LocalDate tanggal) {
         if (nama == null || nama.trim().isEmpty()) {
             showAlert("Masukkan nama " + ("Permohonan".equals(tipe) ? "pemohon" : "pengaju"));
             return false;
@@ -365,16 +365,16 @@ public class AssetRequestView extends VBox {
         if (editableRequest == null) {
             String noPermohonan = "REQ-2025-" + String.format("%03d", dataService.getAssetRequests().size() + 1);
             AssetRequest request = new AssetRequest(
-                noPermohonan,
-                tanggal,
-                nama.trim(),
-                unit,
-                jenis,
-                jumlah,
-                prioritas,
-                tipe,
-                deskripsi == null ? "" : deskripsi.trim(),
-                tujuan == null ? "" : tujuan.trim()
+                    noPermohonan,
+                    tanggal,
+                    nama.trim(),
+                    unit,
+                    jenis,
+                    jumlah,
+                    prioritas,
+                    tipe,
+                    deskripsi == null ? "" : deskripsi.trim(),
+                    tujuan == null ? "" : tujuan.trim()
             );
             dataService.addAssetRequest(request);
         } else {
@@ -400,19 +400,19 @@ public class AssetRequestView extends VBox {
 
     private void filterTable(String searchText, ObservableList<AssetRequest> list, boolean isPermohonan) {
         List<AssetRequest> source = isPermohonan ? dataService.getPermohonanAset() : dataService.getPengajuanAset();
-        
+
         if (searchText == null || searchText.isEmpty()) {
             list.setAll(source);
             return;
         }
-        
+
         list.setAll(source.stream()
-            .filter(request -> 
-                request.getNoPermohonan().toLowerCase().contains(searchText.toLowerCase()) ||
-                request.getPemohon().toLowerCase().contains(searchText.toLowerCase()) ||
-                request.getJenisAset().toLowerCase().contains(searchText.toLowerCase())
-            )
-            .toList()
+                .filter(request ->
+                        request.getNoPermohonan().toLowerCase().contains(searchText.toLowerCase()) ||
+                                request.getPemohon().toLowerCase().contains(searchText.toLowerCase()) ||
+                                request.getJenisAset().toLowerCase().contains(searchText.toLowerCase())
+                )
+                .toList()
         );
     }
 
@@ -480,17 +480,17 @@ public class AssetRequestView extends VBox {
         headerBox.setAlignment(Pos.CENTER_LEFT);
         headerBox.setPadding(new Insets(24, 24, 16, 24));
         HBox.setHgrow(headerBox, Priority.ALWAYS);
-        
+
         Label title = new Label("Detail " + request.getTipe());
         title.getStyleClass().add("modal-title");
-        
+
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
-        
+
         Button closeButton = new Button("✕");
         closeButton.getStyleClass().add("modal-close-button");
         closeButton.setOnAction(e -> modalStage.close());
-        
+
         headerBox.getChildren().addAll(title, spacer, closeButton);
 
         GridPane grid = new GridPane();

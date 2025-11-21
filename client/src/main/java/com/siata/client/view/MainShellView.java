@@ -1,6 +1,7 @@
 package com.siata.client.view;
 
 import com.siata.client.MainApplication;
+import com.siata.client.session.LoginSession;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Node;
@@ -26,6 +27,8 @@ public class MainShellView extends BorderPane {
     private final VBox contentContainer = new VBox();
     private final Label pageTitle = new Label();
     private final Label pageSubtitle = new Label();
+    private BorderPane sidebar;
+    private boolean sidebarVisible = true;
 
     private Optional<Runnable> onLogout = Optional.empty();
     private MainPage activePage;
@@ -36,7 +39,8 @@ public class MainShellView extends BorderPane {
     }
 
     private void buildView() {
-        setLeft(buildSidebar());
+        sidebar = (BorderPane) buildSidebar();
+        setLeft(sidebar);
         setTop(buildHeader());
         setCenter(buildContentContainer());
     }
@@ -55,10 +59,34 @@ public class MainShellView extends BorderPane {
         branding.setPadding(new Insets(28, 24, 12, 24));
 
         VBox menu = new VBox(10);
-        for (MainPage page : MainPage.values()) {
-            HBox item = createMenuItem(page);
-            menu.getChildren().add(item);
-            menuItems.put(page, item);
+
+        // --- LOGIKA ROLE BASE DI SINI ---
+        String role = LoginSession.getRole();
+        if (role == null) role = ""; // Antisipasi null
+
+        // 1. Semua user bisa akses Dashboard
+        addMenuToSidebar(menu, MainPage.DASHBOARD);
+
+        // 2. Cek Role menggunakan If-Else
+        if (role.equals("TIM_MANAJEMEN_ASET")) {
+            // Admin Aset: Akses Penuh Pengelolaan
+            addMenuToSidebar(menu, MainPage.RECAPITULATION);
+            addMenuToSidebar(menu, MainPage.ASSET_MANAGEMENT);
+            addMenuToSidebar(menu, MainPage.EMPLOYEE_MANAGEMENT);
+            addMenuToSidebar(menu, MainPage.ASSET_REQUEST);
+            addMenuToSidebar(menu, MainPage.ASSET_APPROVAL);
+            addMenuToSidebar(menu, MainPage.ASSET_REMOVAL);
+            addMenuToSidebar(menu, MainPage.LOGBOOK);
+
+        } else if (role.equals("PPBJ") || role.equals("PPK") || role.equals("DIREKTUR")) {
+            // Tim Approval: Hanya melihat rekap, persetujuan, dan log
+            addMenuToSidebar(menu, MainPage.RECAPITULATION);
+            addMenuToSidebar(menu, MainPage.ASSET_APPROVAL);
+            addMenuToSidebar(menu, MainPage.LOGBOOK);
+
+        } else {
+            // Role Lainnya (Pegawai Biasa): Hanya bisa mengajukan aset
+            addMenuToSidebar(menu, MainPage.ASSET_REQUEST);
         }
 
         ScrollPane menuScroll = new ScrollPane(menu);
@@ -77,6 +105,13 @@ public class MainShellView extends BorderPane {
         sidebar.setCenter(menuScroll);
         sidebar.setBottom(logoutButton);
         return sidebar;
+    }
+
+    // Helper method untuk menambahkan menu agar kode lebih rapi
+    private void addMenuToSidebar(VBox menu, MainPage page) {
+        HBox item = createMenuItem(page);
+        menu.getChildren().add(item);
+        menuItems.put(page, item);
     }
 
     private HBox createMenuItem(MainPage page) {
@@ -115,6 +150,7 @@ public class MainShellView extends BorderPane {
 
         Button menuButton = new Button("☰");
         menuButton.getStyleClass().add("ghost-button");
+        menuButton.setOnAction(e -> toggleSidebar());
 
         VBox titleBox = new VBox(4);
         pageTitle.getStyleClass().add("dashboard-title");
@@ -124,19 +160,26 @@ public class MainShellView extends BorderPane {
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
 
-        Label notification = new Label("🔔");
+        Button notification = new Button("🔔");
         notification.getStyleClass().add("header-icon");
+        notification.setOnAction(e -> showNotifications());
 
         VBox userBox = new VBox(2);
         userBox.setAlignment(Pos.CENTER_RIGHT);
-        Label username = new Label("admin");
+
+        // Update Header dengan Data Session yang Real
+        String usernameText = LoginSession.getUsername() != null ? LoginSession.getUsername() : "User";
+        String roleText = LoginSession.getRole() != null ? LoginSession.getRole().replace("_", " ") : "Guest";
+
+        Label username = new Label(usernameText);
         username.getStyleClass().add("header-username");
-        Label role = new Label("Admin");
+        Label role = new Label(roleText);
         role.getStyleClass().add("header-role");
         userBox.getChildren().addAll(username, role);
 
-        Label avatar = new Label("A");
+        Button avatar = new Button(usernameText.substring(0, 1).toUpperCase());
         avatar.getStyleClass().add("header-avatar");
+        avatar.setOnAction(e -> showProfileMenu(avatar));
 
         header.getChildren().addAll(menuButton, titleBox, spacer, notification, userBox, avatar);
         return header;
@@ -180,7 +223,6 @@ public class MainShellView extends BorderPane {
         }
         updateActiveMenu(page);
         updateHeader(page);
-        // Always recreate content to ensure fresh data
         pageContent.remove(page);
         Node content = resolveContent(page);
         contentContainer.getChildren().setAll(content);
@@ -213,5 +255,199 @@ public class MainShellView extends BorderPane {
 
         this.onLogout = Optional.ofNullable(onLogout);
     }
-}
 
+    private void toggleSidebar() {
+        sidebarVisible = !sidebarVisible;
+        if (sidebarVisible) {
+            setLeft(sidebar);
+        } else {
+            setLeft(null);
+        }
+    }
+
+    private void showNotifications() {
+        javafx.scene.control.Alert alert = new javafx.scene.control.Alert(javafx.scene.control.Alert.AlertType.INFORMATION);
+        alert.setTitle("Notifikasi");
+        alert.setHeaderText("Notifikasi Terbaru");
+        
+        // Get recent activities/notifications
+        StringBuilder notifications = new StringBuilder();
+        notifications.append("🔔 Anda memiliki beberapa notifikasi:\n\n");
+        
+        // Example notifications - bisa diganti dengan data real dari database
+        if (LoginSession.getRole() != null && (LoginSession.getRole().equals("PPBJ") || 
+            LoginSession.getRole().equals("PPK") || LoginSession.getRole().equals("DIREKTUR"))) {
+            notifications.append("• Ada permohonan aset yang menunggu persetujuan\n");
+            notifications.append("• Ada pengajuan aset yang menunggu persetujuan\n");
+        }
+        
+        if (LoginSession.getRole() != null && LoginSession.getRole().equals("TIM_MANAJEMEN_ASET")) {
+            notifications.append("• 3 aset baru ditambahkan hari ini\n");
+            notifications.append("• 2 permohonan menunggu diproses\n");
+        }
+        
+        notifications.append("\nKlik OK untuk menutup.");
+        
+        alert.setContentText(notifications.toString());
+        alert.showAndWait();
+    }
+
+    private void showProfileMenu(Button avatar) {
+        javafx.stage.Stage popupStage = new javafx.stage.Stage();
+        popupStage.initStyle(javafx.stage.StageStyle.UNDECORATED);
+        popupStage.initModality(javafx.stage.Modality.NONE);
+        
+        VBox popup = new VBox(8);
+        popup.setPadding(new Insets(16));
+        popup.setStyle("-fx-background-color: white; -fx-background-radius: 8; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.2), 10, 0, 0, 2);");
+        popup.setMinWidth(250);
+        
+        // User info section
+        VBox userInfo = new VBox(4);
+        Label nameLabel = new Label(LoginSession.getUsername() != null ? LoginSession.getUsername() : "User");
+        nameLabel.setStyle("-fx-font-size: 16px; -fx-font-weight: bold;");
+        
+        Label emailLabel = new Label(LoginSession.getPegawaiDto() != null && LoginSession.getPegawaiDto().getNama() != null 
+            ? LoginSession.getPegawaiDto().getNama() : "");
+        emailLabel.setStyle("-fx-font-size: 12px; -fx-text-fill: #666;");
+        
+        Label roleLabel = new Label(LoginSession.getRole() != null ? LoginSession.getRole().replace("_", " ") : "Guest");
+        roleLabel.setStyle("-fx-font-size: 12px; -fx-text-fill: #2563eb; -fx-padding: 4 8; -fx-background-color: #eff6ff; -fx-background-radius: 4;");
+        
+        userInfo.getChildren().addAll(nameLabel, emailLabel, roleLabel);
+        
+        // Separator
+        javafx.scene.control.Separator separator = new javafx.scene.control.Separator();
+        separator.setPadding(new Insets(8, 0, 8, 0));
+        
+        // Menu buttons
+        Button viewProfileBtn = new Button("👤 Lihat Profile");
+        viewProfileBtn.setMaxWidth(Double.MAX_VALUE);
+        viewProfileBtn.setAlignment(Pos.CENTER_LEFT);
+        viewProfileBtn.setStyle("-fx-background-color: transparent; -fx-padding: 8; -fx-cursor: hand;");
+        viewProfileBtn.setOnMouseEntered(e -> viewProfileBtn.setStyle("-fx-background-color: #f3f4f6; -fx-padding: 8; -fx-cursor: hand; -fx-background-radius: 4;"));
+        viewProfileBtn.setOnMouseExited(e -> viewProfileBtn.setStyle("-fx-background-color: transparent; -fx-padding: 8; -fx-cursor: hand;"));
+        viewProfileBtn.setOnAction(e -> {
+            showProfileDetail();
+            popupStage.close();
+        });
+        
+        Button settingsBtn = new Button("⚙ Pengaturan");
+        settingsBtn.setMaxWidth(Double.MAX_VALUE);
+        settingsBtn.setAlignment(Pos.CENTER_LEFT);
+        settingsBtn.setStyle("-fx-background-color: transparent; -fx-padding: 8; -fx-cursor: hand;");
+        settingsBtn.setOnMouseEntered(e -> settingsBtn.setStyle("-fx-background-color: #f3f4f6; -fx-padding: 8; -fx-cursor: hand; -fx-background-radius: 4;"));
+        settingsBtn.setOnMouseExited(e -> settingsBtn.setStyle("-fx-background-color: transparent; -fx-padding: 8; -fx-cursor: hand;"));
+        settingsBtn.setOnAction(e -> {
+            showSettings();
+            popupStage.close();
+        });
+        
+        Button logoutBtn = new Button("🚪 Logout");
+        logoutBtn.setMaxWidth(Double.MAX_VALUE);
+        logoutBtn.setAlignment(Pos.CENTER_LEFT);
+        logoutBtn.setStyle("-fx-background-color: transparent; -fx-padding: 8; -fx-cursor: hand; -fx-text-fill: #dc2626;");
+        logoutBtn.setOnMouseEntered(e -> logoutBtn.setStyle("-fx-background-color: #fef2f2; -fx-padding: 8; -fx-cursor: hand; -fx-background-radius: 4; -fx-text-fill: #dc2626;"));
+        logoutBtn.setOnMouseExited(e -> logoutBtn.setStyle("-fx-background-color: transparent; -fx-padding: 8; -fx-cursor: hand; -fx-text-fill: #dc2626;"));
+        logoutBtn.setOnAction(e -> {
+            popupStage.close();
+            onLogout.ifPresent(Runnable::run);
+        });
+        
+        popup.getChildren().addAll(userInfo, separator, viewProfileBtn, settingsBtn, logoutBtn);
+        
+        // Position popup below avatar button
+        javafx.geometry.Bounds bounds = avatar.localToScreen(avatar.getBoundsInLocal());
+        popupStage.setX(bounds.getMinX() - 200);
+        popupStage.setY(bounds.getMaxY() + 8);
+        
+        javafx.scene.Scene scene = new javafx.scene.Scene(popup);
+        scene.setFill(javafx.scene.paint.Color.TRANSPARENT);
+        popupStage.setScene(scene);
+        
+        // Close popup when clicking outside
+        popupStage.focusedProperty().addListener((obs, wasFocused, isNowFocused) -> {
+            if (!isNowFocused) {
+                popupStage.close();
+            }
+        });
+        
+        popupStage.show();
+    }
+
+    private void showProfileDetail() {
+        javafx.stage.Stage modalStage = new javafx.stage.Stage();
+        modalStage.initModality(javafx.stage.Modality.APPLICATION_MODAL);
+        modalStage.initStyle(javafx.stage.StageStyle.UNDECORATED);
+        modalStage.setTitle("Profile Pengguna");
+
+        VBox modalContent = new VBox(0);
+        modalContent.setPrefWidth(480);
+        modalContent.setMaxWidth(480);
+        modalContent.getStyleClass().add("modal-content");
+
+        // Header with close button
+        HBox headerBox = new HBox();
+        headerBox.setAlignment(Pos.CENTER_LEFT);
+        headerBox.setPadding(new Insets(24, 24, 16, 24));
+        HBox.setHgrow(headerBox, Priority.ALWAYS);
+
+        VBox titleBox = new VBox(4);
+        Label title = new Label("Profile Pengguna");
+        title.getStyleClass().add("modal-title");
+        Label subtitle = new Label("Informasi akun Anda");
+        subtitle.getStyleClass().add("modal-subtitle");
+        titleBox.getChildren().addAll(title, subtitle);
+
+        Region spacer = new Region();
+        HBox.setHgrow(spacer, Priority.ALWAYS);
+
+        Button closeButton = new Button("✕");
+        closeButton.getStyleClass().add("modal-close-button");
+        closeButton.setOnAction(e -> modalStage.close());
+
+        headerBox.getChildren().addAll(titleBox, spacer, closeButton);
+
+        // Profile content
+        javafx.scene.layout.GridPane grid = new javafx.scene.layout.GridPane();
+        grid.setVgap(16);
+        grid.setHgap(16);
+        grid.setPadding(new Insets(0, 24, 24, 24));
+
+        int row = 0;
+        addProfileRow(grid, row++, "Username", LoginSession.getUsername() != null ? LoginSession.getUsername() : "-");
+        
+        if (LoginSession.getPegawaiDto() != null) {
+            addProfileRow(grid, row++, "NIP", String.valueOf(LoginSession.getPegawaiDto().getNip()));
+            addProfileRow(grid, row++, "Nama Lengkap", LoginSession.getPegawaiDto().getNama() != null ? LoginSession.getPegawaiDto().getNama() : "-");
+            addProfileRow(grid, row++, "Subdirektorat", LoginSession.getPegawaiDto().getNamaSubdir() != null ? LoginSession.getPegawaiDto().getNamaSubdir() : "-");
+            addProfileRow(grid, row++, "Jabatan", LoginSession.getPegawaiDto().getJabatan() != null ? LoginSession.getPegawaiDto().getJabatan() : "-");
+        }
+        
+        addProfileRow(grid, row++, "Role", LoginSession.getRole() != null ? LoginSession.getRole().replace("_", " ") : "-");
+
+        modalContent.getChildren().addAll(headerBox, grid);
+
+        javafx.scene.Scene scene = new javafx.scene.Scene(modalContent);
+        scene.getStylesheets().add(getClass().getResource("/styles.css").toExternalForm());
+        modalStage.setScene(scene);
+        modalStage.showAndWait();
+    }
+
+    private void addProfileRow(javafx.scene.layout.GridPane grid, int row, String label, String value) {
+        Label labelNode = new Label(label);
+        labelNode.getStyleClass().add("form-label");
+        Label valueNode = new Label(value == null || value.isEmpty() ? "-" : value);
+        valueNode.setStyle("-fx-font-weight: 600; -fx-font-size: 14px;");
+        grid.add(labelNode, 0, row);
+        grid.add(valueNode, 1, row);
+    }
+
+    private void showSettings() {
+        javafx.scene.control.Alert alert = new javafx.scene.control.Alert(javafx.scene.control.Alert.AlertType.INFORMATION);
+        alert.setTitle("Pengaturan");
+        alert.setHeaderText("Pengaturan Aplikasi");
+        alert.setContentText("Fitur pengaturan akan segera tersedia.\n\nAnda dapat mengatur:\n• Preferensi tampilan\n• Notifikasi\n• Keamanan akun\n• Dan lainnya");
+        alert.showAndWait();
+    }
+}

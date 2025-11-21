@@ -8,6 +8,7 @@ import siata.siata.entity.LogRiwayat;
 import siata.siata.repository.PermohonanAsetRepository;
 import java.util.List;
 import java.util.Optional;
+import java.time.LocalDate;
 
 @Service
 public class PermohonanAsetService {
@@ -32,6 +33,10 @@ public class PermohonanAsetService {
         // Status awal
         if (isNew) {
             data.setStatusPersetujuan("Pending"); // Status awal
+            int year = LocalDate.now().getYear();
+            long count = repository.count() + 1;
+            String kode = String.format("REQ-%d-%03d", year, count);
+            data.setKodePermohonan(kode);
         }
 
         PermohonanAset savedData = repository.save(data);

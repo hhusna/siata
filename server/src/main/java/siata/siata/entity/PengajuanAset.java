@@ -28,6 +28,9 @@ public class PengajuanAset {
     @Column(name = "nama_pengaju", length = 100)
     private String namaPengaju;
 
+    @Column(name = "unit", length = 100)
+    private String unit;
+
     @Column(name = "jenis_aset", length = 100)
     private String jenisAset;
 

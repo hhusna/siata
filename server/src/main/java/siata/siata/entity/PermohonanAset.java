@@ -25,6 +25,12 @@ public class PermohonanAset {
     @JoinColumn(name = "nip", referencedColumnName = "nip")
     private Pegawai pegawai;
 
+    @Column(name = "nama_pemohon", length = 100)
+    private String namaPemohon;
+
+    @Column(name = "unit", length = 100)
+    private String unit;
+
     @Column(name = "jenis_aset", length = 100)
     private String jenisAset;
 

@@ -65,7 +65,11 @@ public class AsetController {
                     aset.setHargaAset(asetDetails.getHargaAset());
                     aset.setKondisi(asetDetails.getKondisi());
                     aset.setStatusPemakaian(asetDetails.getStatusPemakaian());
+
+                    // Update Subdirektorat & Pegawai
+                    aset.setSubdirektorat(asetDetails.getSubdirektorat());
                     aset.setPegawai(asetDetails.getPegawai());
+
                     return ResponseEntity.ok(asetService.saveAset(aset, getPegawaiFromAuth(authentication)));
                 })
                 .orElse(ResponseEntity.notFound().build());

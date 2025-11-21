@@ -3,20 +3,22 @@ package com.siata.client.view;
 import com.siata.client.api.AssetApi;
 import com.siata.client.api.ExportPdfApi;
 import com.siata.client.dto.AssetDto;
+import com.siata.client.model.Asset;
+import com.siata.client.model.Employee;
+import com.siata.client.service.DataService;
+import javafx.beans.binding.Bindings;
+import javafx.beans.property.SimpleStringProperty;
 import javafx.collections.FXCollections;
+import javafx.collections.ObservableList;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Node;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
+import javafx.scene.control.ScrollPane;
 import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
-import javafx.scene.layout.ColumnConstraints;
-import javafx.scene.layout.GridPane;
-import javafx.scene.layout.HBox;
-import javafx.scene.layout.Priority;
-import javafx.scene.layout.Region;
-import javafx.scene.layout.VBox;
+import javafx.scene.layout.*;
 import javafx.stage.Stage;
 
 import javax.swing.*;
@@ -24,29 +26,46 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
+import java.util.stream.Collectors;
 
 public class RecapitulationView extends VBox {
 
-    ExportPdfApi exportApi = new ExportPdfApi();
-    AssetApi assetApi = new AssetApi();
+    private final DataService dataService;
+    private final ExportPdfApi exportApi = new ExportPdfApi();
+    private final AssetApi assetApi = new AssetApi();
+
+    // Daftar Jenis Aset Standar untuk Laporan
+    private final List<String> JENIS_ASET_LIST = List.of("Laptop", "Printer", "Meja", "Kursi", "AC", "Monitor", "Scanner", "Proyektor", "Mobil", "Motor");
 
     public RecapitulationView() {
+        this.dataService = DataService.getInstance();
         setSpacing(24);
+        getStyleClass().add("dashboard-content");
         buildView();
     }
 
     private void buildView() {
-        getChildren().add(buildHeader());
-        getChildren().add(buildStatsGrid());
-        getChildren().add(createRencanaPenghapusanTable());
-        getChildren().add(createRekapPemakaianTable());
-        getChildren().add(createKeteranganKondisiTable());
-        getChildren().add(createRekapPemeganganTable());
-        getChildren().add(createJumlahPegawaiTable());
-        getChildren().add(createUsageTable());
-        getChildren().add(createEmployeeMatrixTable());
+        VBox contentContainer = new VBox(24);
+        contentContainer.getChildren().add(buildHeader());
+        contentContainer.getChildren().add(buildStatsGrid());
+
+        // Menambahkan Tabel-Tabel dengan Logika
+        contentContainer.getChildren().add(createPencatatanBmnTable());
+        contentContainer.getChildren().add(createRencanaPenghapusanTable());
+        contentContainer.getChildren().add(createRekapPemakaianTable());
+        contentContainer.getChildren().add(createKeteranganKondisiTable());
+        contentContainer.getChildren().add(createRekapPemeganganTable());
+        contentContainer.getChildren().add(createJumlahPegawaiTable());
+        contentContainer.getChildren().add(createUsageBySubditTable()); // Penggunaan per Subdit
+        contentContainer.getChildren().add(createEmployeeMatrixTable()); // Matriks Distribusi
+
+        // Bungkus dalam ScrollPane agar bisa discroll jika layar kecil
+        ScrollPane scrollPane = new ScrollPane(contentContainer);
+        scrollPane.setFitToWidth(true);
+        scrollPane.setStyle("-fx-background-color: transparent; -fx-background: transparent;");
+
+        getChildren().add(scrollPane);
     }
 
     private Node buildHeader() {
@@ -59,56 +78,47 @@ public class RecapitulationView extends VBox {
         Label description = new Label("Ringkasan matriks distribusi aset dan pegawai");
         description.getStyleClass().add("section-description");
         textGroup.getChildren().addAll(title, description);
-        
+
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
-        
+
         Button exportButton = new Button("Export PDF");
         exportButton.getStyleClass().add("primary-button");
         exportButton.setOnAction(event -> {
-            Stage stage = (Stage) exportButton.getScene().getWindow(); // ambil stage saat klik
+            Stage stage = (Stage) exportButton.getScene().getWindow();
             exportApi.handle(stage);
         });
-        
+
         header.getChildren().addAll(textGroup, spacer, exportButton);
         return header;
-    }
-
-    public void exportPdfWithChooser(byte[] pdfBytes) {
-        JFileChooser chooser = new JFileChooser();
-        chooser.setDialogTitle("Simpan PDF");
-        chooser.setSelectedFile(new java.io.File("laporan.pdf")); // default name
-
-        int result = chooser.showSaveDialog(null);
-        if (result == JFileChooser.APPROVE_OPTION) {
-            Path path = chooser.getSelectedFile().toPath();
-            try {
-                Files.write(path, pdfBytes);
-                System.out.println("PDF berhasil disimpan: " + path.toAbsolutePath());
-            } catch (Exception e) {
-                System.err.println("Gagal menyimpan file: " + e.getMessage());
-            }
-        } else {
-            System.out.println("User membatalkan simpan file");
-        }
     }
 
     private Node buildStatsGrid() {
         GridPane statsGrid = new GridPane();
         statsGrid.setHgap(20);
         statsGrid.setVgap(20);
-        
+
         for (int i = 0; i < 4; i++) {
             ColumnConstraints column = new ColumnConstraints();
             column.setPercentWidth(25);
             statsGrid.getColumnConstraints().add(column);
         }
 
+        long totalAset = assetApi.getDashboard().getTotalAset();
+        long asetDigunakan = assetApi.getDashboard().getAsetDigunakan();
+        long asetTersedia = assetApi.getDashboard().getAsetTersedia();
+        long asetRusak = assetApi.getDashboard().getAsetRusakBerat();
+
+        // Hitung persentase
+        String usedPercent = totalAset > 0 ? String.format("%.1f", (double) asetDigunakan / totalAset * 100) : "0";
+        String availPercent = totalAset > 0 ? String.format("%.1f", (double) asetTersedia / totalAset * 100) : "0";
+        String rusakPercent = totalAset > 0 ? String.format("%.1f", (double) asetRusak / totalAset * 100) : "0";
+
         List<CardData> cards = List.of(
-                new CardData("Total Aset", Long.toString(assetApi.getDashboard().getTotalAset()), "unit di seluruh sistem", "🧾"),
-                new CardData("Sedang Digunakan", Long.toString(assetApi.getDashboard().getAsetDigunakan()), Float.toString(getSedangDigunakanPersen()) + "% dari total", "✅"),
-                new CardData("Tersedia", Long.toString(assetApi.getDashboard().getAsetTersedia()), "8.0% dari total", "📦"),
-                new CardData("Rusak", Long.toString(assetApi.getDashboard().getAsetRusakBerat()), "3.4% dari total", "⚠")
+                new CardData("Total Aset", String.valueOf(totalAset), "unit di seluruh sistem", "🧾"),
+                new CardData("Sedang Digunakan", String.valueOf(asetDigunakan), usedPercent + "% dari total", "✅"),
+                new CardData("Tersedia", String.valueOf(asetTersedia), availPercent + "% dari total", "📦"),
+                new CardData("Rusak", String.valueOf(asetRusak), rusakPercent + "% dari total", "⚠")
         );
 
         for (int i = 0; i < cards.size(); i++) {
@@ -118,172 +128,272 @@ public class RecapitulationView extends VBox {
         return statsGrid;
     }
 
-    private float getSedangDigunakanPersen() {
-        AssetDto[] assetDtos = assetApi.getAsset();
-        int count = 0;
-        float persen = 0f;
-        for (AssetDto dto : assetDtos) {
-            if (dto.getStatusPemakaian().equals("Digunakan")) {
-                count += 1;
+    // --- LOGIKA TABEL 1: PENCATATAN BMN ---
+    private Node createPencatatanBmnTable() {
+        List<Asset> allAssets = dataService.getAssets();
+        ObservableList<Map<String, String>> data = FXCollections.observableArrayList();
+
+        for (String jenis : JENIS_ASET_LIST) {
+            long total = allAssets.stream().filter(a -> a.getJenisAset().equalsIgnoreCase(jenis)).count();
+            long dihapus = allAssets.stream().filter(a -> a.getJenisAset().equalsIgnoreCase(jenis) &&
+                    (a.getStatus().equalsIgnoreCase("Diajukan Hapus") || a.isDeleted())).count();
+            long tercatatSakti = total - dihapus; // Asumsi Sakti = Aktif
+
+            if (total > 0) {
+                Map<String, String> row = new HashMap<>();
+                row.put("Jenis Aset", jenis);
+                row.put("Jumlah", String.valueOf(total));
+                row.put("Sudah Dihapus", String.valueOf(dihapus));
+                row.put("Tercatat Sakti", String.valueOf(tercatatSakti));
+                data.add(row);
             }
         }
 
-        int jumlahSemuaSet = getTotalAsset();
-
-        if (count > 0) {
-            persen = ((float) count/jumlahSemuaSet)*100;
-            float persenPretty = Math.round(persen * 10f) / 10f;;
-            return persenPretty;
-        }
-
-        return persen;
+        return createDynamicTable("Pencatatan BMN", data,
+                new String[]{"Jenis Aset", "Jumlah", "Sudah Dihapus", "Tercatat Sakti"},
+                new int[]{200, 150, 150, 150});
     }
 
-    private int getSedangDigunakan() {
-        AssetDto[] assetDtos = assetApi.getAsset();
-        int count = 5;
-        for (AssetDto dto : assetDtos) {
-            if (dto.getStatusPemakaian().equals("Digunakan")) {
-                count += 1;
-            }
-        }
-
-        return count;
-    }
-
-    private int getTotalAsset() {
-        AssetDto[] assetDtos = assetApi.getAsset();
-        int count = 0;
-        for (AssetDto dto : assetDtos) {
-            count += 1;
-        }
-        return count;
-    }
-
-    private int getSiapDilelang() {
-        AssetDto[] assetDtos = assetApi.getAsset();
-        int count = 0;
-        LocalDate timeNow = LocalDate.now();
-        for (AssetDto dto : assetDtos) {
-            Long selisihHari = ChronoUnit.DAYS.between(dto.getTanggalPerolehan(), timeNow);
-
-            if (selisihHari >= 1460) {
-                count += 1;
-            }
-        }
-
-        return count;
-    }
-
-    private int getRusakBerat() {
-        AssetDto[] assetDtos = assetApi.getAsset();
-        int count = 0;
-        for (AssetDto dto : assetDtos) {
-            if (dto.getKondisi().equals("Rusak Berat")) {
-                count += 1;
-            }
-        }
-
-        return count;
-    }
-
+    // --- LOGIKA TABEL 2: RENCANA PENGHAPUSAN ---
     private Node createRencanaPenghapusanTable() {
-        return createTableSection("Rencana Penghapusan", 
-            new String[]{"Jenis Aset", "Harus Masa Pakai", "Bersih", "Akan Habis 1 Tahun", "Total Bersih"},
-            new int[]{200, 150, 120, 150, 120}
-        );
+        List<Asset> allAssets = dataService.getAssets();
+        ObservableList<Map<String, String>> data = FXCollections.observableArrayList();
+        LocalDate now = LocalDate.now();
+
+        for (String jenis : JENIS_ASET_LIST) {
+            List<Asset> assetsByJenis = allAssets.stream()
+                    .filter(a -> a.getJenisAset().equalsIgnoreCase(jenis) && !a.isDeleted())
+                    .toList();
+
+            if (assetsByJenis.isEmpty()) continue;
+
+            long habisMasaPakai = assetsByJenis.stream().filter(a ->
+                    ChronoUnit.YEARS.between(a.getTanggalPerolehan(), now) >= 4).count();
+
+            long akanHabis1Thn = assetsByJenis.stream().filter(a -> {
+                long years = ChronoUnit.YEARS.between(a.getTanggalPerolehan(), now);
+                return years >= 3 && years < 4;
+            }).count();
+
+            long bersih = assetsByJenis.stream().filter(a -> a.getKondisi().equalsIgnoreCase("Baik")).count();
+            long totalBersih = assetsByJenis.size();
+
+            Map<String, String> row = new HashMap<>();
+            row.put("Jenis Aset", jenis);
+            row.put("Habis Masa Pakai", String.valueOf(habisMasaPakai));
+            row.put("Bersih", String.valueOf(bersih));
+            row.put("Akan Habis 1 Tahun", String.valueOf(akanHabis1Thn));
+            row.put("Total Bersih", String.valueOf(totalBersih));
+            data.add(row);
+        }
+
+        return createDynamicTable("Rencana Penghapusan", data,
+                new String[]{"Jenis Aset", "Habis Masa Pakai", "Bersih", "Akan Habis 1 Tahun", "Total Bersih"},
+                new int[]{200, 150, 100, 180, 120});
     }
 
+    // --- LOGIKA TABEL 3: REKAP PEMAKAIAN ---
     private Node createRekapPemakaianTable() {
-        return createTableSection("Rekap Pemakaian",
-            new String[]{"Jenis Aset", "Dipakai Belum Habis", "Dipakai Sudah Habis", "Total Dipakai"},
-            new int[]{200, 150, 150, 150}
-        );
+        List<Asset> allAssets = dataService.getAssets();
+        ObservableList<Map<String, String>> data = FXCollections.observableArrayList();
+        LocalDate now = LocalDate.now();
+
+        for (String jenis : JENIS_ASET_LIST) {
+            List<Asset> assetsByJenis = allAssets.stream()
+                    .filter(a -> a.getJenisAset().equalsIgnoreCase(jenis) && a.getStatus().equalsIgnoreCase("Digunakan"))
+                    .toList();
+
+            if (assetsByJenis.isEmpty()) continue;
+
+            long habisMasa = assetsByJenis.stream().filter(a ->
+                    ChronoUnit.YEARS.between(a.getTanggalPerolehan(), now) >= 4).count();
+
+            long belumHabis = assetsByJenis.size() - habisMasa;
+
+            Map<String, String> row = new HashMap<>();
+            row.put("Jenis Aset", jenis);
+            row.put("Dipakai Belum Habis", String.valueOf(belumHabis));
+            row.put("Dipakai Sudah Habis", String.valueOf(habisMasa));
+            row.put("Total Dipakai", String.valueOf(assetsByJenis.size()));
+            data.add(row);
+        }
+
+        return createDynamicTable("Rekap Pemakaian", data,
+                new String[]{"Jenis Aset", "Dipakai Belum Habis", "Dipakai Sudah Habis", "Total Dipakai"},
+                new int[]{200, 180, 180, 150});
     }
 
+    // --- LOGIKA TABEL 4: KETERANGAN KONDISI ---
     private Node createKeteranganKondisiTable() {
-        return createTableSection("Keterangan Kondisi",
-            new String[]{"Jenis Aset", "Rusak Berat", "Hilang", "Gudang"},
-            new int[]{200, 150, 150, 150}
-        );
+        List<Asset> allAssets = dataService.getAssets();
+        ObservableList<Map<String, String>> data = FXCollections.observableArrayList();
+
+        for (String jenis : JENIS_ASET_LIST) {
+            List<Asset> assetsByJenis = allAssets.stream()
+                    .filter(a -> a.getJenisAset().equalsIgnoreCase(jenis))
+                    .toList();
+
+            if (assetsByJenis.isEmpty()) continue;
+
+            long rusakBerat = assetsByJenis.stream().filter(a -> a.getKondisi().equalsIgnoreCase("Rusak Berat")).count();
+            long gudang = assetsByJenis.stream().filter(a -> a.getStatus().equalsIgnoreCase("Tersedia")).count();
+            long hilang = 0;
+
+            Map<String, String> row = new HashMap<>();
+            row.put("Jenis Aset", jenis);
+            row.put("Rusak Berat", String.valueOf(rusakBerat));
+            row.put("Hilang", String.valueOf(hilang));
+            row.put("Gudang", String.valueOf(gudang));
+            data.add(row);
+        }
+
+        return createDynamicTable("Keterangan Kondisi", data,
+                new String[]{"Jenis Aset", "Rusak Berat", "Hilang", "Gudang"},
+                new int[]{200, 150, 150, 150});
     }
 
+    // --- LOGIKA TABEL 5: REKAP PEMEGANG ---
     private Node createRekapPemeganganTable() {
-        return createTableSection("Rekap Pemegangan",
-            new String[]{"Jenis Aset", "Tidak Ganda", "Ganda", "Total Pemegangan"},
-            new int[]{200, 150, 150, 150}
-        );
+        List<Asset> allAssets = dataService.getAssets();
+        ObservableList<Map<String, String>> data = FXCollections.observableArrayList();
+
+        for (String jenis : JENIS_ASET_LIST) {
+            List<Asset> usedAssets = allAssets.stream()
+                    .filter(a -> a.getJenisAset().equalsIgnoreCase(jenis) &&
+                            a.getStatus().equalsIgnoreCase("Digunakan") &&
+                            isNumeric(a.getKeterangan()))
+                    .toList();
+
+            if (usedAssets.isEmpty()) continue;
+
+            Map<String, Long> holderCounts = usedAssets.stream()
+                    .collect(Collectors.groupingBy(Asset::getKeterangan, Collectors.counting()));
+
+            long ganda = holderCounts.values().stream().filter(count -> count > 1).count();
+            long tidakGanda = holderCounts.values().stream().filter(count -> count == 1).count();
+
+            Map<String, String> row = new HashMap<>();
+            row.put("Jenis Aset", jenis);
+            row.put("Tidak Ganda", String.valueOf(tidakGanda));
+            row.put("Ganda", String.valueOf(ganda));
+            row.put("Total Pemegangan", String.valueOf(holderCounts.size()));
+            data.add(row);
+        }
+
+        return createDynamicTable("Rekap Pemegangan", data,
+                new String[]{"Jenis Aset", "Tidak Ganda", "Ganda", "Total Pemegangan"},
+                new int[]{200, 150, 150, 180});
     }
 
+    // --- LOGIKA TABEL 6: JUMLAH PEGAWAI PER BAGIAN ---
     private Node createJumlahPegawaiTable() {
-        return createTableSection("Jumlah Pegawai per Bagian",
-            new String[]{"Bagian", "ASN", "PPNPN", "Total"},
-            new int[]{250, 150, 150, 150}
-        );
+        List<Employee> employees = dataService.getEmployees();
+        ObservableList<Map<String, String>> data = FXCollections.observableArrayList();
+
+        Map<String, Long> unitCounts = employees.stream()
+                .collect(Collectors.groupingBy(Employee::getUnit, Collectors.counting()));
+
+        unitCounts.forEach((unit, count) -> {
+            Map<String, String> row = new HashMap<>();
+            row.put("Bagian", unit);
+            row.put("ASN", String.valueOf(count));
+            row.put("PPNPN", "0");
+            row.put("Total", String.valueOf(count));
+            data.add(row);
+        });
+
+        return createDynamicTable("Jumlah Pegawai per Bagian", data,
+                new String[]{"Bagian", "ASN", "PPNPN", "Total"},
+                new int[]{250, 150, 150, 150});
     }
 
-    private Node createUsageTable() {
-        VBox section = new VBox(12);
-        section.getStyleClass().add("table-container");
-        section.setPadding(new Insets(20));
+    // --- LOGIKA TABEL 7: PENGGUNAAN ASET PER SUBDIT DAN JENIS (MATRIKS) ---
+    private Node createUsageBySubditTable() {
+        List<Asset> allAssets = dataService.getAssets();
+        List<String> subdirs = List.of("Subdit Teknis", "Subdit Operasional", "Subdit Keamanan", "Subdit SDM");
+        ObservableList<Map<String, String>> data = FXCollections.observableArrayList();
 
-        Label title = new Label("Penggunaan Aset per Subdirektorat dan Jenis");
-        title.getStyleClass().add("table-title");
+        List<String> displayTypes = List.of("Laptop", "Printer", "Meja", "Kursi", "AC", "Proyektor");
 
-        TableView<Map<String, String>> table = new TableView<>();
-        table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
-        table.getStyleClass().add("data-table");
-        table.setItems(FXCollections.observableArrayList());
+        for (String subdit : subdirs) {
+            Map<String, String> row = new HashMap<>();
+            row.put("Subdirektorat", subdit);
 
-        String[] columns = {"Subdirektorat", "Laptop", "Printer", "Meja", "Kursi", "AC", "Proyektor", "Total"};
-        int[] widths = {180, 100, 100, 100, 100, 100, 100, 100};
-        
-        for (int idx = 0; idx < columns.length; idx++) {
-            final int colIndex = idx;
-            TableColumn<Map<String, String>, String> col = new TableColumn<>(columns[colIndex]);
-            col.setPrefWidth(widths[colIndex]);
-            col.setCellValueFactory(cellData -> {
-                Map<String, String> row = cellData.getValue();
-                return new javafx.beans.property.SimpleStringProperty(row.getOrDefault(columns[colIndex], ""));
-            });
-            col.setSortable(false);
-            if (colIndex > 0) {
-                col.setStyle("-fx-alignment: CENTER-RIGHT;");
+            long totalSubdit = 0;
+
+            for (String jenis : displayTypes) {
+                long count = allAssets.stream()
+                        .filter(a -> a.getSubdit() != null &&
+                                a.getSubdit().equalsIgnoreCase(subdit) &&
+                                a.getJenisAset().equalsIgnoreCase(jenis))
+                        .count();
+                row.put(jenis, String.valueOf(count));
+                totalSubdit += count;
             }
-            table.getColumns().add(col);
+            row.put("Total", String.valueOf(totalSubdit));
+            data.add(row);
         }
 
-        HBox statusRow = new HBox(16);
-        statusRow.setAlignment(Pos.CENTER_LEFT);
-        statusRow.setSpacing(10);
-        statusRow.getStyleClass().add("status-row");
-        Label statusLabel = new Label("Status Validasi");
-        statusLabel.getStyleClass().add("chart-title");
+        List<String> colList = new ArrayList<>();
+        colList.add("Subdirektorat");
+        colList.addAll(displayTypes);
+        colList.add("Total");
 
-        for (int i = 0; i < 6; i++) {
-            Label badge = new Label("✔");
-            badge.getStyleClass().add("status-badge-success");
-            statusRow.getChildren().add(badge);
-        }
+        int[] widths = new int[colList.size()];
+        widths[0] = 200;
+        for(int i=1; i<widths.length; i++) widths[i] = 80;
 
-        VBox legend = new VBox(4);
-        legend.getStyleClass().add("status-legend");
-        Label legendOk = new Label("✔ = Data subdirektorat sesuai dengan manajemen aset");
-        Label legendWarn = new Label("⚠ = Ketidaksesuaian data (perlu investigasi)");
-        legend.getChildren().addAll(legendOk, legendWarn);
-
-        section.getChildren().addAll(title, table, statusLabel, statusRow, legend);
-        return section;
+        return createDynamicTable("Penggunaan Aset per Subdirektorat dan Jenis", data,
+                colList.toArray(new String[0]), widths);
     }
 
+    // --- LOGIKA TABEL 8: MATRIKS DISTRIBUSI PER PEGAWAI ---
     private Node createEmployeeMatrixTable() {
-        return createTableSection("Matriks Distribusi Aset per Pegawai",
-            new String[]{"Nama Pegawai", "Unit", "Laptop", "Printer", "Meja", "Kursi", "AC", "Proyektor", "Total"},
-            new int[]{180, 150, 80, 80, 80, 80, 80, 100, 80}
-        );
+        List<Employee> employees = dataService.getEmployees();
+        List<Asset> allAssets = dataService.getAssets();
+        ObservableList<Map<String, String>> data = FXCollections.observableArrayList();
+
+        List<String> displayTypes = List.of("Laptop", "Printer", "Meja", "Kursi", "AC", "Proyektor");
+
+        for (Employee emp : employees) {
+            Map<String, String> row = new HashMap<>();
+            row.put("Nama Pegawai", emp.getNamaLengkap());
+            row.put("Unit", emp.getUnit());
+
+            long totalEmp = 0;
+
+            for (String jenis : displayTypes) {
+                long count = allAssets.stream()
+                        .filter(a -> a.getKeterangan() != null &&
+                                a.getKeterangan().equals(emp.getNip()) &&
+                                a.getJenisAset().equalsIgnoreCase(jenis))
+                        .count();
+
+                row.put(jenis, count > 0 ? String.valueOf(count) : "-");
+                totalEmp += count;
+            }
+
+            row.put("Total", String.valueOf(totalEmp));
+            data.add(row);
+        }
+
+        List<String> colList = new ArrayList<>();
+        colList.add("Nama Pegawai");
+        colList.add("Unit");
+        colList.addAll(displayTypes);
+        colList.add("Total");
+
+        int[] widths = new int[colList.size()];
+        widths[0] = 200;
+        widths[1] = 150;
+        for(int i=2; i<widths.length; i++) widths[i] = 70;
+
+        return createDynamicTable("Matriks Distribusi Aset per Pegawai", data,
+                colList.toArray(new String[0]), widths);
     }
 
-    private Node createTableSection(String title, String[] columns, int[] widths) {
+    // --- HELPER: METHOD GENERIK UNTUK MEMBUAT TABEL ---
+    private Node createDynamicTable(String title, ObservableList<Map<String, String>> data, String[] columns, int[] widths) {
         VBox section = new VBox(12);
         section.getStyleClass().add("table-container");
         section.setPadding(new Insets(20));
@@ -294,22 +404,33 @@ public class RecapitulationView extends VBox {
         TableView<Map<String, String>> table = new TableView<>();
         table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
         table.getStyleClass().add("data-table");
-        table.setItems(FXCollections.observableArrayList());
+        table.setItems(data);
 
         for (int idx = 0; idx < columns.length; idx++) {
-            final int colIndex = idx;
-            TableColumn<Map<String, String>, String> col = new TableColumn<>(columns[colIndex]);
-            col.setPrefWidth(widths[colIndex]);
-            col.setCellValueFactory(cellData -> {
-                Map<String, String> row = cellData.getValue();
-                return new javafx.beans.property.SimpleStringProperty(row.getOrDefault(columns[colIndex], ""));
-            });
-            col.setSortable(false);
-            if (colIndex > 0) {
+            final String colName = columns[idx];
+            TableColumn<Map<String, String>, String> col = new TableColumn<>(colName);
+
+            if (idx < widths.length) {
+                col.setPrefWidth(widths[idx]);
+            }
+
+            col.setCellValueFactory(cellData ->
+                    new SimpleStringProperty(cellData.getValue().getOrDefault(colName, "0"))
+            );
+
+            if (idx > 0 && !colName.equals("Unit") && !colName.equals("Subdirektorat")) {
                 col.setStyle("-fx-alignment: CENTER-RIGHT;");
             }
+
             table.getColumns().add(col);
         }
+
+        // PERBAIKAN ERROR: Gunakan Bindings.size(data)
+        table.setFixedCellSize(35);
+        table.prefHeightProperty().bind(
+                table.fixedCellSizeProperty().multiply(Bindings.size(data).add(1.5))
+        );
+        table.setMinHeight(150);
 
         section.getChildren().addAll(sectionTitle, table);
         return section;
@@ -319,42 +440,42 @@ public class RecapitulationView extends VBox {
         VBox card = new VBox(12);
         card.getStyleClass().add("stat-card");
         card.setPadding(new Insets(24));
-        
-        HBox headerBox = new HBox();
-        headerBox.setAlignment(Pos.CENTER_LEFT);
-        HBox.setHgrow(headerBox, Priority.ALWAYS);
-        
+
+        HBox heading = new HBox(8);
+        heading.setAlignment(Pos.CENTER_LEFT);
+        HBox.setHgrow(heading, Priority.ALWAYS); // PERBAIKAN ERROR: Variabel 'heading', bukan 'headerBox'
+
         Label titleLabel = new Label(data.title());
         titleLabel.getStyleClass().add("stat-card-title");
-        
+
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
 
         Label iconLabel = new Label(data.icon());
         iconLabel.getStyleClass().add("stat-card-icon");
-        
-        headerBox.getChildren().addAll(titleLabel, spacer, iconLabel);
-        
+
+        heading.getChildren().addAll(titleLabel, spacer, iconLabel);
+
         Label valueLabel = new Label(data.value());
         valueLabel.getStyleClass().add("stat-card-value");
-        
+
         Label descLabel = new Label(data.description());
         descLabel.getStyleClass().add("stat-card-description");
-        
-        card.getChildren().addAll(headerBox, valueLabel, descLabel);
+
+        card.getChildren().addAll(heading, valueLabel, descLabel);
         return card;
+    }
+
+    private boolean isNumeric(String str) {
+        if (str == null) return false;
+        try {
+            Long.parseLong(str);
+            return true;
+        } catch (NumberFormatException e) {
+            return false;
+        }
     }
 
     private record CardData(String title, String value, String description, String icon) {
     }
 }
-
-
-
-
-
-
-
-
-
-
