@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.siata.client.dto.AssetDto;
 import com.siata.client.dto.AssetDtoForRequest;
+import com.siata.client.dto.DashboardDto;
 import com.siata.client.dto.PegawaiDto;
 import com.siata.client.model.Asset;
 import com.siata.client.session.LoginSession;
@@ -16,6 +17,78 @@ import java.time.Duration;
 
 public class AssetApi {
     String jwt = LoginSession.getJwt();
+
+    public boolean putAsset(AssetDto payload) {
+        try {
+            ObjectMapper mapper = new ObjectMapper();
+            mapper.registerModule(new JavaTimeModule());
+            String requestBodyJson = mapper.writeValueAsString(payload);
+
+            HttpClient client = HttpClient.newBuilder()
+                    .connectTimeout(Duration.ofSeconds(10))
+                    .build();
+
+            int idAset = payload.getIdAset();
+
+            String targetUrl = "http://localhost:8080/api/aset/"+Long.toString(idAset);
+
+            HttpRequest request = HttpRequest.newBuilder()
+                    .uri(URI.create(targetUrl))
+                    .header("Content-Type", "application/json")
+                    .header("Authorization", "Bearer " + jwt)
+                    .PUT(HttpRequest.BodyPublishers.ofString(requestBodyJson))
+                    .build();
+
+            HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+
+            if (response.statusCode() == 200) {
+                System.out.println("AssetApi: Sukses Mengedit Asset!");
+
+                return true;
+            }else {
+                System.out.println("AssetApi: Gagal Mengedit "+ payload.getIdAset()+" " + response.statusCode());
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        return false;
+    }
+
+    public DashboardDto getDashboard() {
+        DashboardDto dashboardDto = new DashboardDto();
+        try {
+            ObjectMapper mapper = new ObjectMapper();
+
+            HttpClient client = HttpClient.newBuilder()
+                    .connectTimeout(Duration.ofSeconds(10))
+                    .build();
+
+            String targetUrl = "http://localhost:8080/api/dashboard/stats";
+
+            HttpRequest request = HttpRequest.newBuilder()
+                    .uri(URI.create(targetUrl))
+                    .header("Content-Type", "application/json")
+                    .header("Authorization", "Bearer "+jwt)
+                    .GET()
+                    .build();
+
+            HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+
+            if (response.statusCode()==200) {
+                System.out.println("AssetApi: BERHASIL GET DASHBOARD");
+
+                dashboardDto = mapper.readValue(response.body(), DashboardDto.class);
+                return dashboardDto;
+            } else {
+                System.out.println("AssetApi: GAGAL GET DASHBOARD"+ response.statusCode());
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        return dashboardDto;
+    }
 
     public boolean deleteAssetById(int idAset) {
         try {

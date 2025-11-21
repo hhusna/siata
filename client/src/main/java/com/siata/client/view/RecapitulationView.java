@@ -105,10 +105,10 @@ public class RecapitulationView extends VBox {
         }
 
         List<CardData> cards = List.of(
-                new CardData("Total Aset", Integer.toString(getTotalAsset()), "unit di seluruh sistem", "🧾"),
-                new CardData("Sedang Digunakan", Integer.toString(getSedangDigunakan()), Float.toString(getSedangDigunakanPersen()) + "% dari total", "✅"),
-                new CardData("Tersedia", "21", "8.0% dari total", "📦"),
-                new CardData("Rusak", "9", "3.4% dari total", "⚠")
+                new CardData("Total Aset", Long.toString(assetApi.getDashboard().getTotalAset()), "unit di seluruh sistem", "🧾"),
+                new CardData("Sedang Digunakan", Long.toString(assetApi.getDashboard().getAsetDigunakan()), Float.toString(getSedangDigunakanPersen()) + "% dari total", "✅"),
+                new CardData("Tersedia", Long.toString(assetApi.getDashboard().getAsetTersedia()), "8.0% dari total", "📦"),
+                new CardData("Rusak", Long.toString(assetApi.getDashboard().getAsetRusakBerat()), "3.4% dari total", "⚠")
         );
 
         for (int i = 0; i < cards.size(); i++) {

@@ -121,6 +121,18 @@ public class DataService {
     }
 
     public void updateAsset(Asset asset) {
+        AssetDto assetDto = new AssetDto();
+        assetDto.setIdAset(asset.getIdAset());
+        System.out.println("======= ID ASET: "+assetDto.getIdAset());
+        assetDto.setKodeAset(asset.getKodeAset());
+        assetDto.setJenisAset(asset.getJenisAset());
+        assetDto.setMerkAset(asset.getMerkBarang());
+        assetDto.setTanggalPerolehan(asset.getTanggalPerolehan());
+        assetDto.setHargaAset((long) asset.getNilaiRupiah());
+        assetDto.setKondisi(asset.getKondisi());
+        assetDto.setStatusPemakaian(asset.getStatus());
+        assetDto.setPegawaiDto(LoginSession.getPegawaiDto());
+        assetApi.putAsset(assetDto);
         logActivity("admin", "Update", "Memperbarui aset", "Aset #" + asset.getKodeAset(), asset.getNamaAset());
     }
 
@@ -263,6 +275,11 @@ public class DataService {
 
     public void deleteAssetRequest(AssetRequest request) {
         assetRequests.remove(request);
+        if (request.getTipe().equals("Permohonan")) {
+            permohonanApi.deletePengajuan(request.getId());
+        } else {
+            pengajuanApi.deletePengajuan(request.getId());
+        }
         logActivity("admin", "Delete", "Menghapus " + request.getTipe().toLowerCase(), request.getNoPermohonan(), request.getJenisAset());
     }
 
@@ -278,6 +295,8 @@ public class DataService {
             assetRequest.setNoPermohonan(dto.getKodePermohonan());
             assetRequest.setTanggal(dto.getTimestamp());
             assetRequest.setPemohon(dto.getPegawaiDto().getNama());
+            assetRequest.setJenisAset(dto.getJenisAset());
+            assetRequest.setUnit(dto.getPegawaiDto().getNamaSubdir());
             assetRequest.setJumlah(dto.getJumlah());
             assetRequest.setPrioritas(dto.getPrioritas());
             assetRequest.setTipe("Permohonan");
@@ -301,6 +320,8 @@ public class DataService {
             assetRequest.setId(dto.getIdPengajuan());
             assetRequest.setNoPermohonan(dto.getKodePengajuan());
             assetRequest.setTanggal(dto.getTimestamp());
+            assetRequest.setUnit(dto.getPegawaiDto().getNamaSubdir());
+            assetRequest.setJenisAset(dto.getJenisAset());
             assetRequest.setPemohon(dto.getPegawaiDto().getNama());
             assetRequest.setJumlah(dto.getJumlah());
             assetRequest.setPrioritas(dto.getPrioritas());
@@ -335,8 +356,8 @@ public class DataService {
 
             activity.setActionType(dto.getJenisLog());
             activity.setDescription(dto.getIsiLog());
-            activity.setTarget("TESTING AJA");
-            activity.setDetails("TESTING AJA");
+            activity.setTarget(Long.toString(dto.getIdLog()));
+            activity.setDetails("INI DETAILS DIISI APA?????!??");
             activity.setTimestamp(dto.getTimestamp());
             activityList.add(activity);
         }

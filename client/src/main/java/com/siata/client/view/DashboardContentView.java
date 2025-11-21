@@ -63,10 +63,10 @@ public class DashboardContentView extends VBox {
         }
 
         List<CardData> cards = List.of(
-                new CardData("Total Aset", "Semua jenis aset terdaftar", Integer.toString(getTotalAsset()), "🧱"),
-                new CardData("Siap Dilelang", "Aset dalam proses lelang", Integer.toString(getSiapDilelang()), "♻"),
-                new CardData("Rusak Berat", "Memerlukan penghapusan", Integer.toString(getRusakBerat()), "⚠"),
-                new CardData("Sedang Diproses", "Permohonan menunggu persetujuan", "7", "🔄")
+                new CardData("Total Aset", "Semua jenis aset terdaftar",Long.toString(assetApi.getDashboard().getTotalAset()) , "🧱"),
+                new CardData("Siap Dilelang", "Aset dalam proses lelang", Long.toString(assetApi.getDashboard().getAsetSiapDilelang()), "♻"),
+                new CardData("Rusak Berat", "Memerlukan penghapusan", Long.toString(assetApi.getDashboard().getAsetDiajukanHapus()), "⚠"),
+                new CardData("Sedang Diproses", "Permohonan menunggu persetujuan", Long.toString(assetApi.getDashboard().getPermohonanPending()), "🔄")
         );
 
         for (int i = 0; i < cards.size(); i++) {

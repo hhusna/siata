@@ -17,6 +17,38 @@ import java.util.Map;
 public class PermohonanApi {
     String jwt = LoginSession.getJwt();
 
+    public boolean deletePengajuan(Long idPengajuan) {
+        try {
+            ObjectMapper mapper = new ObjectMapper();
+            mapper.registerModule(new JavaTimeModule());
+
+            HttpClient client = HttpClient.newBuilder()
+                    .connectTimeout(Duration.ofSeconds(10))
+                    .build();
+
+            String targetUrl = "http://localhost:8080/api/permohonan/"+Long.toString(idPengajuan);
+
+            HttpRequest request = HttpRequest.newBuilder()
+                    .uri(URI.create(targetUrl))
+                    .header("Content-Type", "application/json")
+                    .header("Authorization", "Bearer "+jwt)
+                    .DELETE()
+                    .build();
+
+            HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+
+            if (response.statusCode() == 200) {
+                System.out.println("PermohonanApi: BERHASIL DIHAPUS!");
+
+                return true;
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        return false;
+    }
+
     public boolean patchStatus(Long idPermohonan, String status) {
         try {
             ObjectMapper mapper = new ObjectMapper();
