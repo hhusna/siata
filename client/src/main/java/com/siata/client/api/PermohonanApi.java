@@ -3,7 +3,7 @@ package com.siata.client.api;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
-import com.siata.client.dto.PengajuanDto;
+import com.siata.client.config.ApiConfig;
 import com.siata.client.dto.PermohonanDto;
 import com.siata.client.session.LoginSession;
 
@@ -26,7 +26,7 @@ public class PermohonanApi {
                     .connectTimeout(Duration.ofSeconds(10))
                     .build();
 
-            String targetUrl = "http://localhost:8080/api/permohonan/"+Long.toString(idPengajuan);
+            String targetUrl = ApiConfig.getPermohonanUrl() + "/" + idPengajuan;
 
             HttpRequest request = HttpRequest.newBuilder()
                     .uri(URI.create(targetUrl))
@@ -65,7 +65,7 @@ public class PermohonanApi {
                     .connectTimeout(Duration.ofSeconds(10))
                     .build();
 
-            String targetUrl = "http://localhost:8080/api/permohonan/"+Long.toString(idPermohonan)+"/status";
+            String targetUrl = ApiConfig.getPermohonanUrl() + "/" + idPermohonan + "/status";
 
             HttpRequest request = HttpRequest.newBuilder()
                     .uri(URI.create(targetUrl))
@@ -97,7 +97,7 @@ public class PermohonanApi {
                     .connectTimeout(Duration.ofSeconds(10))
                     .build();
 
-            String targetUrl = "http://localhost:8080/api/permohonan";
+            String targetUrl = ApiConfig.getPermohonanUrl();
 
             HttpRequest request = HttpRequest.newBuilder()
                     .uri(URI.create(targetUrl))
@@ -133,7 +133,7 @@ public class PermohonanApi {
                     .connectTimeout(Duration.ofSeconds(10))
                     .build();
 
-            String targetUrl = "http://localhost:8080/api/permohonan";
+            String targetUrl = ApiConfig.getPermohonanUrl();
 
             HttpRequest request = HttpRequest.newBuilder()
                     .uri(URI.create(targetUrl))
@@ -148,7 +148,7 @@ public class PermohonanApi {
                 System.out.println("PermohonanApi: Permohonan berhasil dibuat");
                 return true;
             } else {
-                System.out.println("PengajuanApi: Pengajuan gagal ditambahkan!" + response.statusCode());
+                System.out.println("PermohonanApi: Permohonan gagal ditambahkan!" + response.statusCode());
             }
         } catch (Exception e) {
             e.printStackTrace();
@@ -169,7 +169,7 @@ public class PermohonanApi {
                     .build();
 
             // Endpoint: PUT /api/permohonan/{id}
-            String targetUrl = "http://localhost:8080/api/permohonan/" + payload.getIdPermohonan();
+            String targetUrl = ApiConfig.getPermohonanUrl() + "/" + payload.getIdPermohonan();
 
             HttpRequest request = HttpRequest.newBuilder()
                     .uri(URI.create(targetUrl))

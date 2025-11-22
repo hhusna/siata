@@ -11,7 +11,7 @@ import siata.siata.service.DashboardService;
 
 @RestController
 @RequestMapping("/api/dashboard")
-//@PreAuthorize("hasAnyRole('TIM_MANAJEMEN_ASET', 'PPBJ', 'PPK', 'DIREKTUR')")
+@PreAuthorize("hasAnyRole('TIM_MANAJEMEN_ASET', 'PPBJ', 'PPK', 'DIREKTUR')")
 public class DashboardController {
 
     @Autowired

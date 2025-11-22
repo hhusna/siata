@@ -36,8 +36,8 @@ public class DashboardService {
         stats.setPengajuanPending(pengajuanPending);
 
 
-        stats.setAsetDigunakan(asetRepository.countByStatusPemakaian("Digunakan"));
-        stats.setAsetTersedia(asetRepository.countByStatusPemakaian("Tersedia")); // Asumsi ada status "Tersedia"
+        stats.setAsetAktif(asetRepository.countByStatusPemakaian("Aktif"));
+        stats.setAsetNonAktif(asetRepository.countByStatusPemakaian("Non Aktif"));
         stats.setAsetDiajukanHapus(asetRepository.countByStatusPemakaian("Diajukan Hapus"));
         stats.setTotalAsetDihapus(penghapusanAsetRepository.count());
 

@@ -1,6 +1,9 @@
 package siata.siata.entity;
 
 import jakarta.persistence.*;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Pattern;
+import jakarta.validation.constraints.Size;
 import lombok.Data;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
@@ -16,6 +19,8 @@ public class User implements UserDetails {
 
     @Id
     @Column(name = "username", length = 50)
+    @NotBlank(message = "Username tidak boleh kosong")
+    @Size(min = 3, max = 50, message = "Username harus 3-50 karakter")
     private String username;
 
     @OneToOne
@@ -23,9 +28,13 @@ public class User implements UserDetails {
     private Pegawai pegawai;
 
     @Column(name = "password", nullable = false, length = 255)
+    @NotBlank(message = "Password tidak boleh kosong")
     private String password;
 
     @Column(name = "role", nullable = false, length = 50)
+    @NotBlank(message = "Role tidak boleh kosong")
+    @Pattern(regexp = "^(ADMIN|TIM_MANAJEMEN_ASET|KEPALA_SUBDIR)$", 
+             message = "Role harus salah satu dari: ADMIN, TIM_MANAJEMEN_ASET, KEPALA_SUBDIR")
     private String role;
 
     // Implementasi UserDetails

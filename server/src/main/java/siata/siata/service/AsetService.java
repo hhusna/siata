@@ -54,22 +54,31 @@ public class AsetService {
     public void tandaiUntukPenghapusan(Long id, Pegawai userPegawai) {
         Aset aset = asetRepository.findById(id).orElseThrow(() -> new RuntimeException("Aset not found"));
 
-        // 1. Update status aset
-        aset.setKondisi("Rusak Berat");
-        aset.setStatusPemakaian("Diajukan Hapus");
-        asetRepository.save(aset);
+        // Validasi: Aset dengan status "Aktif" tidak bisa dihapus
+        if ("Aktif".equals(aset.getStatusPemakaian())) {
+            throw new RuntimeException("Aset dengan status Aktif tidak dapat dihapus");
+        }
 
-        // 2. Buat entri di tabel PenghapusanAset
+        // Simpan kondisi dan status asli sebelum penghapusan
+        String kondisiAsli = aset.getKondisi();
+        String statusAsli = aset.getStatusPemakaian();
+
+        // 1. TIDAK mengubah status dan kondisi - tetap seperti sebelumnya
+        // Status tetap "Non Aktif" dan kondisi tetap sesuai aslinya
+        // Hanya mencatat penghapusan di tabel PenghapusanAset
+        // asetRepository.save(aset); // Tidak perlu save karena tidak ada perubahan
+
+        // 2. Buat entri di tabel PenghapusanAset dengan kondisi asli
         PenghapusanAset hapus = new PenghapusanAset();
         hapus.setAset(aset);
         hapus.setNamaAset(aset.getJenisAset() + " " + aset.getMerkAset());
         hapus.setJenisAset(aset.getJenisAset());
         hapus.setTanggalPerolehan(aset.getTanggalPerolehan());
         hapus.setHargaAset(aset.getHargaAset());
-        hapus.setKondisi(aset.getKondisi());
+        hapus.setKondisi(kondisiAsli); // Gunakan kondisi asli
         penghapusanAsetRepository.save(hapus);
 
-        String isiLog = "Menandai aset untuk dihapus: " + aset.getKodeAset() + " (" + aset.getJenisAset() + ")";
+        String isiLog = "Menandai aset untuk dihapus: " + aset.getKodeAset() + " (" + aset.getJenisAset() + ") - Status: " + statusAsli + ", Kondisi: " + kondisiAsli;
         logRiwayatService.saveLog(new LogRiwayat(userPegawai, aset, "DELETE_ASET", isiLog));
     }
 

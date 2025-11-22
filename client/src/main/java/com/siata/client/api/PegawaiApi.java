@@ -1,7 +1,7 @@
 package com.siata.client.api;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.siata.client.MainApplication;
+import com.siata.client.config.ApiConfig;
 import com.siata.client.dto.PegawaiDto;
 import com.siata.client.session.LoginSession;
 
@@ -10,15 +10,11 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.prefs.Preferences;
 
 public class PegawaiApi {
     String jwt = LoginSession.getJwt();
 
-    public PegawaiDto getPegawaiByNip(int nip) {
+    public PegawaiDto getPegawaiByNip(long nip) {
         System.out.println("PegawaiApi:getPegawaiByNip BISMILLAH JALAN NI BANG");
         PegawaiDto pegawaiDto = new PegawaiDto();
 
@@ -29,7 +25,7 @@ public class PegawaiApi {
                     .connectTimeout(Duration.ofSeconds(10))
                     .build();
 
-            String targetUrl = "http://localhost:8080/api/pegawai/" + Integer.toString(nip);
+            String targetUrl = ApiConfig.getPegawaiUrl() + "/" + nip;
 
             HttpRequest request = HttpRequest.newBuilder()
                     .uri(URI.create(targetUrl))
@@ -68,7 +64,7 @@ public class PegawaiApi {
                     .connectTimeout(Duration.ofSeconds(10))
                     .build();
 
-            String targetUrl = "http://localhost:8080/api/pegawai";
+            String targetUrl = ApiConfig.getPegawaiUrl();
 
             HttpRequest request = HttpRequest.newBuilder()
                     .uri(URI.create(targetUrl))
@@ -94,7 +90,7 @@ public class PegawaiApi {
     }
 
 
-    public boolean addPegawai(int nip, String nama, String namaSubdir, String jabatan) {
+    public boolean addPegawai(long nip, String nama, String namaSubdir, String jabatan) {
         try {
             PegawaiDto payload = new PegawaiDto();
             payload.setNip(nip);
@@ -112,7 +108,7 @@ public class PegawaiApi {
                     .build();
 
             System.out.println("JWT DI PEGAWAIAPI:"+jwt);
-            String targetUrl = "http://localhost:8080/api/pegawai";
+            String targetUrl = ApiConfig.getPegawaiUrl();
             HttpRequest request = HttpRequest.newBuilder()
                     .uri(URI.create(targetUrl))
                     .header("Content-Type", "application/json")
@@ -143,7 +139,7 @@ public class PegawaiApi {
                     .connectTimeout(Duration.ofSeconds(10))
                     .build();
 
-            String targetUrl = "http://localhost:8080/api/pegawai/"+nip;
+            String targetUrl = ApiConfig.getPegawaiUrl() + "/" + nip;
             String jwt = LoginSession.getJwt();
 
             HttpRequest request = HttpRequest.newBuilder()
@@ -167,7 +163,7 @@ public class PegawaiApi {
         return false;
     }
 
-    public boolean updatePegawai(int nip, String nama, String namaSubdir, String jabatan) {
+    public boolean updatePegawai(long nip, String nama, String namaSubdir, String jabatan) {
         try {
             PegawaiDto payload = new PegawaiDto();
             payload.setNip(nip);
@@ -183,7 +179,7 @@ public class PegawaiApi {
                     .build();
 
             // URL endpoint PUT: /api/pegawai/{nip}
-            String targetUrl = "http://localhost:8080/api/pegawai/" + nip;
+            String targetUrl = ApiConfig.getPegawaiUrl() + "/" + nip;
 
             HttpRequest request = HttpRequest.newBuilder()
                     .uri(URI.create(targetUrl))

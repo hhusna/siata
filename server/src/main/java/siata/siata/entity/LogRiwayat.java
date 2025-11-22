@@ -1,6 +1,9 @@
 package siata.siata.entity;
 
 import jakarta.persistence.*;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
@@ -34,12 +37,17 @@ public class LogRiwayat {
     private Pegawai pegawai;
 
     @Column(name = "jenis_log", length = 100)
+    @NotBlank(message = "Jenis log tidak boleh kosong")
+    @Size(max = 100, message = "Jenis log maksimal 100 karakter")
     private String jenisLog;
 
     @Column(name = "isi_log", columnDefinition = "TEXT")
+    @NotBlank(message = "Isi log tidak boleh kosong")
+    @Size(max = 5000, message = "Isi log maksimal 5000 karakter")
     private String isiLog;
 
     @Column(name = "timestamp", nullable = false)
+    @NotNull(message = "Timestamp tidak boleh kosong")
     private LocalDateTime timestamp;
 
     // Constructor untuk log umum

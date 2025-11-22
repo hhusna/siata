@@ -1,9 +1,9 @@
 package com.siata.client.api;
 
+import com.siata.client.config.ApiConfig;
 import javafx.stage.FileChooser;
 import javafx.stage.Stage;
 
-import javax.swing.*;
 import java.io.File;
 import java.io.IOException;
 import java.net.URI;
@@ -11,7 +11,6 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.file.Files;
-import java.nio.file.Path;
 import java.time.Duration;
 
 public class ExportPdfApi {
@@ -22,7 +21,7 @@ public class ExportPdfApi {
                 .connectTimeout(Duration.ofSeconds(10))
                 .build();
 
-        String targetUrl = "http://localhost:8080/api/laporan/aset/pdf";
+        String targetUrl = ApiConfig.getLaporanUrl() + "/aset/pdf";
         HttpRequest request = HttpRequest.newBuilder()
                 .uri(URI.create(targetUrl))
                 .header("Content-Type", "application/json")

@@ -2,11 +2,10 @@ package com.siata.client.api;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import com.siata.client.config.ApiConfig;
 import com.siata.client.dto.AssetDto;
 import com.siata.client.dto.AssetDtoForRequest;
 import com.siata.client.dto.DashboardDto;
-import com.siata.client.dto.PegawaiDto;
-import com.siata.client.model.Asset;
 import com.siata.client.session.LoginSession;
 
 import java.net.URI;
@@ -28,9 +27,9 @@ public class AssetApi {
                     .connectTimeout(Duration.ofSeconds(10))
                     .build();
 
-            int idAset = payload.getIdAset();
+            long idAset = payload.getIdAset();
 
-            String targetUrl = "http://localhost:8080/api/aset/"+Long.toString(idAset);
+            String targetUrl = ApiConfig.getAsetUrl() + "/" + idAset;
 
             HttpRequest request = HttpRequest.newBuilder()
                     .uri(URI.create(targetUrl))
@@ -64,7 +63,7 @@ public class AssetApi {
                     .connectTimeout(Duration.ofSeconds(10))
                     .build();
 
-            String targetUrl = "http://localhost:8080/api/dashboard/stats";
+            String targetUrl = ApiConfig.getDashboardUrl() + "/stats";
 
             HttpRequest request = HttpRequest.newBuilder()
                     .uri(URI.create(targetUrl))
@@ -90,13 +89,13 @@ public class AssetApi {
         return dashboardDto;
     }
 
-    public boolean deleteAssetById(int idAset) {
+    public boolean deleteAssetById(long idAset) {
         try {
             HttpClient client = HttpClient.newBuilder()
                     .connectTimeout(Duration.ofSeconds(10))
                     .build();
 
-            String targetUrl = "http://localhost:8080/api/aset/hapus/" + Integer.toString(idAset);
+            String targetUrl = ApiConfig.getAsetUrl() + "/hapus/" + idAset;
 
             HttpRequest request = HttpRequest.newBuilder()
                     .uri(URI.create(targetUrl))
@@ -120,7 +119,7 @@ public class AssetApi {
         return false;
     }
 
-    public AssetDto getAssetById(int idAset) {
+    public AssetDto getAssetById(long idAset) {
         AssetDto assetDto = new AssetDto();
         try {
             ObjectMapper mapper = new ObjectMapper();
@@ -130,7 +129,7 @@ public class AssetApi {
                     .connectTimeout(Duration.ofSeconds(10))
                     .build();
 
-            String targetUrl = "http://localhost:8080/api/aset/" + Integer.toString(idAset);
+            String targetUrl = ApiConfig.getAsetUrl() + "/" + idAset;
 
             HttpRequest request = HttpRequest.newBuilder()
                     .uri(URI.create(targetUrl))
@@ -165,7 +164,7 @@ public class AssetApi {
                     .connectTimeout(Duration.ofSeconds(10))
                     .build();
 
-            String targetUrl = "http://localhost:8080/api/aset";
+            String targetUrl = ApiConfig.getAsetUrl();
 
             HttpRequest request = HttpRequest.newBuilder()
                     .uri(URI.create(targetUrl))
@@ -190,8 +189,7 @@ public class AssetApi {
         return listAsset;
     }
 
-    public int tambahAsset(AssetDtoForRequest payload) {
-        AssetDto assetDto = new AssetDto();
+    public long tambahAsset(AssetDtoForRequest payload) {
         try {
             ObjectMapper mapper = new ObjectMapper();
             mapper.registerModule(new JavaTimeModule());
@@ -203,7 +201,7 @@ public class AssetApi {
                     .connectTimeout(Duration.ofSeconds(10))
                     .build();
 
-            String targetUrl = "http://localhost:8080/api/aset";
+            String targetUrl = ApiConfig.getAsetUrl();
 
             HttpRequest request = HttpRequest.newBuilder()
                     .uri(URI.create(targetUrl))
@@ -217,7 +215,7 @@ public class AssetApi {
             if (response.statusCode() == 200) {
                 System.out.println("AssetApi: Sukses Menambahkan Asset!");
 
-                int idAset = mapper.readValue(response.body(), AssetDto.class).getIdAset();
+                long idAset = mapper.readValue(response.body(), AssetDto.class).getIdAset();
 
                 return idAset;
             }else {

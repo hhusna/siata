@@ -9,7 +9,7 @@ public class PegawaiDto {
 
     @JsonProperty("nip")
     @JsonAlias("nip_pegawai")
-    private int nip;
+    private long nip;
     private String nama;
 
     @JsonProperty("namaSubdir")
@@ -20,18 +20,18 @@ public class PegawaiDto {
     public PegawaiDto() {
     }
 
-    public PegawaiDto(int nip, String nama, String namaSubdir, String jabatan) {
+    public PegawaiDto(long nip, String nama, String namaSubdir, String jabatan) {
         this.nip = nip;
         this.nama = nama;
         this.namaSubdir = namaSubdir;
         this.jabatan = jabatan;
     }
 
-    public int getNip() {
+    public long getNip() {
         return nip;
     }
 
-    public void setNip(int nip) {
+    public void setNip(long nip) {
         this.nip = nip;
     }
 

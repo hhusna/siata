@@ -1,22 +1,19 @@
 package com.siata.client.dto;
 
-import com.fasterxml.jackson.annotation.JsonAlias;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.siata.client.model.Employee;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
-import java.util.Date;
-import java.util.Locale;
 
 @JsonIgnoreProperties
 public class AssetDto {
-    private int idAset;
-    private String KodeAset;
+    private long idAset;
+    private String kodeAset;
     private String jenisAset;
     private String merkAset;
     private LocalDate tanggalPerolehan;
-    private long hargaAset;
+    private BigDecimal hargaAset;
     private String kondisi;
     private String statusPemakaian;
     private String subdirektorat;
@@ -27,20 +24,20 @@ public class AssetDto {
     public AssetDto() {
     }
 
-    public int getIdAset() {
+    public long getIdAset() {
         return idAset;
     }
 
-    public void setIdAset(int idAset) {
+    public void setIdAset(long idAset) {
         this.idAset = idAset;
     }
 
     public String getKodeAset() {
-        return KodeAset;
+        return kodeAset;
     }
 
     public void setKodeAset(String kodeAset) {
-        KodeAset = kodeAset;
+        this.kodeAset = kodeAset;
     }
 
     public String getJenisAset() {
@@ -67,11 +64,11 @@ public class AssetDto {
         this.tanggalPerolehan = tanggalPerolehan;
     }
 
-    public long getHargaAset() {
+    public BigDecimal getHargaAset() {
         return hargaAset;
     }
 
-    public void setHargaAset(long hargaAset) {
+    public void setHargaAset(BigDecimal hargaAset) {
         this.hargaAset = hargaAset;
     }
 

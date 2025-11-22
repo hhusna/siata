@@ -1,21 +1,20 @@
 package com.siata.client.model;
 
-import com.fasterxml.jackson.annotation.JsonFormat;
-
+import java.math.BigDecimal;
 import java.time.LocalDate;
 
 public class Asset {
-    private int idAset;
+    private long idAset;
     private String kodeAset;
     private String jenisAset;
     private String merkBarang;
 
     private LocalDate tanggalPerolehan;
-    private double nilaiRupiah;
+    private BigDecimal nilaiRupiah;
     private String kondisi;
     private String status;
     private String keterangan; // Pemegang
-    private String subdit;
+    private String Subdir;
     private boolean deleted; // Flag untuk penghapusan
 
     public Asset() {
@@ -25,13 +24,13 @@ public class Asset {
     }
 
     public Asset(String kodeAset, String jenisAset, String merkBarang, String keterangan,
-                 String subdit, LocalDate tanggalPerolehan, double nilaiRupiah,
+                 String Subdir, LocalDate tanggalPerolehan, BigDecimal nilaiRupiah,
                  String kondisi, String status) {
         this.kodeAset = kodeAset;
         this.jenisAset = jenisAset;
         this.merkBarang = merkBarang;
         this.keterangan = keterangan;
-        this.subdit = subdit;
+        this.Subdir = Subdir;
         this.tanggalPerolehan = tanggalPerolehan;
         this.nilaiRupiah = nilaiRupiah;
         this.kondisi = kondisi;
@@ -39,11 +38,11 @@ public class Asset {
         this.deleted = false;
     }
 
-    public int getIdAset() {
+    public long getIdAset() {
         return idAset;
     }
 
-    public void setIdAset(int idAset) {
+    public void setIdAset(long idAset) {
         this.idAset = idAset;
     }
 
@@ -79,12 +78,12 @@ public class Asset {
         this.keterangan = keterangan;
     }
 
-    public String getSubdit() {
-        return subdit;
+    public String getSubdir() {
+        return Subdir;
     }
 
-    public void setSubdit(String subdit) {
-        this.subdit = subdit;
+    public void setSubdir(String Subdir) {
+        this.Subdir = Subdir;
     }
 
     public LocalDate getTanggalPerolehan() {
@@ -95,11 +94,11 @@ public class Asset {
         this.tanggalPerolehan = tanggalPerolehan;
     }
 
-    public double getNilaiRupiah() {
+    public BigDecimal getNilaiRupiah() {
         return nilaiRupiah;
     }
 
-    public void setNilaiRupiah(double nilaiRupiah) {
+    public void setNilaiRupiah(BigDecimal nilaiRupiah) {
         this.nilaiRupiah = nilaiRupiah;
     }
 

@@ -33,9 +33,10 @@ public class PermohonanAsetService {
         // Status awal
         if (isNew) {
             data.setStatusPersetujuan("Pending"); // Status awal
-            int year = LocalDate.now().getYear();
+            LocalDate now = LocalDate.now();
+            String dateStr = String.format("%04d%02d%02d", now.getYear(), now.getMonthValue(), now.getDayOfMonth());
             long count = repository.count() + 1;
-            String kode = String.format("REQ-%d-%03d", year, count);
+            String kode = String.format("PRM-%s-%03d", dateStr, count);
             data.setKodePermohonan(kode);
         }
 

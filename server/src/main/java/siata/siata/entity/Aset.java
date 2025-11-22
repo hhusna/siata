@@ -1,6 +1,11 @@
 package siata.siata.entity;
 
 import jakarta.persistence.*;
+import jakarta.validation.constraints.DecimalMin;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Pattern;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
 import lombok.Data;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import java.math.BigDecimal;
@@ -17,19 +22,25 @@ public class Aset {
     @Column(name = "id_aset")
     private Long idAset;
 
-    @Column(name = "kode_aset", nullable = false, unique = true, length = 100)
+    @Column(name = "kode_aset", nullable = false, length = 100)
+    @NotBlank(message = "Kode aset tidak boleh kosong")
+    @Pattern(regexp = "[0-9]{10}", message = "Kode aset harus 10 digit angka")
     private String kodeAset;
 
     @Column(name = "jenis_aset", nullable = false, length = 100)
+    @NotBlank(message = "Jenis aset tidak boleh kosong")
     private String jenisAset;
 
     @Column(name = "merk_aset", length = 100)
+    @Size(min = 2, max = 100, message = "Merk minimal 2 karakter")
     private String merkAset;
 
     @Column(name = "tanggal_perolehan")
     private LocalDate tanggalPerolehan;
 
     @Column(name = "harga_aset", precision = 15, scale = 2)
+    @NotNull(message = "Harga aset tidak boleh kosong")
+    @DecimalMin(value = "0.0", inclusive = true, message = "Harga aset tidak boleh negatif")
     private BigDecimal hargaAset;
 
     @Column(name = "kondisi", length = 50)

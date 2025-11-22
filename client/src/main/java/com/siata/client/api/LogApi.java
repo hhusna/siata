@@ -3,6 +3,7 @@ package com.siata.client.api;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import com.siata.client.config.ApiConfig;
 import com.siata.client.dto.LogDto;
 import com.siata.client.session.LoginSession;
 
@@ -11,8 +12,6 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
-import java.util.ArrayList;
-import java.util.List;
 
 public class LogApi {
     String jwt = LoginSession.getJwt();
@@ -28,7 +27,7 @@ public class LogApi {
                     .connectTimeout(Duration.ofSeconds(10))
                     .build();
 
-            String targetUrl = "http://localhost:8080/api/logbook";
+            String targetUrl = ApiConfig.getLogbookUrl();
 
             HttpRequest request = HttpRequest.newBuilder()
                     .uri(URI.create(targetUrl))

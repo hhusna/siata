@@ -14,7 +14,7 @@ public class MainApplication extends Application {
     @Override
     public void start(Stage primaryStage) {
         Font.loadFont(getClass().getResourceAsStream("/Poppins-Regular.ttf"),12);
-        primaryStage.setTitle("SIAD - Direktorat Angkutan Udara");
+        primaryStage.setTitle("SIATA - Direktorat Angkutan Udara");
         showLogin(primaryStage);
         primaryStage.show();
     }

@@ -1,6 +1,6 @@
 package siata.siata.controller;
 
-import jakarta.annotation.security.PermitAll;
+import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -15,7 +15,7 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/pegawai")
-//@PreAuthorize("hasRole('TIM_MANAJEMEN_ASET')")
+@PreAuthorize("hasRole('TIM_MANAJEMEN_ASET')")
 public class PegawaiController {
 
     @Autowired
@@ -45,12 +45,12 @@ public class PegawaiController {
     }
 
     @PostMapping
-    public Pegawai createPegawai(@RequestBody Pegawai pegawai, Authentication authentication) {
+    public Pegawai createPegawai(@Valid @RequestBody Pegawai pegawai, Authentication authentication) {
         return pegawaiService.savePegawai(pegawai, getPegawaiFromAuth(authentication));
     }
 
     @PutMapping("/{nip}")
-    public ResponseEntity<Pegawai> updatePegawai(@PathVariable Long nip, @RequestBody Pegawai pegawaiDetails, Authentication authentication) {
+    public ResponseEntity<Pegawai> updatePegawai(@PathVariable Long nip, @Valid @RequestBody Pegawai pegawaiDetails, Authentication authentication) {
         return pegawaiService.getPegawaiByNip(nip)
                 .map(pegawai -> {
                     pegawai.setNama(pegawaiDetails.getNama());

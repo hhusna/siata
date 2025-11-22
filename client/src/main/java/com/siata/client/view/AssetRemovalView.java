@@ -90,8 +90,8 @@ public class AssetRemovalView extends VBox {
         TableColumn<Asset, String> kondisiCol = new TableColumn<>("Kondisi");
         kondisiCol.setCellValueFactory(new PropertyValueFactory<>("kondisi"));
 
-        TableColumn<Asset, String> subditCol = new TableColumn<>("Subdirektorat");
-        subditCol.setCellValueFactory(new PropertyValueFactory<>("subdit"));
+        TableColumn<Asset, String> SubdirCol = new TableColumn<>("Subdirektorat");
+        SubdirCol.setCellValueFactory(new PropertyValueFactory<>("Subdir"));
 
         TableColumn<Asset, String> tanggalCol = new TableColumn<>("Tanggal Perolehan");
         tanggalCol.setCellValueFactory(cellData -> {
@@ -104,7 +104,7 @@ public class AssetRemovalView extends VBox {
             return new javafx.beans.property.SimpleStringProperty("-");
         });
         
-        table.getColumns().setAll(List.of(checkboxCol, idCol, namaCol, jenisCol, subditCol, tanggalCol, kondisiCol));
+        table.getColumns().setAll(List.of(checkboxCol, idCol, namaCol, jenisCol, SubdirCol, tanggalCol, kondisiCol));
 
         VBox tableContainer = new VBox(16);
         tableContainer.setPadding(new Insets(20));

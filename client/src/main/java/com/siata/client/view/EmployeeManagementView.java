@@ -1,10 +1,8 @@
 package com.siata.client.view;
 
-import com.siata.client.api.AssetApi;
 import com.siata.client.api.PegawaiApi;
 import com.siata.client.model.Employee;
 import com.siata.client.service.DataService;
-import com.siata.client.dto.PegawaiDto;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.geometry.Insets;
@@ -18,9 +16,7 @@ import javafx.stage.Modality;
 import javafx.stage.Stage;
 import javafx.stage.StageStyle;
 
-import java.util.Arrays;
 import java.util.List;
-import java.util.stream.Collectors;
 
 public class EmployeeManagementView extends VBox {
 
@@ -48,15 +44,17 @@ public class EmployeeManagementView extends VBox {
         HBox filterBar = new HBox(12);
         filterBar.setAlignment(Pos.CENTER_LEFT);
         
+        ComboBox<String> unitCombo = new ComboBox<>();
+        unitCombo.getItems().addAll("Semua Subdir", "PPTAU", "AUNB", "AUNTB", "KAU", "SILAU", "Tata Usaha", "Direktur");
+        unitCombo.setValue("Semua Subdir");
+        unitCombo.setPrefWidth(150);
+        
         TextField searchField = new TextField();
         searchField.setPromptText("Cari berdasarkan nama atau NIP...");
         searchField.setPrefWidth(300);
-        searchField.textProperty().addListener((obs, oldVal, newVal) -> filterTable(newVal));
+        searchField.textProperty().addListener((obs, oldVal, newVal) -> filterTable(newVal, unitCombo.getValue()));
         
-        ComboBox<String> unitCombo = new ComboBox<>();
-        unitCombo.getItems().addAll("Semua Unit", "Subdit Teknis", "Subdit Operasional", "Subdit Keamanan", "Subdit SDM");
-        unitCombo.setValue("Semua Unit");
-        unitCombo.setPrefWidth(150);
+        unitCombo.setOnAction(e -> filterTable(searchField.getText(), unitCombo.getValue()));
         
         filterBar.getChildren().addAll(searchField, unitCombo);
 
@@ -75,7 +73,7 @@ public class EmployeeManagementView extends VBox {
         TableColumn<Employee, String> jabatanCol = new TableColumn<>("Jabatan");
         jabatanCol.setCellValueFactory(new PropertyValueFactory<>("jabatan"));
         
-        TableColumn<Employee, String> unitCol = new TableColumn<>("Unit");
+        TableColumn<Employee, String> unitCol = new TableColumn<>("Subdir");
         unitCol.setCellValueFactory(new PropertyValueFactory<>("unit"));
         
         TableColumn<Employee, String> asetCol = new TableColumn<>("Aset yang Dimiliki");
@@ -233,7 +231,7 @@ public class EmployeeManagementView extends VBox {
         }
 
         ComboBox<String> unitCombo = new ComboBox<>();
-        unitCombo.getItems().addAll("Subdit Teknis", "Subdit Operasional", "Subdit Keamanan", "Subdit SDM");
+        unitCombo.getItems().addAll("PPTAU", "AUNB", "AUNTB", "KAU", "SILAU", "Tata Usaha", "Direktur");
         unitCombo.setPromptText("Pilih unit");
         Label unitLabel = new Label("Unit / Subdirektorat");
         unitLabel.getStyleClass().add("form-label");
@@ -242,7 +240,7 @@ public class EmployeeManagementView extends VBox {
         }
 
         TextArea asetArea = new TextArea();
-        asetArea.setPromptText("Pisahkan dengan enter, contoh:\nLaptop Dell Latitude 5420\nMeja Kerja Kayu Jati");
+        asetArea.setPromptText("Pisahkan dengan enter, contoh:\nLaptop Dell Latitude 5420\nPC");
         asetArea.setPrefRowCount(4);
         Label asetLabel = new Label("Daftar Aset yang Dimiliki");
         asetLabel.getStyleClass().add("form-label");
@@ -261,20 +259,79 @@ public class EmployeeManagementView extends VBox {
         Button saveButton = new Button(editableEmployee == null ? "Simpan" : "Simpan Perubahan");
         saveButton.getStyleClass().add("primary-button");
         saveButton.setOnAction(e -> {
-            int nip = Integer.parseInt(nipField.getText());
+            String nipInput = nipField.getText();
+            String nama = namaField.getText();
+            String unit = unitCombo.getValue();
+            String jabatan = jabatanField.getText();
+
+            // Validasi input dasar
+            if (nipInput == null || nipInput.trim().isEmpty()) {
+                showAlert("NIP tidak boleh kosong");
+                return;
+            }
+            if (nama == null || nama.trim().isEmpty()) {
+                showAlert("Nama tidak boleh kosong");
+                return;
+            }
+            if (unit == null || unit.trim().isEmpty()) {
+                showAlert("Pilih subdirektorat");
+                return;
+            }
+            if (jabatan == null || jabatan.trim().isEmpty()) {
+                showAlert("Jabatan tidak boleh kosong");
+                return;
+            }
+            if (jabatan.trim().length() < 3) {
+                showAlert("Jabatan minimal 3 karakter");
+                return;
+            }
+            if (!jabatan.trim().matches("[a-zA-Z\\s]+")) {
+                showAlert("Jabatan hanya boleh berisi huruf dan spasi");
+                return;
+            }
+
+            // Validasi format NIP (harus angka dan 18 digit)
+            if (!nipInput.matches("\\d+")) {
+                showAlert("NIP harus berupa angka");
+                return;
+            }
+            if (nipInput.length() != 18) {
+                showAlert("NIP harus 18 digit");
+                return;
+            }
+
+            // Validasi nama minimal 3 karakter dan hanya huruf dan spasi
+            if (nama.length() < 3) {
+                showAlert("Nama minimal 3 karakter");
+                return;
+            }
+            if (!nama.matches("[a-zA-Z\\s]+")) {
+                showAlert("Nama hanya boleh berisi huruf dan spasi");
+                return;
+            }
+
+            long nip = Long.parseLong(nipInput);
             boolean success;
 
             if (editableEmployee == null) {
+                // Mode Tambah - cek apakah NIP sudah ada
+                if (dataService.isNipExists(nipInput)) {
+                    showAlert("NIP sudah terdaftar di sistem");
+                    return;
+                }
+                
                 // Mode Tambah (POST)
-                success = pegawaiApi.addPegawai(nip, namaField.getText(), unitCombo.getValue(), jabatanField.getText());
+                success = pegawaiApi.addPegawai(nip, nama, unit, jabatan);
             } else {
                 // Mode Edit (PUT) - Method yang baru Anda buat
-                success = pegawaiApi.updatePegawai(nip, namaField.getText(), unitCombo.getValue(), jabatanField.getText());
+                success = pegawaiApi.updatePegawai(nip, nama, unit, jabatan);
             }
 
             if (success) {
                 modalStage.close();
                 refreshTable();
+            } else {
+                showAlert("Gagal menyimpan data pegawai");
             }
         });
 
@@ -306,51 +363,6 @@ public class EmployeeManagementView extends VBox {
         modalStage.showAndWait();
     }
 
-    private boolean saveEmployee(Employee editableEmployee, String nip, String nama, String jabatan,
-                                 String unit, String asetText) {
-        if (nip == null || nip.trim().isEmpty()) {
-            showAlert("Masukkan NIP");
-            return false;
-        }
-        if (nama == null || nama.trim().isEmpty()) {
-            showAlert("Masukkan nama lengkap");
-            return false;
-        }
-        if (jabatan == null || jabatan.trim().isEmpty()) {
-            showAlert("Masukkan jabatan");
-            return false;
-        }
-        if (unit == null || unit.trim().isEmpty()) {
-            showAlert("Pilih unit/subdirektorat");
-            return false;
-        }
-
-        String[] asetLines = asetText == null ? new String[0] : asetText.split("\\r?\\n");
-        List<String> asetList = Arrays.stream(asetLines)
-            .map(String::trim)
-            .filter(line -> !line.isEmpty())
-            .collect(Collectors.toList());
-
-        if (editableEmployee == null) {
-            Employee employee = new Employee(
-                nip.trim(),
-                nama.trim(),
-                jabatan.trim(),
-                unit,
-                asetList
-            );
-            dataService.addEmployee(employee);
-        } else {
-            editableEmployee.setNamaLengkap(nama.trim());
-            editableEmployee.setJabatan(jabatan.trim());
-            editableEmployee.setUnit(unit);
-            editableEmployee.setAsetDimiliki(asetList);
-            dataService.updateEmployee(editableEmployee);
-        }
-
-        refreshTable();
-        return true;
-    }
 
     private void showEmployeeAssets(Employee employee) {
         Stage modalStage = new Stage();
@@ -414,17 +426,29 @@ public class EmployeeManagementView extends VBox {
         employeeList.setAll(dataService.getEmployees());
     }
 
-    private void filterTable(String searchText) {
-        if (searchText == null || searchText.isEmpty()) {
-            refreshTable();
-            return;
-        }
+    private void filterTable(String searchText, String unitFilter) {
+        List<Employee> allEmployees = dataService.getEmployees();
         
-        employeeList.setAll(dataService.getEmployees().stream()
-            .filter(employee -> 
-                employee.getNip().toLowerCase().contains(searchText.toLowerCase()) ||
-                employee.getNamaLengkap().toLowerCase().contains(searchText.toLowerCase())
-            )
+        employeeList.setAll(allEmployees.stream()
+            .filter(employee -> {
+                // Search filter
+                if (searchText != null && !searchText.isEmpty()) {
+                    String search = searchText.toLowerCase();
+                    if (!employee.getNip().toLowerCase().contains(search) &&
+                        !employee.getNamaLengkap().toLowerCase().contains(search)) {
+                        return false;
+                    }
+                }
+                
+                // Unit filter
+                if (unitFilter != null && !unitFilter.equals("Semua Subdir")) {
+                    if (!employee.getUnit().equals(unitFilter)) {
+                        return false;
+                    }
+                }
+                
+                return true;
+            })
             .toList()
         );
     }

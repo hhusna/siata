@@ -29,10 +29,17 @@ public class AuthController {
     @Autowired
     UserService userService;
 
-    @GetMapping("/pegawai")
+    // Helper method untuk mendapatkan Pegawai dari Authentication
     private Pegawai getPegawaiFromAuth(Authentication authentication) {
         User user = (User) authentication.getPrincipal();
         return user.getPegawai();
+    }
+
+    // Endpoint untuk mendapatkan data pegawai user yang sedang login
+    @GetMapping("/pegawai")
+    public ResponseEntity<Pegawai> getCurrentUserPegawai(Authentication authentication) {
+        Pegawai pegawai = getPegawaiFromAuth(authentication);
+        return ResponseEntity.ok(pegawai);
     }
 
     @PostMapping("/login")

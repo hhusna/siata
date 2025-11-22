@@ -125,12 +125,15 @@ public class DashboardContentView extends VBox {
         VBox card = createChartShell("Jumlah Aset per Jenis");
 
         Map<String, Integer> histogramData = new LinkedHashMap<>();
+        histogramData.put("Mobil", dataService.getAssetByJenis("Mobil"));
+        histogramData.put("Motor", dataService.getAssetByJenis("Motor"));
+        histogramData.put("Scanner", dataService.getAssetByJenis("Scanner"));
+        histogramData.put("PC", dataService.getAssetByJenis("PC"));
         histogramData.put("Laptop", dataService.getAssetByJenis("Laptop"));
+        histogramData.put("Tablet", dataService.getAssetByJenis("Tablet"));
         histogramData.put("Printer", dataService.getAssetByJenis("Printer"));
-        histogramData.put("Meja", dataService.getAssetByJenis("Meja"));
-        histogramData.put("Kursi", dataService.getAssetByJenis("Kursi"));
-        histogramData.put("AC", dataService.getAssetByJenis("AC"));
-        histogramData.put("Proyektor", dataService.getAssetByJenis("Proyektor"));
+        histogramData.put("Speaker", dataService.getAssetByJenis("Speaker"));
+        histogramData.put("Parabot", dataService.getAssetByJenis("Parabot"));
 
         CategoryAxis xAxis = new CategoryAxis();
         xAxis.setCategories(FXCollections.observableArrayList(histogramData.keySet()));
@@ -155,10 +158,13 @@ public class DashboardContentView extends VBox {
         VBox card = createChartShell("Distribusi Aset per Subdirektorat");
 
         Map<String, Integer> pieData = new LinkedHashMap<>();
-        pieData.put("Subdit Teknis", dataService.getAssetBySubdit("Subdit Teknis"));
-        pieData.put("Subdit Operasional", dataService.getAssetBySubdit("Subdit Operasional"));
-        pieData.put("Subdit Keamanan", dataService.getAssetBySubdit("Subdit Keamanan"));
-        pieData.put("Subdit SDM", dataService.getAssetBySubdit("Subdit SDM"));
+        pieData.put("PPTAU", dataService.getAssetBySubdir("PPTAU"));
+        pieData.put("AUNB", dataService.getAssetBySubdir("AUNB"));
+        pieData.put("AUNTB", dataService.getAssetBySubdir("AUNTB"));
+        pieData.put("KAU", dataService.getAssetBySubdir("KAU"));
+        pieData.put("SILAU", dataService.getAssetBySubdir("SILAU"));
+        pieData.put("Tata Usaha", dataService.getAssetBySubdir("Tata Usaha"));
+        pieData.put("Direktur", dataService.getAssetBySubdir("Direktur"));
 
         PieChart pieChart = new PieChart();
         pieChart.setLabelsVisible(true);

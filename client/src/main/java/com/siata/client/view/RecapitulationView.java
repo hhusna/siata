@@ -36,7 +36,7 @@ public class RecapitulationView extends VBox {
     private final AssetApi assetApi = new AssetApi();
 
     // Daftar Jenis Aset Standar untuk Laporan
-    private final List<String> JENIS_ASET_LIST = List.of("Laptop", "Printer", "Meja", "Kursi", "AC", "Monitor", "Scanner", "Proyektor", "Mobil", "Motor");
+    private final List<String> JENIS_ASET_LIST = List.of("Mobil", "Motor", "Scanner", "PC", "Laptop", "Tablet", "Printer", "Speaker", "Parabot");
 
     public RecapitulationView() {
         this.dataService = DataService.getInstance();
@@ -57,7 +57,7 @@ public class RecapitulationView extends VBox {
         contentContainer.getChildren().add(createKeteranganKondisiTable());
         contentContainer.getChildren().add(createRekapPemeganganTable());
         contentContainer.getChildren().add(createJumlahPegawaiTable());
-        contentContainer.getChildren().add(createUsageBySubditTable()); // Penggunaan per Subdit
+        contentContainer.getChildren().add(createUsageBySubdirTable()); // Penggunaan per Subdir
         contentContainer.getChildren().add(createEmployeeMatrixTable()); // Matriks Distribusi
 
         // Bungkus dalam ScrollPane agar bisa discroll jika layar kecil
@@ -105,19 +105,19 @@ public class RecapitulationView extends VBox {
         }
 
         long totalAset = assetApi.getDashboard().getTotalAset();
-        long asetDigunakan = assetApi.getDashboard().getAsetDigunakan();
-        long asetTersedia = assetApi.getDashboard().getAsetTersedia();
+        long asetAktif = assetApi.getDashboard().getAsetAktif();
+        long asetNonAktif = assetApi.getDashboard().getAsetNonAktif();
         long asetRusak = assetApi.getDashboard().getAsetRusakBerat();
 
         // Hitung persentase
-        String usedPercent = totalAset > 0 ? String.format("%.1f", (double) asetDigunakan / totalAset * 100) : "0";
-        String availPercent = totalAset > 0 ? String.format("%.1f", (double) asetTersedia / totalAset * 100) : "0";
+        String aktifPercent = totalAset > 0 ? String.format("%.1f", (double) asetAktif / totalAset * 100) : "0";
+        String nonAktifPercent = totalAset > 0 ? String.format("%.1f", (double) asetNonAktif / totalAset * 100) : "0";
         String rusakPercent = totalAset > 0 ? String.format("%.1f", (double) asetRusak / totalAset * 100) : "0";
 
         List<CardData> cards = List.of(
                 new CardData("Total Aset", String.valueOf(totalAset), "unit di seluruh sistem", "🧾"),
-                new CardData("Sedang Digunakan", String.valueOf(asetDigunakan), usedPercent + "% dari total", "✅"),
-                new CardData("Tersedia", String.valueOf(asetTersedia), availPercent + "% dari total", "📦"),
+                new CardData("Aktif", String.valueOf(asetAktif), aktifPercent + "% dari total", "✅"),
+                new CardData("Non Aktif", String.valueOf(asetNonAktif), nonAktifPercent + "% dari total", "📦"),
                 new CardData("Rusak", String.valueOf(asetRusak), rusakPercent + "% dari total", "⚠")
         );
 
@@ -136,8 +136,8 @@ public class RecapitulationView extends VBox {
         for (String jenis : JENIS_ASET_LIST) {
             long total = allAssets.stream().filter(a -> a.getJenisAset().equalsIgnoreCase(jenis)).count();
             long dihapus = allAssets.stream().filter(a -> a.getJenisAset().equalsIgnoreCase(jenis) &&
-                    (a.getStatus().equalsIgnoreCase("Diajukan Hapus") || a.isDeleted())).count();
-            long tercatatSakti = total - dihapus; // Asumsi Sakti = Aktif
+                    a.getStatus().equalsIgnoreCase("Non Aktif")).count();
+            long tercatatSakti = total - dihapus; // Tercatat Sakti = Jumlah - Non Aktif
 
             if (total > 0) {
                 Map<String, String> row = new HashMap<>();
@@ -167,6 +167,11 @@ public class RecapitulationView extends VBox {
 
             if (assetsByJenis.isEmpty()) continue;
 
+            // Hitung Tercatat Sakti untuk jenis ini
+            long total = assetsByJenis.size();
+            long nonAktif = assetsByJenis.stream().filter(a -> a.getStatus().equalsIgnoreCase("Non Aktif")).count();
+            long tercatatSakti = total - nonAktif;
+
             long habisMasaPakai = assetsByJenis.stream().filter(a ->
                     ChronoUnit.YEARS.between(a.getTanggalPerolehan(), now) >= 4).count();
 
@@ -175,8 +180,10 @@ public class RecapitulationView extends VBox {
                 return years >= 3 && years < 4;
             }).count();
 
-            long bersih = assetsByJenis.stream().filter(a -> a.getKondisi().equalsIgnoreCase("Baik")).count();
-            long totalBersih = assetsByJenis.size();
+            // Bersih = Tercatat Sakti - Habis Masa Pakai
+            long bersih = tercatatSakti - habisMasaPakai;
+            // Total Bersih = Bersih - Akan Habis < 1 Tahun
+            long totalBersih = bersih - akanHabis1Thn;
 
             Map<String, String> row = new HashMap<>();
             row.put("Jenis Aset", jenis);
@@ -196,30 +203,35 @@ public class RecapitulationView extends VBox {
     private Node createRekapPemakaianTable() {
         List<Asset> allAssets = dataService.getAssets();
         ObservableList<Map<String, String>> data = FXCollections.observableArrayList();
-        LocalDate now = LocalDate.now();
 
         for (String jenis : JENIS_ASET_LIST) {
             List<Asset> assetsByJenis = allAssets.stream()
-                    .filter(a -> a.getJenisAset().equalsIgnoreCase(jenis) && a.getStatus().equalsIgnoreCase("Digunakan"))
+                    .filter(a -> a.getJenisAset().equalsIgnoreCase(jenis) && a.getStatus().equalsIgnoreCase("Aktif"))
                     .toList();
 
             if (assetsByJenis.isEmpty()) continue;
 
-            long habisMasa = assetsByJenis.stream().filter(a ->
-                    ChronoUnit.YEARS.between(a.getTanggalPerolehan(), now) >= 4).count();
+            // Sudah Hapus = aset yang statusnya Non Aktif (sudah dihapus dari pemakaian)
+            long sudahHapus = allAssets.stream()
+                    .filter(a -> a.getJenisAset().equalsIgnoreCase(jenis) && a.getStatus().equalsIgnoreCase("Non Aktif"))
+                    .count();
 
-            long belumHabis = assetsByJenis.size() - habisMasa;
+            // Belum Hapus = aset yang masih aktif dipakai
+            long belumHapus = assetsByJenis.size();
+
+            // Total Dipakai = Belum Hapus + Sudah Hapus
+            long totalDipakai = belumHapus + sudahHapus;
 
             Map<String, String> row = new HashMap<>();
             row.put("Jenis Aset", jenis);
-            row.put("Dipakai Belum Habis", String.valueOf(belumHabis));
-            row.put("Dipakai Sudah Habis", String.valueOf(habisMasa));
-            row.put("Total Dipakai", String.valueOf(assetsByJenis.size()));
+            row.put("Dipakai Belum Hapus", String.valueOf(belumHapus));
+            row.put("Dipakai Sudah Hapus", String.valueOf(sudahHapus));
+            row.put("Total Dipakai", String.valueOf(totalDipakai));
             data.add(row);
         }
 
         return createDynamicTable("Rekap Pemakaian", data,
-                new String[]{"Jenis Aset", "Dipakai Belum Habis", "Dipakai Sudah Habis", "Total Dipakai"},
+                new String[]{"Jenis Aset", "Dipakai Belum Hapus", "Dipakai Sudah Hapus", "Total Dipakai"},
                 new int[]{200, 180, 180, 150});
     }
 
@@ -236,8 +248,8 @@ public class RecapitulationView extends VBox {
             if (assetsByJenis.isEmpty()) continue;
 
             long rusakBerat = assetsByJenis.stream().filter(a -> a.getKondisi().equalsIgnoreCase("Rusak Berat")).count();
-            long gudang = assetsByJenis.stream().filter(a -> a.getStatus().equalsIgnoreCase("Tersedia")).count();
-            long hilang = 0;
+            long gudang = assetsByJenis.stream().filter(a -> a.getKondisi().equalsIgnoreCase("Gudang")).count();
+            long hilang = assetsByJenis.stream().filter(a -> a.getKondisi().equalsIgnoreCase("Hilang")).count();
 
             Map<String, String> row = new HashMap<>();
             row.put("Jenis Aset", jenis);
@@ -260,7 +272,7 @@ public class RecapitulationView extends VBox {
         for (String jenis : JENIS_ASET_LIST) {
             List<Asset> usedAssets = allAssets.stream()
                     .filter(a -> a.getJenisAset().equalsIgnoreCase(jenis) &&
-                            a.getStatus().equalsIgnoreCase("Digunakan") &&
+                            a.getStatus().equalsIgnoreCase("Aktif") &&
                             isNumeric(a.getKeterangan()))
                     .toList();
 
@@ -280,7 +292,7 @@ public class RecapitulationView extends VBox {
             data.add(row);
         }
 
-        return createDynamicTable("Rekap Pemegangan", data,
+        return createDynamicTable("Rekap Pemakaian", data,
                 new String[]{"Jenis Aset", "Tidak Ganda", "Ganda", "Total Pemegangan"},
                 new int[]{200, 150, 150, 180});
     }
@@ -307,30 +319,30 @@ public class RecapitulationView extends VBox {
                 new int[]{250, 150, 150, 150});
     }
 
-    // --- LOGIKA TABEL 7: PENGGUNAAN ASET PER SUBDIT DAN JENIS (MATRIKS) ---
-    private Node createUsageBySubditTable() {
+    // --- LOGIKA TABEL 7: Pemakaian BMN (MATRIKS) ---
+    private Node createUsageBySubdirTable() {
         List<Asset> allAssets = dataService.getAssets();
-        List<String> subdirs = List.of("Subdit Teknis", "Subdit Operasional", "Subdit Keamanan", "Subdit SDM");
+        List<String> subdirs = List.of("PPTAU", "AUNB", "AUNTB", "KAU", "SILAU", "Tata Usaha", "Direktur");
         ObservableList<Map<String, String>> data = FXCollections.observableArrayList();
 
-        List<String> displayTypes = List.of("Laptop", "Printer", "Meja", "Kursi", "AC", "Proyektor");
+        List<String> displayTypes = List.of("Mobil", "Motor", "Scanner", "PC", "Laptop", "Tablet", "Printer", "Speaker", "Parabot");
 
-        for (String subdit : subdirs) {
+        for (String Subdir : subdirs) {
             Map<String, String> row = new HashMap<>();
-            row.put("Subdirektorat", subdit);
+            row.put("Subdirektorat", Subdir);
 
-            long totalSubdit = 0;
+            long totalSubdir = 0;
 
             for (String jenis : displayTypes) {
                 long count = allAssets.stream()
-                        .filter(a -> a.getSubdit() != null &&
-                                a.getSubdit().equalsIgnoreCase(subdit) &&
+                        .filter(a -> a.getSubdir() != null &&
+                                a.getSubdir().equalsIgnoreCase(Subdir) &&
                                 a.getJenisAset().equalsIgnoreCase(jenis))
                         .count();
                 row.put(jenis, String.valueOf(count));
-                totalSubdit += count;
+                totalSubdir += count;
             }
-            row.put("Total", String.valueOf(totalSubdit));
+            row.put("Total", String.valueOf(totalSubdir));
             data.add(row);
         }
 
@@ -343,7 +355,7 @@ public class RecapitulationView extends VBox {
         widths[0] = 200;
         for(int i=1; i<widths.length; i++) widths[i] = 80;
 
-        return createDynamicTable("Penggunaan Aset per Subdirektorat dan Jenis", data,
+        return createDynamicTable("Pemakaian BMN", data,
                 colList.toArray(new String[0]), widths);
     }
 
@@ -353,12 +365,12 @@ public class RecapitulationView extends VBox {
         List<Asset> allAssets = dataService.getAssets();
         ObservableList<Map<String, String>> data = FXCollections.observableArrayList();
 
-        List<String> displayTypes = List.of("Laptop", "Printer", "Meja", "Kursi", "AC", "Proyektor");
+        List<String> displayTypes = List.of("Mobil", "Motor", "Scanner", "PC", "Laptop", "Tablet", "Printer", "Speaker", "Parabot");
 
         for (Employee emp : employees) {
             Map<String, String> row = new HashMap<>();
             row.put("Nama Pegawai", emp.getNamaLengkap());
-            row.put("Unit", emp.getUnit());
+            row.put("Subdir", emp.getUnit());
 
             long totalEmp = 0;
 
@@ -379,7 +391,7 @@ public class RecapitulationView extends VBox {
 
         List<String> colList = new ArrayList<>();
         colList.add("Nama Pegawai");
-        colList.add("Unit");
+        colList.add("Subdir");
         colList.addAll(displayTypes);
         colList.add("Total");
 
@@ -418,7 +430,7 @@ public class RecapitulationView extends VBox {
                     new SimpleStringProperty(cellData.getValue().getOrDefault(colName, "0"))
             );
 
-            if (idx > 0 && !colName.equals("Unit") && !colName.equals("Subdirektorat")) {
+            if (idx > 0 && !colName.equals("Subdir") && !colName.equals("Subdirektorat")) {
                 col.setStyle("-fx-alignment: CENTER-RIGHT;");
             }
 

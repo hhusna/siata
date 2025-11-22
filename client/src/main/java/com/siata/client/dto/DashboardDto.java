@@ -6,8 +6,8 @@ public class DashboardDto {
     private long asetRusakBerat;
     private long permohonanPending;
     private long pengajuanPending;
-    private long asetTersedia;
-    private long asetDigunakan;
+    private long asetNonAktif;
+    private long asetAktif;
     private long asetDiajukanHapus;
     private long totalAsetDihapus;
 
@@ -54,20 +54,20 @@ public class DashboardDto {
         this.pengajuanPending = pengajuanPending;
     }
 
-    public long getAsetTersedia() {
-        return asetTersedia;
+    public long getAsetNonAktif() {
+        return asetNonAktif;
     }
 
-    public void setAsetTersedia(long asetTersedia) {
-        this.asetTersedia = asetTersedia;
+    public void setAsetNonAktif(long asetNonAktif) {
+        this.asetNonAktif = asetNonAktif;
     }
 
-    public long getAsetDigunakan() {
-        return asetDigunakan;
+    public long getAsetAktif() {
+        return asetAktif;
     }
 
-    public void setAsetDigunakan(long asetDigunakan) {
-        this.asetDigunakan = asetDigunakan;
+    public void setAsetAktif(long asetAktif) {
+        this.asetAktif = asetAktif;
     }
 
     public long getAsetDiajukanHapus() {

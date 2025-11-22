@@ -62,6 +62,14 @@ public class AssetApprovalView extends VBox {
 
     private VBox createApprovalSection(String title, TableView<AssetRequest> tableView,
                                        ObservableList<AssetRequest> data, boolean isPermohonan) {
+        VBox section = new VBox(16);
+        section.setSpacing(16);
+
+        // Section Header
+        Label sectionTitle = new Label(title);
+        sectionTitle.getStyleClass().add("section-title");
+        sectionTitle.setStyle("-fx-font-size: 18px; -fx-font-weight: 600; -fx-text-fill: #2c3e50;");
+
         VBox container = new VBox(16);
         container.setPadding(new Insets(20));
         container.getStyleClass().add("table-container");
@@ -106,7 +114,9 @@ public class AssetApprovalView extends VBox {
         tableView.getColumns().setAll(List.of(nomorCol, pemohonCol, jenisCol, jumlahCol, tanggalCol, statusCol, aksiCol, keputusanCol));
 
         container.getChildren().addAll(tableView);
-        return container;
+        
+        section.getChildren().addAll(sectionTitle, container);
+        return section;
     }
 
     private TableCell<AssetRequest, String> createStatusCell() {
@@ -258,7 +268,7 @@ public class AssetApprovalView extends VBox {
         addDetailRow(grid, 0, "No. " + ("Permohonan".equals(request.getTipe()) ? "Permohonan" : "Pengajuan"), request.getNoPermohonan());
         addDetailRow(grid, 1, "Pemohon", request.getPemohon());
         addDetailRow(grid, 2, "Tanggal", request.getTanggal() != null ? request.getTanggal().format(DateTimeFormatter.ofPattern("d/M/yyyy")) : "-");
-        addDetailRow(grid, 3, "Unit", request.getUnit());
+        addDetailRow(grid, 3, "Subdir", request.getUnit());
         addDetailRow(grid, 4, "Jenis Aset", request.getJenisAset());
         addDetailRow(grid, 5, "Jumlah", String.valueOf(request.getJumlah()) + " unit");
         addDetailRow(grid, 6, "Prioritas", request.getPrioritas());

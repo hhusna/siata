@@ -1,6 +1,8 @@
 package siata.siata.controller;
 
+import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
+import siata.siata.dto.StatusUpdateDTO;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
@@ -11,7 +13,6 @@ import siata.siata.entity.User;
 import siata.siata.service.PermohonanAsetService;
 
 import java.util.List;
-import java.util.Map;
 
 @RestController
 @RequestMapping("/api/permohonan")
@@ -26,22 +27,22 @@ public class PermohonanAsetController {
     }
 
     @GetMapping
-//    @PreAuthorize("hasAnyRole('TIM_MANAJEMEN_ASET', 'PPBJ', 'PPK', 'DIREKTUR')")
+    @PreAuthorize("hasAnyRole('TIM_MANAJEMEN_ASET', 'PPBJ', 'PPK', 'DIREKTUR')")
     public List<PermohonanAset> getAll() {
         return permohonanAsetService.getAll();
     }
 
     @PostMapping
-//    @PreAuthorize("hasRole('TIM_MANAJEMEN_ASET')")
-    public PermohonanAset create(@RequestBody PermohonanAset permohonanAset, Authentication authentication) {
+    @PreAuthorize("hasRole('TIM_MANAJEMEN_ASET')")
+    public PermohonanAset create(@Valid @RequestBody PermohonanAset permohonanAset, Authentication authentication) {
         return permohonanAsetService.save(permohonanAset, getPegawaiFromAuth(authentication));
     }
 
     @PatchMapping("/{id}/status")
-//    @PreAuthorize("hasAnyRole('PPBJ', 'PPK', 'DIREKTUR')")
-    public ResponseEntity<PermohonanAset> updateStatus(@PathVariable Long id, @RequestBody Map<String, String> statusUpdate, Authentication authentication) {
+    @PreAuthorize("hasAnyRole('PPBJ', 'PPK', 'DIREKTUR')")
+    public ResponseEntity<PermohonanAset> updateStatus(@PathVariable Long id, @Valid @RequestBody StatusUpdateDTO statusUpdate, Authentication authentication) {
         try {
-            String status = statusUpdate.get("statusPersetujuan");
+            String status = statusUpdate.getStatus();
             return ResponseEntity.ok(permohonanAsetService.updateStatus(id, status, getPegawaiFromAuth(authentication)));
         } catch (Exception e) {
             return ResponseEntity.notFound().build();
@@ -49,15 +50,15 @@ public class PermohonanAsetController {
     }
 
     @DeleteMapping("/{id}")
-//    @PreAuthorize("hasRole('TIM_MANAJEMEN_ASET')")
+    @PreAuthorize("hasRole('TIM_MANAJEMEN_ASET')")
     public ResponseEntity<Void> delete(@PathVariable Long id, Authentication authentication) {
         permohonanAsetService.delete(id, getPegawaiFromAuth(authentication));
         return ResponseEntity.ok().build();
     }
 
     @PutMapping("/{id}")
-//    @PreAuthorize("hasRole('TIM_MANAJEMEN_ASET')")
-    public ResponseEntity<PermohonanAset> update(@PathVariable Long id, @RequestBody PermohonanAset permohonanDetails, Authentication authentication) {
+    @PreAuthorize("hasRole('TIM_MANAJEMEN_ASET')")
+    public ResponseEntity<PermohonanAset> update(@PathVariable Long id, @Valid @RequestBody PermohonanAset permohonanDetails, Authentication authentication) {
         return permohonanAsetService.getById(id)
                 .map(existing -> {
                     // Update field sesuai ERD

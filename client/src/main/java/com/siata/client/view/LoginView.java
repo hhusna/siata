@@ -68,6 +68,16 @@ public class LoginView extends StackPane {
 
 
         loginButton.setOnAction(event -> {
+            // Validasi input tidak boleh kosong
+            if (usernameField.getText() == null || usernameField.getText().trim().isEmpty()) {
+                System.err.println("Username tidak boleh kosong");
+                return;
+            }
+            if (passwordField.getText() == null || passwordField.getText().isEmpty()) {
+                System.err.println("Password tidak boleh kosong");
+                return;
+            }
+            
             try {
                 userApi.login(usernameField.getText(), passwordField.getText());
                 LoginSession.setPegawaiDto(userApi.getPegawaionSession());

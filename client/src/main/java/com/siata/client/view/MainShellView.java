@@ -160,10 +160,6 @@ public class MainShellView extends BorderPane {
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
 
-        Button notification = new Button("🔔");
-        notification.getStyleClass().add("header-icon");
-        notification.setOnAction(e -> showNotifications());
-
         VBox userBox = new VBox(2);
         userBox.setAlignment(Pos.CENTER_RIGHT);
 
@@ -181,7 +177,7 @@ public class MainShellView extends BorderPane {
         avatar.getStyleClass().add("header-avatar");
         avatar.setOnAction(e -> showProfileMenu(avatar));
 
-        header.getChildren().addAll(menuButton, titleBox, spacer, notification, userBox, avatar);
+        header.getChildren().addAll(menuButton, titleBox, spacer, userBox, avatar);
         return header;
     }
 
@@ -265,33 +261,6 @@ public class MainShellView extends BorderPane {
         }
     }
 
-    private void showNotifications() {
-        javafx.scene.control.Alert alert = new javafx.scene.control.Alert(javafx.scene.control.Alert.AlertType.INFORMATION);
-        alert.setTitle("Notifikasi");
-        alert.setHeaderText("Notifikasi Terbaru");
-        
-        // Get recent activities/notifications
-        StringBuilder notifications = new StringBuilder();
-        notifications.append("🔔 Anda memiliki beberapa notifikasi:\n\n");
-        
-        // Example notifications - bisa diganti dengan data real dari database
-        if (LoginSession.getRole() != null && (LoginSession.getRole().equals("PPBJ") || 
-            LoginSession.getRole().equals("PPK") || LoginSession.getRole().equals("DIREKTUR"))) {
-            notifications.append("• Ada permohonan aset yang menunggu persetujuan\n");
-            notifications.append("• Ada pengajuan aset yang menunggu persetujuan\n");
-        }
-        
-        if (LoginSession.getRole() != null && LoginSession.getRole().equals("TIM_MANAJEMEN_ASET")) {
-            notifications.append("• 3 aset baru ditambahkan hari ini\n");
-            notifications.append("• 2 permohonan menunggu diproses\n");
-        }
-        
-        notifications.append("\nKlik OK untuk menutup.");
-        
-        alert.setContentText(notifications.toString());
-        alert.showAndWait();
-    }
-
     private void showProfileMenu(Button avatar) {
         javafx.stage.Stage popupStage = new javafx.stage.Stage();
         popupStage.initStyle(javafx.stage.StageStyle.UNDECORATED);
@@ -343,18 +312,7 @@ public class MainShellView extends BorderPane {
             popupStage.close();
         });
         
-        Button logoutBtn = new Button("🚪 Logout");
-        logoutBtn.setMaxWidth(Double.MAX_VALUE);
-        logoutBtn.setAlignment(Pos.CENTER_LEFT);
-        logoutBtn.setStyle("-fx-background-color: transparent; -fx-padding: 8; -fx-cursor: hand; -fx-text-fill: #dc2626;");
-        logoutBtn.setOnMouseEntered(e -> logoutBtn.setStyle("-fx-background-color: #fef2f2; -fx-padding: 8; -fx-cursor: hand; -fx-background-radius: 4; -fx-text-fill: #dc2626;"));
-        logoutBtn.setOnMouseExited(e -> logoutBtn.setStyle("-fx-background-color: transparent; -fx-padding: 8; -fx-cursor: hand; -fx-text-fill: #dc2626;"));
-        logoutBtn.setOnAction(e -> {
-            popupStage.close();
-            onLogout.ifPresent(Runnable::run);
-        });
-        
-        popup.getChildren().addAll(userInfo, separator, viewProfileBtn, settingsBtn, logoutBtn);
+        popup.getChildren().addAll(userInfo, separator, viewProfileBtn, settingsBtn);
         
         // Position popup below avatar button
         javafx.geometry.Bounds bounds = avatar.localToScreen(avatar.getBoundsInLocal());
@@ -447,7 +405,7 @@ public class MainShellView extends BorderPane {
         javafx.scene.control.Alert alert = new javafx.scene.control.Alert(javafx.scene.control.Alert.AlertType.INFORMATION);
         alert.setTitle("Pengaturan");
         alert.setHeaderText("Pengaturan Aplikasi");
-        alert.setContentText("Fitur pengaturan akan segera tersedia.\n\nAnda dapat mengatur:\n• Preferensi tampilan\n• Notifikasi\n• Keamanan akun\n• Dan lainnya");
+        alert.setContentText("Fitur pengaturan akan segera tersedia.\n\nAnda dapat mengatur:\n• Preferensi tampilan\n• Keamanan akun\n• Dan lainnya");
         alert.showAndWait();
     }
 }

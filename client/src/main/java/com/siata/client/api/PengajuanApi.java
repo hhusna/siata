@@ -3,6 +3,7 @@ package com.siata.client.api;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import com.siata.client.config.ApiConfig;
 import com.siata.client.dto.PengajuanDto;
 import com.siata.client.session.LoginSession;
 
@@ -25,7 +26,7 @@ public class PengajuanApi {
                     .connectTimeout(Duration.ofSeconds(10))
                     .build();
 
-            String targetUrl = "http://localhost:8080/api/pengajuan/"+Long.toString(idPengajuan);
+            String targetUrl = ApiConfig.getPengajuanUrl() + "/" + idPengajuan;
 
             HttpRequest request = HttpRequest.newBuilder()
                     .uri(URI.create(targetUrl))
@@ -64,7 +65,7 @@ public class PengajuanApi {
                     .connectTimeout(Duration.ofSeconds(10))
                     .build();
 
-            String targetUrl = "http://localhost:8080/api/pengajuan/"+Long.toString(idPengajuan)+"/status";
+            String targetUrl = ApiConfig.getPengajuanUrl() + "/" + idPengajuan + "/status";
 
             HttpRequest request = HttpRequest.newBuilder()
                     .uri(URI.create(targetUrl))
@@ -95,7 +96,7 @@ public class PengajuanApi {
                     .connectTimeout(Duration.ofSeconds(10))
                     .build();
 
-            String targetUrl = "http://localhost:8080/api/pengajuan";
+            String targetUrl = ApiConfig.getPengajuanUrl();
 
             HttpRequest request = HttpRequest.newBuilder()
                     .uri(URI.create(targetUrl))
@@ -129,7 +130,7 @@ public class PengajuanApi {
                     .connectTimeout(Duration.ofSeconds(10))
                     .build();
 
-            String targetUrl = "http://localhost:8080/api/pengajuan";
+            String targetUrl = ApiConfig.getPengajuanUrl();
 
             HttpRequest request = HttpRequest.newBuilder()
                     .uri(URI.create(targetUrl))
@@ -164,7 +165,7 @@ public class PengajuanApi {
                     .connectTimeout(Duration.ofSeconds(10))
                     .build();
 
-            String targetUrl = "http://localhost:8080/api/pengajuan/" + payload.getIdPengajuan();
+            String targetUrl = ApiConfig.getPengajuanUrl() + "/" + payload.getIdPengajuan();
 
             HttpRequest request = HttpRequest.newBuilder()
                     .uri(URI.create(targetUrl))

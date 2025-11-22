@@ -1,5 +1,6 @@
 package siata.siata.controller;
 
+import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -14,7 +15,7 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/aset")
-//@PreAuthorize("hasRole('TIM_MANAJEMEN_ASET')")
+@PreAuthorize("hasRole('TIM_MANAJEMEN_ASET')")
 public class AsetController {
 
     @Autowired
@@ -49,12 +50,12 @@ public class AsetController {
     }
 
     @PostMapping
-    public Aset createAset(@RequestBody Aset aset, Authentication authentication) {
+    public Aset createAset(@Valid @RequestBody Aset aset, Authentication authentication) {
         return asetService.saveAset(aset, getPegawaiFromAuth(authentication));
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<Aset> updateAset(@PathVariable Long id, @RequestBody Aset asetDetails, Authentication authentication) {
+    public ResponseEntity<Aset> updateAset(@PathVariable Long id, @Valid @RequestBody Aset asetDetails, Authentication authentication) {
         return asetService.getAsetById(id)
                 .map(aset -> {
                     // Update fields

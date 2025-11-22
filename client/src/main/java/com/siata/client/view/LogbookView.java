@@ -47,18 +47,23 @@ public class LogbookView extends VBox {
         TextField searchField = new TextField();
         searchField.setPromptText("Cari aktivitas...");
         searchField.setPrefWidth(300);
-        searchField.textProperty().addListener((obs, oldVal, newVal) -> filterActivities(newVal, null, null));
-        
-        ComboBox<String> jenisCombo = new ComboBox<>();
-        jenisCombo.getItems().addAll("Semua Jenis", "Create", "Approve", "Reject", "Delete", "Update");
-        jenisCombo.setValue("Semua Jenis");
-        jenisCombo.setPrefWidth(150);
-        jenisCombo.setOnAction(e -> filterActivities(searchField.getText(), jenisCombo.getValue(), null));
         
         ComboBox<String> userCombo = new ComboBox<>();
         userCombo.getItems().addAll("Semua User", "admin", "Admin PPBJ");
         userCombo.setValue("Semua User");
         userCombo.setPrefWidth(150);
+        
+        ComboBox<String> jenisCombo = new ComboBox<>();
+        jenisCombo.getItems().addAll("Semua Jenis", "CREATE_ASET", "UPDATE_ASET", "DELETE_ASET", 
+                                      "CREATE_PEGAWAI", "UPDATE_PEGAWAI", "DELETE_PEGAWAI",
+                                      "CREATE_PERMOHONAN", "UPDATE_PERMOHONAN", "DELETE_PERMOHONAN", "UPDATE_STATUS_PERMOHONAN",
+                                      "CREATE_PENGAJUAN", "UPDATE_PENGAJUAN", "DELETE_PENGAJUAN", "UPDATE_STATUS_PENGAJUAN",
+                                      "AUTO_LELANG", "HARD_DELETE_ASET");
+        jenisCombo.setValue("Semua Jenis");
+        jenisCombo.setPrefWidth(180);
+        jenisCombo.setOnAction(e -> filterActivities(searchField.getText(), jenisCombo.getValue(), userCombo.getValue()));
+        
+        searchField.textProperty().addListener((obs, oldVal, newVal) -> filterActivities(newVal, jenisCombo.getValue(), userCombo.getValue()));
         userCombo.setOnAction(e -> filterActivities(searchField.getText(), jenisCombo.getValue(), userCombo.getValue()));
         
         filterBar.getChildren().addAll(searchField, jenisCombo, userCombo);

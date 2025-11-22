@@ -11,8 +11,8 @@ public class DashboardStatsDTO {
     private long permohonanPending;
     private long pengajuanPending;
 
-    private long asetTersedia;
-    private long asetDigunakan;
+    private long asetNonAktif;
+    private long asetAktif;
     private long asetDiajukanHapus;
     private long totalAsetDihapus;
 

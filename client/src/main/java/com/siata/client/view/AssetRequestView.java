@@ -54,7 +54,7 @@ public class AssetRequestView extends VBox {
         VBox permohonanSection = createTableSection("Permohonan Aset", permohonanTable, permohonanList, true);
 
         // Daftar Pengajuan Aset Section
-        VBox pengajuanSection = createTableSection("Daftar Pengajuan Aset", pengajuanTable, pengajuanList, false);
+        VBox pengajuanSection = createTableSection("Pengajuan Aset", pengajuanTable, pengajuanList, false);
 
         getChildren().addAll(permohonanSection, pengajuanSection);
     }
@@ -84,19 +84,26 @@ public class AssetRequestView extends VBox {
         VBox section = new VBox(16);
         section.setSpacing(16);
 
+        // Section Header
+        Label sectionTitle = new Label(title);
+        sectionTitle.getStyleClass().add("section-title");
+        sectionTitle.setStyle("-fx-font-size: 18px; -fx-font-weight: 600; -fx-text-fill: #2c3e50;");
+
         // Search and filter bar
         HBox filterBar = new HBox(12);
         filterBar.setAlignment(Pos.CENTER_LEFT);
-
-        TextField searchField = new TextField();
-        searchField.setPromptText("Cari berdasarkan nomor, pemohon, atau jenis aset...");
-        searchField.setPrefWidth(400);
-        searchField.textProperty().addListener((obs, oldVal, newVal) -> filterTable(newVal, list, isPermohonan));
 
         ComboBox<String> prioritasCombo = new ComboBox<>();
         prioritasCombo.getItems().addAll("Semua Prioritas", "Tinggi", "Sedang", "Rendah");
         prioritasCombo.setValue("Semua Prioritas");
         prioritasCombo.setPrefWidth(150);
+
+        TextField searchField = new TextField();
+        searchField.setPromptText("Cari berdasarkan nomor, pemohon, atau jenis aset...");
+        searchField.setPrefWidth(400);
+        searchField.textProperty().addListener((obs, oldVal, newVal) -> filterTable(newVal, list, isPermohonan, prioritasCombo.getValue()));
+
+        prioritasCombo.setOnAction(e -> filterTable(searchField.getText(), list, isPermohonan, prioritasCombo.getValue()));
 
         filterBar.getChildren().addAll(searchField, prioritasCombo);
 
@@ -122,7 +129,7 @@ public class AssetRequestView extends VBox {
             return new javafx.beans.property.SimpleStringProperty("-");
         });
 
-        TableColumn<AssetRequest, String> unitCol = new TableColumn<>("Unit");
+        TableColumn<AssetRequest, String> unitCol = new TableColumn<>("Subdir");
         unitCol.setCellValueFactory(new PropertyValueFactory<>("unit"));
 
         TableColumn<AssetRequest, String> jenisAsetCol = new TableColumn<>("Jenis Aset");
@@ -169,7 +176,7 @@ public class AssetRequestView extends VBox {
         tableContainer.getStyleClass().add("table-container");
         tableContainer.getChildren().addAll(filterBar, table);
 
-        section.getChildren().add(tableContainer);
+        section.getChildren().addAll(sectionTitle, tableContainer);
         return section;
     }
 
@@ -230,16 +237,16 @@ public class AssetRequestView extends VBox {
         }
 
         ComboBox<String> unitCombo = new ComboBox<>();
-        unitCombo.getItems().addAll("Subdit Teknis", "Subdit Operasional", "Subdit Keamanan", "Subdit SDM");
-        unitCombo.setPromptText("Pilih unit");
-        Label unitLabel = new Label("Unit / Subdirektorat");
+        unitCombo.getItems().addAll("PPTAU", "AUNB", "AUNTB", "KAU", "SILAU", "Tata Usaha", "Direktur");
+        unitCombo.setPromptText("Pilih subdirektorat");
+        Label unitLabel = new Label("Subdirektorat");
         unitLabel.getStyleClass().add("form-label");
         if (editableRequest != null) {
             unitCombo.setValue(editableRequest.getUnit());
         }
 
         ComboBox<String> jenisCombo = new ComboBox<>();
-        jenisCombo.getItems().addAll("Laptop", "Printer", "Meja", "Kursi", "AC", "Monitor", "Scanner", "Proyektor");
+        jenisCombo.getItems().addAll("Mobil", "Motor", "Scanner", "PC","Laptop", "Tablet","Printer","Speaker", "Parabot");
         jenisCombo.setPromptText("Pilih jenis aset");
         Label jenisLabel = new Label("Jenis Aset");
         jenisLabel.getStyleClass().add("form-label");
@@ -337,8 +344,16 @@ public class AssetRequestView extends VBox {
             showAlert("Masukkan nama " + ("Permohonan".equals(tipe) ? "pemohon" : "pengaju"));
             return false;
         }
+        if (nama.trim().length() < 3) {
+            showAlert("Nama " + ("Permohonan".equals(tipe) ? "pemohon" : "pengaju") + " minimal 3 karakter");
+            return false;
+        }
+        if (!nama.trim().matches("[a-zA-Z\\s]+")) {
+            showAlert("Nama " + ("Permohonan".equals(tipe) ? "pemohon" : "pengaju") + " hanya boleh berisi huruf dan spasi");
+            return false;
+        }
         if (unit == null || unit.trim().isEmpty()) {
-            showAlert("Pilih unit/subdirektorat");
+            showAlert("Pilih subdirektorat");
             return false;
         }
         if (jenis == null || jenis.trim().isEmpty()) {
@@ -349,6 +364,18 @@ public class AssetRequestView extends VBox {
             showAlert("Pilih tanggal permohonan/pengajuan");
             return false;
         }
+        if (prioritas == null || prioritas.trim().isEmpty()) {
+            showAlert("Pilih prioritas");
+            return false;
+        }
+        if (deskripsi != null && deskripsi.length() > 500) {
+            showAlert("Deskripsi maksimal 500 karakter");
+            return false;
+        }
+        if (tujuan != null && tujuan.length() > 500) {
+            showAlert("Tujuan maksimal 500 karakter");
+            return false;
+        }
 
         int jumlah;
         try {
@@ -357,13 +384,19 @@ public class AssetRequestView extends VBox {
                 showAlert("Jumlah harus lebih dari 0");
                 return false;
             }
+            if (jumlah > 1000) {
+                showAlert("Jumlah tidak boleh lebih dari 1000");
+                return false;
+            }
         } catch (NumberFormatException e) {
             showAlert("Jumlah harus berupa angka");
             return false;
         }
 
         if (editableRequest == null) {
-            String noPermohonan = "REQ-2025-" + String.format("%03d", dataService.getAssetRequests().size() + 1);
+            String noPermohonan = tipe.equals("Permohonan") 
+                ? dataService.generatePermohonanNumber() 
+                : dataService.generatePengajuanNumber();
             AssetRequest request = new AssetRequest(
                     noPermohonan,
                     tanggal,
@@ -398,20 +431,30 @@ public class AssetRequestView extends VBox {
         pengajuanList.setAll(dataService.getPengajuanAset());
     }
 
-    private void filterTable(String searchText, ObservableList<AssetRequest> list, boolean isPermohonan) {
+    private void filterTable(String searchText, ObservableList<AssetRequest> list, boolean isPermohonan, String prioritasFilter) {
         List<AssetRequest> source = isPermohonan ? dataService.getPermohonanAset() : dataService.getPengajuanAset();
 
-        if (searchText == null || searchText.isEmpty()) {
-            list.setAll(source);
-            return;
-        }
-
         list.setAll(source.stream()
-                .filter(request ->
-                        request.getNoPermohonan().toLowerCase().contains(searchText.toLowerCase()) ||
-                                request.getPemohon().toLowerCase().contains(searchText.toLowerCase()) ||
-                                request.getJenisAset().toLowerCase().contains(searchText.toLowerCase())
-                )
+                .filter(request -> {
+                    // Search filter
+                    if (searchText != null && !searchText.isEmpty()) {
+                        String search = searchText.toLowerCase();
+                        if (!request.getNoPermohonan().toLowerCase().contains(search) &&
+                            !request.getPemohon().toLowerCase().contains(search) &&
+                            !request.getJenisAset().toLowerCase().contains(search)) {
+                            return false;
+                        }
+                    }
+                    
+                    // Prioritas filter
+                    if (prioritasFilter != null && !prioritasFilter.equals("Semua Prioritas")) {
+                        if (!request.getPrioritas().equals(prioritasFilter)) {
+                            return false;
+                        }
+                    }
+                    
+                    return true;
+                })
                 .toList()
         );
     }
@@ -501,7 +544,7 @@ public class AssetRequestView extends VBox {
         addDetailRow(grid, 0, "No. " + ("Permohonan".equals(request.getTipe()) ? "Permohonan" : "Pengajuan"), request.getNoPermohonan());
         addDetailRow(grid, 1, "Pemohon", request.getPemohon());
         addDetailRow(grid, 2, "Tanggal", request.getTanggal() != null ? request.getTanggal().format(DateTimeFormatter.ofPattern("d/M/yyyy")) : "-");
-        addDetailRow(grid, 3, "Unit", request.getUnit());
+        addDetailRow(grid, 3, "Subdir", request.getUnit());
         addDetailRow(grid, 4, "Jenis Aset", request.getJenisAset());
         addDetailRow(grid, 5, "Jumlah", String.valueOf(request.getJumlah()) + " unit");
         addDetailRow(grid, 6, "Prioritas", request.getPrioritas());

@@ -1,7 +1,7 @@
 package com.siata.client.api;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.siata.client.MainApplication;
+import com.siata.client.config.ApiConfig;
 import com.siata.client.dto.PegawaiDto;
 import com.siata.client.dto.UserDto;
 import com.siata.client.response.LoginResponse;
@@ -12,7 +12,6 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
-import java.util.prefs.Preferences;
 
 public class UserApi {
 
@@ -27,7 +26,7 @@ public class UserApi {
                     .connectTimeout(Duration.ofSeconds(10))
                     .build();
 
-            String targetUrl = "http://localhost:8080/api/auth/pegawai";
+            String targetUrl = ApiConfig.getAuthUrl() + "/pegawai";
 
             HttpRequest request = HttpRequest.newBuilder()
                     .uri(URI.create(targetUrl))
@@ -66,7 +65,7 @@ public class UserApi {
                     .connectTimeout(Duration.ofSeconds(10))
                     .build();
 
-            String targetUrl = "http://localhost:8080/api/auth/login";
+            String targetUrl = ApiConfig.getAuthUrl() + "/login";
 
             HttpRequest request = HttpRequest.newBuilder()
                     .uri(URI.create(targetUrl))

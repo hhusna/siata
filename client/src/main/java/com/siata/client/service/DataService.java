@@ -27,13 +27,27 @@ public class DataService {
     private final List<AssetRequest> assetRequests = new ArrayList<>();
     private final List<Activity> activities = new ArrayList<>();
     private final AtomicInteger activityCounter = new AtomicInteger(1);
+    private final AtomicInteger permohonanCounter = new AtomicInteger(1);
+    private final AtomicInteger pengajuanCounter = new AtomicInteger(1);
 
     private DataService() {
-        initDummyData();
+        
     }
 
     public static DataService getInstance() {
         return instance;
+    }
+
+    public String generatePermohonanNumber() {
+        LocalDate now = LocalDate.now();
+        String dateStr = String.format("%04d%02d%02d", now.getYear(), now.getMonthValue(), now.getDayOfMonth());
+        return "PRM-" + dateStr + "-" + String.format("%03d", permohonanCounter.getAndIncrement());
+    }
+
+    public String generatePengajuanNumber() {
+        LocalDate now = LocalDate.now();
+        String dateStr = String.format("%04d%02d%02d", now.getYear(), now.getMonthValue(), now.getDayOfMonth());
+        return "PGJ-" + dateStr + "-" + String.format("%03d", pengajuanCounter.getAndIncrement());
     }
 
     public List<Asset> getAssets() {
@@ -49,11 +63,11 @@ public class DataService {
             assetValue.setKondisi(assetDto.getKondisi());
             assetValue.setStatus(assetDto.getStatusPemakaian());
             if (assetDto.getPegawaiDto() != null) {
-                assetValue.setKeterangan(Integer.toString(assetDto.getPegawaiDto().getNip()));
-                assetValue.setSubdit(assetDto.getPegawaiDto().getNamaSubdir());
+                assetValue.setKeterangan(Long.toString(assetDto.getPegawaiDto().getNip()));
+                assetValue.setSubdir(assetDto.getPegawaiDto().getNamaSubdir());
             } else {
                 assetValue.setKeterangan("-");
-                assetValue.setSubdit(assetDto.getSubdirektorat());
+                assetValue.setSubdir(assetDto.getSubdirektorat());
             }
 
             if (!(assetValue.getStatus().equals("Diajukan Hapus"))) {
@@ -65,11 +79,11 @@ public class DataService {
         return listAsset;
     }
 
-    public int getAssetBySubdit(String subdit) {
+    public int getAssetBySubdir(String Subdir) {
         List<Asset> assetList = getAssets();
         int count = 0;
         for (Asset asset : assetList) {
-            if (asset.getSubdit().equals(subdit)) {
+            if (asset.getSubdir().equals(Subdir)) {
                 count++;
             }
         }
@@ -94,7 +108,7 @@ public class DataService {
         AssetDtoForRequest assetToDto = new AssetDtoForRequest();
 
         // 1. Selalu set Subdirektorat dari input form (Dropdown)
-        assetToDto.setSubdirektorat(asset.getSubdit());
+        assetToDto.setSubdirektorat(asset.getSubdir());
 
         // 2. Cek validasi NIP (Keterangan)
         String nipInput = asset.getKeterangan();
@@ -106,7 +120,7 @@ public class DataService {
                     assetToDto.setPegawaiDto(pegawaiDto);
                     System.out.println("DataService: Pegawai ditemukan -> " + pegawaiDto.getNama());
                 } else {
-                    // Jika NIP diinput tapi tidak ditemukan di DB, biarkan null (aset subdit)
+                    // Jika NIP diinput tapi tidak ditemukan di DB, biarkan null (aset Subdir)
                     System.out.println("DataService: Pegawai tidak ditemukan di DB, set null.");
                     assetToDto.setPegawaiDto(null);
                 }
@@ -115,7 +129,7 @@ public class DataService {
                 assetToDto.setPegawaiDto(null);
             }
         } else {
-            // Jika kosong atau bukan angka, berarti aset milik Subdit (tanpa pemegang)
+            // Jika kosong atau bukan angka, berarti aset milik Subdir (tanpa pemegang)
             System.out.println("DataService: Input pemegang kosong/teks, set pegawai null.");
             assetToDto.setPegawaiDto(null);
         }
@@ -125,7 +139,7 @@ public class DataService {
         assetToDto.setJenisAset(asset.getJenisAset());
         assetToDto.setMerkAset(asset.getMerkBarang());
         assetToDto.setTanggalPerolehan(asset.getTanggalPerolehan());
-        assetToDto.setHargaAset((long) asset.getNilaiRupiah());
+        assetToDto.setHargaAset(asset.getNilaiRupiah());
         assetToDto.setKondisi(asset.getKondisi());
         assetToDto.setStatusPemakaian(asset.getStatus());
 
@@ -140,6 +154,61 @@ public class DataService {
         return str.matches("-?\\d+(\\.\\d+)?");
     }
 
+    /**
+     * Validasi NIP: Cek apakah NIP ada di database DAN sesuai dengan subdirektorat yang dipilih
+     * @param nip NIP yang akan divalidasi
+     * @param expectedSubdir Subdirektorat yang diharapkan
+     * @return true jika NIP valid dan sesuai subdir, false jika tidak
+     */
+    public boolean validateNipInSubdir(String nip, String expectedSubdir) {
+        if (nip == null || nip.trim().isEmpty() || expectedSubdir == null || expectedSubdir.trim().isEmpty()) {
+            return false;
+        }
+        
+        if (!isNumeric(nip)) {
+            return false;
+        }
+        
+        try {
+            PegawaiDto pegawaiDto = pegawaiApi.getPegawaiByNip(Long.parseLong(nip));
+            if (pegawaiDto == null || pegawaiDto.getNama() == null) {
+                // NIP tidak ditemukan di database
+                return false;
+            }
+            
+            // Cek apakah subdir pegawai sesuai dengan yang dipilih
+            String pegawaiSubdir = pegawaiDto.getNamaSubdir();
+            if (pegawaiSubdir == null || !pegawaiSubdir.equals(expectedSubdir)) {
+                // Subdir tidak sesuai
+                return false;
+            }
+            
+            return true;
+        } catch (Exception e) {
+            e.printStackTrace();
+            return false;
+        }
+    }
+
+    /**
+     * Validasi apakah NIP sudah ada di database (untuk tambah pegawai baru)
+     * @param nip NIP yang akan dicek
+     * @return true jika NIP sudah ada, false jika belum
+     */
+    public boolean isNipExists(String nip) {
+        if (nip == null || nip.trim().isEmpty() || !isNumeric(nip) || nip.length() != 18) {
+            return false;
+        }
+        
+        try {
+            PegawaiDto pegawaiDto = pegawaiApi.getPegawaiByNip(Long.parseLong(nip));
+            return pegawaiDto != null && pegawaiDto.getNama() != null;
+        } catch (Exception e) {
+            e.printStackTrace();
+            return false;
+        }
+    }
+
     public void updateAsset(Asset asset) {
         AssetDto assetDto = new AssetDto();
         assetDto.setIdAset(asset.getIdAset());
@@ -148,7 +217,7 @@ public class DataService {
         assetDto.setJenisAset(asset.getJenisAset());
         assetDto.setMerkAset(asset.getMerkBarang());
         assetDto.setTanggalPerolehan(asset.getTanggalPerolehan());
-        assetDto.setHargaAset((long) asset.getNilaiRupiah());
+        assetDto.setHargaAset(asset.getNilaiRupiah());
         assetDto.setKondisi(asset.getKondisi());
         assetDto.setStatusPemakaian(asset.getStatus());
         assetDto.setPegawaiDto(LoginSession.getPegawaiDto());
@@ -157,7 +226,10 @@ public class DataService {
     }
 
     public void deleteAsset(Asset asset) {
+        // Status dan kondisi tetap seperti sebelumnya (tidak diubah)
         asset.setDeleted(true);
+        // TIDAK mengubah status: tetap "Non Aktif"
+        // TIDAK mengubah kondisi: tetap sesuai kondisi asli
         assetApi.deleteAssetById(asset.getIdAset());
         logActivity("admin", "Delete", "Menghapus aset", "Aset #" + asset.getKodeAset(), asset.getNamaAset());
     }
@@ -181,11 +253,11 @@ public class DataService {
             assetValue.setStatus(assetDto.getStatusPemakaian());
 
             if (assetDto.getPegawaiDto() != null) {
-                assetValue.setKeterangan(Integer.toString(assetDto.getPegawaiDto().getNip()));
-                assetValue.setSubdit(assetDto.getPegawaiDto().getNamaSubdir());
+                assetValue.setKeterangan(Long.toString(assetDto.getPegawaiDto().getNip()));
+                assetValue.setSubdir(assetDto.getPegawaiDto().getNamaSubdir());
             } else {
                 assetValue.setKeterangan("-");
-                assetValue.setSubdit(assetDto.getSubdirektorat());
+                assetValue.setSubdir(assetDto.getSubdirektorat());
             }
 
             if (assetValue.getStatus().equals("Diajukan Hapus")) {
@@ -200,7 +272,7 @@ public class DataService {
         PegawaiDto[] pegawaiDto = pegawaiApi.getPegawai();
         List<Employee> employeeList = new ArrayList<>();
         for (PegawaiDto dto : pegawaiDto) {
-            Employee emp = new Employee(Integer.toString(dto.getNip()), dto.getNama(), dto.getJabatan(), dto.getNamaSubdir());
+            Employee emp = new Employee(Long.toString(dto.getNip()), dto.getNama(), dto.getJabatan(), dto.getNamaSubdir());
             employeeList.add(emp);
         }
         return employeeList;
@@ -230,11 +302,9 @@ public class DataService {
 
     public void addAssetRequest(AssetRequest request) {
         LogDto[] logDtos = logApi.getLog();
-        LogDto logDto = new LogDto();
 
         for (LogDto log : logDtos) {
             if (log.getPegawaiDto().getNama().equals(LoginSession.getPegawaiDto().getNama())) {
-                logDto = log;
                 break;
             }
         }
@@ -515,73 +585,5 @@ public class DataService {
         String id = "ACT-" + String.format("%06d", activityCounter.getAndIncrement());
         Activity activity = new Activity(id, user, actionType, description, target, details, timestamp);
         activities.add(activity);
-    }
-
-    private void initDummyData() {
-        if (!assets.isEmpty() || !employees.isEmpty() || !assetRequests.isEmpty()) {
-            return;
-        }
-
-        assets.addAll(List.of(
-                new Asset("AST-0001", "Laptop", "Dell Latitude 5420", "Budi Santoso", "Subdit Teknis",
-                        LocalDate.of(2023, 3, 12), 22000000, "Baik", "Digunakan"),
-                new Asset("AST-0002", "Meja", "Meja Kayu Jati", "Gudang A", "Subdit Operasional",
-                        LocalDate.of(2022, 11, 2), 7500000, "Sangat Baik", "Tersedia"),
-                new Asset("AST-0003", "Printer", "Canon G3000", "Siti Rahayu", "Subdit SDM",
-                        LocalDate.of(2024, 1, 6), 4500000, "Baik", "Digunakan"),
-                new Asset("AST-0004", "Monitor", "Dell 24\"", "Cadangan", "Subdit Teknis",
-                        LocalDate.of(2021, 8, 15), 3200000, "Cukup", "Tersedia")
-        ));
-
-        assets.get(3).setDeleted(true);
-
-        employees.addAll(List.of(
-                new Employee("199001152015011001", "Budi Santoso", "Kepala Subdit Teknis", "Subdit Teknis",
-                        List.of("Laptop Dell Latitude 5420", "Meja Kerja Kayu Jati")),
-                new Employee("199102182016041002", "Siti Rahayu", "Analis Operasional", "Subdit Operasional",
-                        List.of("Printer Canon G3000")),
-                new Employee("198912302014021003", "Ahmad Yani", "Staf Keamanan", "Subdit Keamanan",
-                        List.of()),
-                new Employee("199305052017051004", "Dewi Kusuma", "Analis SDM", "Subdit SDM",
-                        List.of("Monitor Dell 24\"", "Laptop Lenovo Thinkpad"))
-        ));
-
-        assetRequests.addAll(List.of(
-                new AssetRequest("REQ-2025-001", LocalDate.of(2025, 10, 1), "Budi Santoso", "Subdit Teknis",
-                        "Laptop", 2, "Tinggi", "Permohonan",
-                        "Laptop untuk tim analisis data", "Pengembangan sistem baru"),
-                new AssetRequest("REQ-2025-002", LocalDate.of(2025, 10, 3), "Siti Rahayu", "Subdit Operasional",
-                        "Printer", 1, "Sedang", "Permohonan",
-                        "Printer tambahan untuk tim operasional", "Cetak dokumen harian"),
-                new AssetRequest("REQ-2025-003", LocalDate.of(2025, 10, 5), "Ahmad Yani", "Subdit Keamanan",
-                        "Proyektor", 1, "Sedang", "Pengajuan",
-                        "Proyektor untuk pelatihan keamanan", "Pelatihan internal"),
-                new AssetRequest("REQ-2025-004", LocalDate.of(2025, 10, 2), "Dewi Kusuma", "Subdit SDM",
-                        "Kursi", 5, "Rendah", "Pengajuan",
-                        "Kursi ergonomis untuk tim SDM", "Kenyamanan kerja")
-        ));
-
-        assetRequests.get(0).setStatus("Disetujui Direktur");
-        assetRequests.get(1).setStatus("Disetujui PPK");
-        assetRequests.get(2).setStatus("Pending");
-        assetRequests.get(3).setStatus("Ditolak");
-
-        seedInitialActivities();
-    }
-
-    private void seedInitialActivities() {
-        if (!activities.isEmpty()) {
-            return;
-        }
-
-        LocalDateTime now = LocalDateTime.now();
-        logActivity("Admin PPBJ", "Approve", "Menyetujui permohonan aset", "Permohonan #REQ002",
-                "Permohonan Printer untuk keperluan administrasi", now.minusMinutes(5));
-        logActivity("Budi Santoso", "Create", "Mengajukan permohonan aset baru", "Permohonan #REQ003",
-                "Mengajukan permohonan Proyektor untuk ruang rapat", now.minusHours(1));
-        logActivity("Admin PPK", "Delete", "Menandai aset untuk dihapus", "Aset #AST005",
-                "AC Daikin 1.5 PK - Kondisi rusak berat", now.minusHours(2));
-        logActivity("Siti Rahayu", "Create", "Menambahkan aset baru", "Aset #AST007",
-                "Proyektor Epson untuk ruang rapat utama", now.minusHours(3));
     }
 }
