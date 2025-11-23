@@ -42,6 +42,20 @@ public class AuthController {
         return ResponseEntity.ok(pegawai);
     }
 
+    // Endpoint untuk debugging: cek user dan role yang sedang login
+    @GetMapping("/me")
+    public ResponseEntity<?> getCurrentUser(Authentication authentication) {
+        if (authentication == null) {
+            return ResponseEntity.status(401).body("No authentication found");
+        }
+        User user = (User) authentication.getPrincipal();
+        java.util.Map<String, Object> response = new java.util.HashMap<>();
+        response.put("username", user.getUsername());
+        response.put("role", user.getRole());
+        response.put("authorities", user.getAuthorities());
+        return ResponseEntity.ok(response);
+    }
+
     @PostMapping("/login")
     public ResponseEntity<?> authenticateUser(@Valid @RequestBody LoginRequest loginRequest) {
         Authentication authentication = authenticationManager.authenticate(

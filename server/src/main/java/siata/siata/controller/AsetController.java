@@ -78,12 +78,15 @@ public class AsetController {
 
     // FR 2.3: Tandai untuk penghapusan
     @PostMapping("/hapus/{id}")
-    public ResponseEntity<Void> tandaiUntukPenghapusan(@PathVariable Long id, Authentication authentication) {
+    public ResponseEntity<?> tandaiUntukPenghapusan(@PathVariable Long id, Authentication authentication) {
         try {
             asetService.tandaiUntukPenghapusan(id, getPegawaiFromAuth(authentication));
             return ResponseEntity.ok().build();
+        } catch (RuntimeException e) {
+            // Kembalikan error message yang jelas
+            return ResponseEntity.badRequest().body(e.getMessage());
         } catch (Exception e) {
-            return ResponseEntity.notFound().build();
+            return ResponseEntity.internalServerError().body("Terjadi kesalahan sistem: " + e.getMessage());
         }
     }
 

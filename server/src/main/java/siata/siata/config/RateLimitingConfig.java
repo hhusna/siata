@@ -42,6 +42,12 @@ public class RateLimitingConfig implements Filter {
         String requestURI = httpServletRequest.getRequestURI();
         String method = httpServletRequest.getMethod();
         
+        // Skip rate limiting untuk localhost/development
+        if (isLocalhost(clientIpAddress)) {
+            filterChain.doFilter(servletRequest, servletResponse);
+            return;
+        }
+        
         // Tentukan limit berdasarkan endpoint dan method
         int limit = determineLimit(requestURI, method);
         
@@ -63,23 +69,23 @@ public class RateLimitingConfig implements Filter {
     }
 
     private int determineLimit(String requestURI, String method) {
-        // Login/Auth endpoints: 5 request/menit (prevent brute force)
+        // Login/Auth endpoints: 10 request/menit (prevent brute force)
         if (requestURI.contains("/api/auth/login") || requestURI.contains("/api/auth/register")) {
-            return 5;
+            return 10;
         }
         
-        // Create/Update/Delete operations: 30 request/menit
-        if (method.equals("POST") || method.equals("PUT") || method.equals("DELETE")) {
-            return 30;
+        // Create/Update/Delete operations: 200 request/menit (lebih permisif untuk development)
+        if (method.equals("POST") || method.equals("PUT") || method.equals("DELETE") || method.equals("PATCH")) {
+            return 200;
         }
         
-        // Read operations (GET): 100 request/menit
+        // Read operations (GET): 500 request/menit
         if (method.equals("GET")) {
-            return 100;
+            return 500;
         }
         
-        // Default: 60 request/menit
-        return 60;
+        // Default: 300 request/menit
+        return 300;
     }
 
     private String getClientIP(HttpServletRequest request) {
@@ -88,5 +94,12 @@ public class RateLimitingConfig implements Filter {
             return request.getRemoteAddr();
         }
         return xfHeader.split(",")[0];
+    }
+    
+    private boolean isLocalhost(String ipAddress) {
+        return ipAddress.equals("127.0.0.1") || 
+               ipAddress.equals("0:0:0:0:0:0:0:1") || 
+               ipAddress.equals("::1") ||
+               ipAddress.equals("localhost");
     }
 }

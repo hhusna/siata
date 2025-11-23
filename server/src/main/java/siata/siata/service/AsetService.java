@@ -54,19 +54,18 @@ public class AsetService {
     public void tandaiUntukPenghapusan(Long id, Pegawai userPegawai) {
         Aset aset = asetRepository.findById(id).orElseThrow(() -> new RuntimeException("Aset not found"));
 
-        // Validasi: Aset dengan status "Aktif" tidak bisa dihapus
-        if ("Aktif".equals(aset.getStatusPemakaian())) {
-            throw new RuntimeException("Aset dengan status Aktif tidak dapat dihapus");
+        // Validasi 1: Hanya aset dengan status "Non Aktif" yang bisa dihapus
+        if (!"Non Aktif".equals(aset.getStatusPemakaian())) {
+            throw new RuntimeException("Hanya aset dengan status Non Aktif yang dapat dihapus");
         }
 
         // Simpan kondisi dan status asli sebelum penghapusan
         String kondisiAsli = aset.getKondisi();
         String statusAsli = aset.getStatusPemakaian();
 
-        // 1. TIDAK mengubah status dan kondisi - tetap seperti sebelumnya
-        // Status tetap "Non Aktif" dan kondisi tetap sesuai aslinya
-        // Hanya mencatat penghapusan di tabel PenghapusanAset
-        // asetRepository.save(aset); // Tidak perlu save karena tidak ada perubahan
+        // 1. Ubah status aset menjadi "Tandai Dihapus"
+        aset.setStatusPemakaian("Tandai Dihapus");
+        asetRepository.save(aset);
 
         // 2. Buat entri di tabel PenghapusanAset dengan kondisi asli
         PenghapusanAset hapus = new PenghapusanAset();
@@ -78,7 +77,8 @@ public class AsetService {
         hapus.setKondisi(kondisiAsli); // Gunakan kondisi asli
         penghapusanAsetRepository.save(hapus);
 
-        String isiLog = "Menandai aset untuk dihapus: " + aset.getKodeAset() + " (" + aset.getJenisAset() + ") - Status: " + statusAsli + ", Kondisi: " + kondisiAsli;
+        // 3. Log penghapusan
+        String isiLog = "Menandai aset untuk dihapus: " + aset.getKodeAset() + " (" + aset.getJenisAset() + ") - Status awal: " + statusAsli + ", Kondisi: " + kondisiAsli + " -> Status baru: Tandai Dihapus";
         logRiwayatService.saveLog(new LogRiwayat(userPegawai, aset, "DELETE_ASET", isiLog));
     }
 
