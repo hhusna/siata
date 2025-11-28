@@ -100,4 +100,17 @@ public class AsetController {
             return ResponseEntity.notFound().build();
         }
     }
+
+    // FR: Pembersih Data Duplikat
+    @GetMapping("/duplicates")
+    public ResponseEntity<List<Aset>> getDuplicates() {
+        List<Aset> duplicates = asetService.findDuplicates();
+        return ResponseEntity.ok(duplicates);
+    }
+
+    @PostMapping("/clean-duplicates")
+    public ResponseEntity<Integer> cleanDuplicates(Authentication authentication) {
+        int deletedCount = asetService.cleanDuplicates(getPegawaiFromAuth(authentication));
+        return ResponseEntity.ok(deletedCount);
+    }
 }

@@ -34,4 +34,12 @@ public interface AsetRepository extends JpaRepository<Aset, Long> {
 
     @Query("SELECT COUNT(a) FROM Aset a WHERE a.statusPemakaian = 'Siap Dilelang'")
     long countSiapDilelang();
+    
+    /**
+     * Menghitung aset siap dilelang:
+     * - Usia aset > 4 tahun (tanggal perolehan <= tanggalBatas)
+     * - DAN status pemakaian = "Non Aktif"
+     */
+    @Query("SELECT COUNT(a) FROM Aset a WHERE a.tanggalPerolehan <= :tanggalBatas AND a.statusPemakaian = 'Non Aktif'")
+    long countAsetSiapDilelang(@Param("tanggalBatas") LocalDate tanggalBatas);
 }

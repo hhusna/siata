@@ -8,6 +8,8 @@ import siata.siata.repository.PengajuanAsetRepository;
 import siata.siata.repository.PenghapusanAsetRepository;
 import siata.siata.repository.PermohonanAsetRepository;
 
+import java.time.LocalDate;
+
 @Service
 public class DashboardService {
 
@@ -27,7 +29,12 @@ public class DashboardService {
         DashboardStatsDTO stats = new DashboardStatsDTO();
 
         stats.setTotalAset(asetRepository.count());
-        stats.setAsetSiapDilelang(asetRepository.countSiapDilelang());
+        
+        // Aset siap dilelang: usia > 4 tahun DAN status = "Non Aktif"
+        // Hitung dari tabel aset langsung, tidak peduli sudah di penghapusan atau belum
+        LocalDate empatTahunLalu = LocalDate.now().minusYears(4);
+        stats.setAsetSiapDilelang(asetRepository.countAsetSiapDilelang(empatTahunLalu));
+        
         stats.setAsetRusakBerat(asetRepository.countByKondisi("Rusak Berat"));
 
         long permohonanPending = permohonanAsetRepository.countByStatusPersetujuan("Pending");

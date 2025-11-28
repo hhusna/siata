@@ -20,7 +20,7 @@ public class Asset {
     public Asset() {
         this.deleted = false;
         this.kondisi = "Baik";
-        this.status = "Tersedia";
+        this.status = "Aktif";
     }
 
     public Asset(String kodeAset, String jenisAset, String merkBarang, String keterangan,
@@ -132,6 +132,28 @@ public class Asset {
             return jenisAset + " " + merkBarang;
         }
         return jenisAset;
+    }
+
+    /**
+     * Menghitung kesiapan lelang aset
+     * Logika: Usia > 4 tahun DAN status = "Non Aktif" -> "Siap"
+     * @return "Siap" atau "Belum"
+     */
+    public String getKesiapanLelang() {
+        if (tanggalPerolehan == null || status == null) {
+            return "Belum";
+        }
+        
+        // Hitung usia aset dalam tahun
+        LocalDate now = LocalDate.now();
+        long usiaTahun = java.time.temporal.ChronoUnit.YEARS.between(tanggalPerolehan, now);
+        
+        // Cek kondisi: usia > 4 tahun DAN status = "Non Aktif"
+        if (usiaTahun > 4 && "Non Aktif".equals(status)) {
+            return "Siap";
+        }
+        
+        return "Belum";
     }
 }
 

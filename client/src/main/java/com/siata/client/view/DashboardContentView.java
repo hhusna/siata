@@ -65,7 +65,7 @@ public class DashboardContentView extends VBox {
         List<CardData> cards = List.of(
                 new CardData("Total Aset", "Semua jenis aset terdaftar",Long.toString(assetApi.getDashboard().getTotalAset()) , "🧱"),
                 new CardData("Siap Dilelang", "Aset dalam proses lelang", Long.toString(assetApi.getDashboard().getAsetSiapDilelang()), "♻"),
-                new CardData("Rusak Berat", "Memerlukan penghapusan", Long.toString(assetApi.getDashboard().getAsetDiajukanHapus()), "⚠"),
+                new CardData("Rusak Berat", "Memerlukan penghapusan", Long.toString(assetApi.getDashboard().getAsetRusakBerat()), "⚠"),
                 new CardData("Sedang Diproses", "Permohonan menunggu persetujuan", Long.toString(assetApi.getDashboard().getPermohonanPending()), "🔄")
         );
 
@@ -166,6 +166,9 @@ public class DashboardContentView extends VBox {
         pieData.put("Tata Usaha", dataService.getAssetBySubdir("Tata Usaha"));
         pieData.put("Direktur", dataService.getAssetBySubdir("Direktur"));
 
+        // Hitung total aset untuk menghitung persentase
+        int totalAset = pieData.values().stream().mapToInt(Integer::intValue).sum();
+
         PieChart pieChart = new PieChart();
         pieChart.setLabelsVisible(true);
         pieChart.setLegendVisible(false);
@@ -173,8 +176,12 @@ public class DashboardContentView extends VBox {
         pieChart.setStartAngle(90);
         pieChart.getStyleClass().add("dashboard-pie-chart");
 
-        pieData.forEach((label, value) ->
-                pieChart.getData().add(new PieChart.Data(label + " " + value + "%", value)));
+        // Hitung persentase yang akurat
+        pieData.forEach((label, value) -> {
+            double percentage = totalAset > 0 ? (value * 100.0 / totalAset) : 0;
+            String formattedPercentage = String.format("%.1f", percentage);
+            pieChart.getData().add(new PieChart.Data(label + " (" + value + ") " + formattedPercentage + "%", value));
+        });
 
         card.getChildren().add(pieChart);
         return card;

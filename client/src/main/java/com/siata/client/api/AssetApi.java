@@ -227,4 +227,34 @@ public class AssetApi {
 
         return 0;
     }
+
+    public int cleanDuplicates() {
+        try {
+            HttpClient client = HttpClient.newBuilder()
+                    .connectTimeout(Duration.ofSeconds(10))
+                    .build();
+
+            String targetUrl = ApiConfig.getAsetUrl() + "/clean-duplicates";
+
+            HttpRequest request = HttpRequest.newBuilder()
+                    .uri(URI.create(targetUrl))
+                    .header("Content-Type", "application/json")
+                    .header("Authorization", "Bearer " + jwt)
+                    .POST(HttpRequest.BodyPublishers.noBody())
+                    .build();
+
+            HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+
+            if (response.statusCode() == 200) {
+                System.out.println("AssetApi: Berhasil membersihkan duplikat!");
+                return Integer.parseInt(response.body());
+            } else {
+                System.out.println("AssetApi: Gagal membersihkan duplikat " + response.statusCode());
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        return 0;
+    }
 }

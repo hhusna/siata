@@ -46,7 +46,14 @@ public class AssetManagementView extends VBox {
         addButton.getStyleClass().add("primary-button");
         addButton.setOnAction(e -> showAssetForm(null));
 
-        getChildren().add(buildPageHeader(addButton));
+        Button cleanDuplicatesButton = new Button("🧹 Bersihkan Duplikat");
+        cleanDuplicatesButton.getStyleClass().add("secondary-button");
+        cleanDuplicatesButton.setOnAction(e -> cleanDuplicates());
+
+        HBox actionButtons = new HBox(12, addButton, cleanDuplicatesButton);
+        actionButtons.setAlignment(Pos.CENTER_RIGHT);
+
+        getChildren().add(buildPageHeader(actionButtons));
 
         // Search and filter bar
         HBox filterBar = new HBox(12);
@@ -64,16 +71,29 @@ public class AssetManagementView extends VBox {
         statusCombo.setPrefWidth(150);
         statusCombo.getStyleClass().add("filter-combo-box");
         
+        // Filter Kesiapan Lelang - hanya untuk TIM_MANAJEMEN_ASET
+        ComboBox<String> kesiapanLelangCombo = new ComboBox<>();
+        kesiapanLelangCombo.getItems().addAll("Semua Kesiapan", "Siap", "Belum");
+        kesiapanLelangCombo.setValue("Semua Kesiapan");
+        kesiapanLelangCombo.setPrefWidth(150);
+        kesiapanLelangCombo.getStyleClass().add("filter-combo-box");
+        
         TextField searchField = new TextField();
         searchField.setPromptText("Cari berdasarkan ID, nama, atau jenis aset...");
         searchField.setPrefWidth(200);
-        searchField.textProperty().addListener((obs, oldVal, newVal) -> filterTable(newVal, jenisCombo.getValue(), statusCombo.getValue()));
+        searchField.textProperty().addListener((obs, oldVal, newVal) -> filterTable(newVal, jenisCombo.getValue(), statusCombo.getValue(), kesiapanLelangCombo.getValue()));
         searchField.getStyleClass().add("filter-combo-box");
         
-        jenisCombo.setOnAction(e -> filterTable(searchField.getText(), jenisCombo.getValue(), statusCombo.getValue()));
-        statusCombo.setOnAction(e -> filterTable(searchField.getText(), jenisCombo.getValue(), statusCombo.getValue()));
+        jenisCombo.setOnAction(e -> filterTable(searchField.getText(), jenisCombo.getValue(), statusCombo.getValue(), kesiapanLelangCombo.getValue()));
+        statusCombo.setOnAction(e -> filterTable(searchField.getText(), jenisCombo.getValue(), statusCombo.getValue(), kesiapanLelangCombo.getValue()));
+        kesiapanLelangCombo.setOnAction(e -> filterTable(searchField.getText(), jenisCombo.getValue(), statusCombo.getValue(), kesiapanLelangCombo.getValue()));
         
-        filterBar.getChildren().addAll(searchField, jenisCombo, statusCombo);
+        // Tambahkan filter ke filterBar berdasarkan role
+        if ("TIM_MANAJEMEN_ASET".equals(com.siata.client.session.LoginSession.getRole())) {
+            filterBar.getChildren().addAll(searchField, jenisCombo, statusCombo, kesiapanLelangCombo);
+        } else {
+            filterBar.getChildren().addAll(searchField, jenisCombo, statusCombo);
+        }
 
         // Table
         table = new TableView<>();
@@ -118,6 +138,28 @@ public class AssetManagementView extends VBox {
         TableColumn<Asset, String> statusCol = new TableColumn<>("Status");
         statusCol.setCellValueFactory(new PropertyValueFactory<>("status"));
         
+        // Kolom Kesiapan Lelang - hanya untuk TIM_MANAJEMEN_ASET
+        TableColumn<Asset, String> kesiapanLelangCol = new TableColumn<>("Kesiapan Lelang");
+        kesiapanLelangCol.setCellValueFactory(new PropertyValueFactory<>("kesiapanLelang"));
+        kesiapanLelangCol.setCellFactory(column -> new TableCell<Asset, String>() {
+            @Override
+            protected void updateItem(String item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || item == null) {
+                    setText(null);
+                    setStyle("");
+                } else {
+                    setText(item);
+                    // Styling berdasarkan status
+                    if ("Siap".equals(item)) {
+                        setStyle("-fx-text-fill: #16a34a; -fx-font-weight: bold;");
+                    } else {
+                        setStyle("-fx-text-fill: #6b7280;");
+                    }
+                }
+            }
+        });
+        
         TableColumn<Asset, Void> aksiCol = new TableColumn<>("Aksi");
         aksiCol.setCellFactory(column -> new TableCell<Asset, Void>() {
             private final Button editButton = createIconButton("✏");
@@ -156,8 +198,14 @@ public class AssetManagementView extends VBox {
         });
         aksiCol.setPrefWidth(140);
         
-        table.getColumns().setAll(List.of(kodeCol, jenisCol, merkCol, keteranganCol, SubdirCol, tanggalCol,
-                rupiahCol, kondisiCol, statusCol, aksiCol));
+        // Tambahkan kolom ke tabel berdasarkan role
+        if ("TIM_MANAJEMEN_ASET".equals(com.siata.client.session.LoginSession.getRole())) {
+            table.getColumns().setAll(List.of(kodeCol, jenisCol, merkCol, keteranganCol, SubdirCol, tanggalCol,
+                    rupiahCol, kondisiCol, statusCol, kesiapanLelangCol, aksiCol));
+        } else {
+            table.getColumns().setAll(List.of(kodeCol, jenisCol, merkCol, keteranganCol, SubdirCol, tanggalCol,
+                    rupiahCol, kondisiCol, statusCol, aksiCol));
+        }
 
         VBox tableContainer = new VBox(16);
         tableContainer.setPadding(new Insets(20));
@@ -167,7 +215,7 @@ public class AssetManagementView extends VBox {
         getChildren().addAll(tableContainer);
     }
 
-    private Node buildPageHeader(Button actionButton) {
+    private Node buildPageHeader(HBox actionButtons) {
         HBox header = new HBox(16);
         header.setAlignment(Pos.CENTER_LEFT);
 
@@ -181,7 +229,7 @@ public class AssetManagementView extends VBox {
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
 
-        header.getChildren().addAll(textGroup, spacer, actionButton);
+        header.getChildren().addAll(textGroup, spacer, actionButtons);
         return header;
     }
 
@@ -236,7 +284,6 @@ public class AssetManagementView extends VBox {
         kodeHint.getStyleClass().add("form-hint");
         if (editableAsset != null) {
             kodeField.setText(editableAsset.getKodeAset());
-//            kodeField.setDisable(true);
         }
 
         ComboBox<String> jenisCombo = new ComboBox<>();
@@ -424,6 +471,7 @@ public class AssetManagementView extends VBox {
             );
             dataService.addAsset(asset);
         } else {
+            editableAsset.setKodeAset(kode.trim()); // Fix: kode aset bisa diedit
             editableAsset.setJenisAset(jenis);
             editableAsset.setMerkBarang(merk.trim());
             editableAsset.setKeterangan(pemegang == null ? "" : pemegang.trim());
@@ -442,7 +490,7 @@ public class AssetManagementView extends VBox {
         assetList.setAll(dataService.getAssets());
     }
 
-    private void filterTable(String searchText, String jenisFilter, String statusFilter) {
+    private void filterTable(String searchText, String jenisFilter, String statusFilter, String kesiapanLelangFilter) {
         List<Asset> allAssets = dataService.getAssets();
         
         assetList.setAll(allAssets.stream()
@@ -472,6 +520,15 @@ public class AssetManagementView extends VBox {
                     }
                 }
                 
+                // Kesiapan Lelang filter - hanya untuk TIM_MANAJEMEN_ASET
+                if ("TIM_MANAJEMEN_ASET".equals(com.siata.client.session.LoginSession.getRole())) {
+                    if (kesiapanLelangFilter != null && !kesiapanLelangFilter.equals("Semua Kesiapan")) {
+                        if (!asset.getKesiapanLelang().equals(kesiapanLelangFilter)) {
+                            return false;
+                        }
+                    }
+                }
+                
                 return true;
             })
             .toList()
@@ -495,6 +552,37 @@ public class AssetManagementView extends VBox {
         alert.setHeaderText(null);
         alert.setContentText(message);
         alert.showAndWait();
+    }
+
+    private void cleanDuplicates() {
+        Alert confirmAlert = new Alert(Alert.AlertType.CONFIRMATION);
+        confirmAlert.setTitle("Konfirmasi Pembersihan Duplikat");
+        confirmAlert.setHeaderText("Bersihkan Data Duplikat");
+        confirmAlert.setContentText("Apakah Anda yakin ingin membersihkan semua data aset yang duplikat?\n\n" +
+                                    "Sistem akan menghapus aset dengan semua field yang sama persis.\n" +
+                                    "Aset pertama akan disimpan, duplikat akan dihapus.");
+        
+        if (confirmAlert.showAndWait().orElse(ButtonType.CANCEL) == ButtonType.OK) {
+            try {
+                // Call API to clean duplicates
+                com.siata.client.api.AssetApi assetApi = new com.siata.client.api.AssetApi();
+                int deletedCount = assetApi.cleanDuplicates();
+                
+                refreshTable();
+                
+                Alert successAlert = new Alert(Alert.AlertType.INFORMATION);
+                successAlert.setTitle("Berhasil");
+                successAlert.setHeaderText("Pembersihan Selesai");
+                successAlert.setContentText(deletedCount + " aset duplikat berhasil dihapus.");
+                successAlert.showAndWait();
+            } catch (Exception e) {
+                Alert errorAlert = new Alert(Alert.AlertType.ERROR);
+                errorAlert.setTitle("Error");
+                errorAlert.setHeaderText("Gagal Membersihkan Duplikat");
+                errorAlert.setContentText("Terjadi kesalahan: " + e.getMessage());
+                errorAlert.showAndWait();
+            }
+        }
     }
 }
 

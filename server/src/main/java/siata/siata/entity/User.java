@@ -33,8 +33,8 @@ public class User implements UserDetails {
 
     @Column(name = "role", nullable = false, length = 50)
     @NotBlank(message = "Role tidak boleh kosong")
-    @Pattern(regexp = "^(ADMIN|TIM_MANAJEMEN_ASET|KEPALA_SUBDIR)$", 
-             message = "Role harus salah satu dari: ADMIN, TIM_MANAJEMEN_ASET, KEPALA_SUBDIR")
+    @Pattern(regexp = "^(TIM_MANAJEMEN_ASET|PPK|PPBJ|DIREKTUR)$", 
+             message = "Role harus salah satu dari: TIM_MANAJEMEN_ASET, PPK, PPBJ, DIREKTUR")
     private String role;
 
     // Implementasi UserDetails

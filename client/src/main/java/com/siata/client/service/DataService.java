@@ -70,7 +70,7 @@ public class DataService {
                 assetValue.setSubdir(assetDto.getSubdirektorat());
             }
 
-            if (!(assetValue.getStatus().equals("Diajukan Hapus"))) {
+            if (!(assetValue.getStatus().equals("Tandai Dihapus"))) {
                 listAsset.add(assetValue);
             }
 
@@ -115,7 +115,7 @@ public class DataService {
         if (nipInput != null && !nipInput.trim().isEmpty() && isNumeric(nipInput)) {
             // Jika ada input NIP valid, ambil data pegawai
             try {
-                PegawaiDto pegawaiDto = pegawaiApi.getPegawaiByNip(Integer.parseInt(nipInput));
+                PegawaiDto pegawaiDto = pegawaiApi.getPegawaiByNip(Long.parseLong(nipInput));
                 if (pegawaiDto != null && pegawaiDto.getNama() != null) {
                     assetToDto.setPegawaiDto(pegawaiDto);
                     System.out.println("DataService: Pegawai ditemukan -> " + pegawaiDto.getNama());
@@ -213,6 +213,32 @@ public class DataService {
         AssetDto assetDto = new AssetDto();
         assetDto.setIdAset(asset.getIdAset());
         System.out.println("======= ID ASET: "+assetDto.getIdAset());
+        
+        // 1. Set Subdirektorat dari input form
+        assetDto.setSubdirektorat(asset.getSubdir());
+        
+        // 2. Handle NIP (sama seperti addAsset)
+        String nipInput = asset.getKeterangan();
+        if (nipInput != null && !nipInput.trim().isEmpty() && isNumeric(nipInput)) {
+            try {
+                PegawaiDto pegawaiDto = pegawaiApi.getPegawaiByNip(Long.parseLong(nipInput));
+                if (pegawaiDto != null && pegawaiDto.getNama() != null) {
+                    assetDto.setPegawaiDto(pegawaiDto);
+                    System.out.println("DataService: Pegawai ditemukan saat update -> " + pegawaiDto.getNama());
+                } else {
+                    System.out.println("DataService: Pegawai tidak ditemukan saat update, set null.");
+                    assetDto.setPegawaiDto(null);
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+                assetDto.setPegawaiDto(null);
+            }
+        } else {
+            System.out.println("DataService: Input pemegang kosong/teks saat update, set pegawai null.");
+            assetDto.setPegawaiDto(null);
+        }
+        
+        // 3. Set field lainnya (termasuk kodeAset yang bisa diedit)
         assetDto.setKodeAset(asset.getKodeAset());
         assetDto.setJenisAset(asset.getJenisAset());
         assetDto.setMerkAset(asset.getMerkBarang());
@@ -220,7 +246,7 @@ public class DataService {
         assetDto.setHargaAset(asset.getNilaiRupiah());
         assetDto.setKondisi(asset.getKondisi());
         assetDto.setStatusPemakaian(asset.getStatus());
-        assetDto.setPegawaiDto(LoginSession.getPegawaiDto());
+        
         assetApi.putAsset(assetDto);
         logActivity("admin", "Update", "Memperbarui aset", "Aset #" + asset.getKodeAset(), asset.getNamaAset());
     }
@@ -260,7 +286,7 @@ public class DataService {
                 assetValue.setSubdir(assetDto.getSubdirektorat());
             }
 
-            if (assetValue.getStatus().equals("Diajukan Hapus")) {
+            if (assetValue.getStatus().equals("Tandai Dihapus")) {
                 listAsset.add(assetValue);
             }
         }
