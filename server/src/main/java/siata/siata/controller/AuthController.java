@@ -38,7 +38,9 @@ public class AuthController {
     // Endpoint untuk mendapatkan data pegawai user yang sedang login
     @GetMapping("/pegawai")
     public ResponseEntity<Pegawai> getCurrentUserPegawai(Authentication authentication) {
-        Pegawai pegawai = getPegawaiFromAuth(authentication);
+        User user = (User) authentication.getPrincipal();
+        // Pegawai sudah di-load dengan JOIN FETCH dari UserDetailsService
+        Pegawai pegawai = user.getPegawai();
         return ResponseEntity.ok(pegawai);
     }
 

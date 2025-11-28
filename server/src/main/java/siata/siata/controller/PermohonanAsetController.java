@@ -34,12 +34,17 @@ public class PermohonanAsetController {
 
     @PostMapping
     @PreAuthorize("hasRole('TIM_MANAJEMEN_ASET')")
-    public PermohonanAset create(@Valid @RequestBody PermohonanAset permohonanAset, Authentication authentication) {
-        return permohonanAsetService.save(permohonanAset, getPegawaiFromAuth(authentication));
+    public ResponseEntity<?> create(@Valid @RequestBody PermohonanAset permohonanAset, Authentication authentication) {
+        // Validasi: cek apakah nama pemohon terdaftar di unit yang sesuai
+        String validationError = permohonanAsetService.validatePemohonByUnit(permohonanAset.getNamaPemohon(), permohonanAset.getUnit());
+        if (validationError != null) {
+            return ResponseEntity.badRequest().body(validationError);
+        }
+        return ResponseEntity.ok(permohonanAsetService.save(permohonanAset, getPegawaiFromAuth(authentication)));
     }
 
     @PatchMapping("/{id}/status")
-    @PreAuthorize("hasAnyRole('PPBJ', 'PPK', 'DIREKTUR')")
+    @PreAuthorize("hasAnyRole('TIM_MANAJEMEN_ASET', 'PPBJ', 'PPK', 'DIREKTUR')")
     public ResponseEntity<PermohonanAset> updateStatus(@PathVariable Long id, @Valid @RequestBody StatusUpdateDTO statusUpdate, Authentication authentication) {
         try {
             String status = statusUpdate.getStatus();
@@ -58,7 +63,13 @@ public class PermohonanAsetController {
 
     @PutMapping("/{id}")
     @PreAuthorize("hasRole('TIM_MANAJEMEN_ASET')")
-    public ResponseEntity<PermohonanAset> update(@PathVariable Long id, @Valid @RequestBody PermohonanAset permohonanDetails, Authentication authentication) {
+    public ResponseEntity<?> update(@PathVariable Long id, @Valid @RequestBody PermohonanAset permohonanDetails, Authentication authentication) {
+        // Validasi: cek apakah nama pemohon terdaftar di unit yang sesuai
+        String validationError = permohonanAsetService.validatePemohonByUnit(permohonanDetails.getNamaPemohon(), permohonanDetails.getUnit());
+        if (validationError != null) {
+            return ResponseEntity.badRequest().body(validationError);
+        }
+        
         return permohonanAsetService.getById(id)
                 .map(existing -> {
                     // Update field sesuai ERD

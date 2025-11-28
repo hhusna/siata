@@ -56,7 +56,7 @@ public class PermohonanApi {
             mapper.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
 
             Map<String, String> data = Map.of(
-                    "statusPersetujuan", status
+                    "status", status
             );
 
             String requestBody = mapper.writeValueAsString(data);
@@ -79,6 +79,8 @@ public class PermohonanApi {
             if (response.statusCode()==200) {
                 System.out.println("PermohonanApi: BERHASIL DI PATCH!");
                 return true;
+            } else {
+                System.out.println("PermohonanApi: GAGAL DI PATCH! Status: " + response.statusCode() + ", Body: " + response.body());
             }
         } catch (Exception e) {
             e.printStackTrace();

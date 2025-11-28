@@ -66,33 +66,65 @@ public class LoginView extends StackPane {
         loginButton.getStyleClass().add("primary-button");
         loginButton.setMaxWidth(Double.MAX_VALUE);
 
+        Label statusLabel = new Label();
+        statusLabel.getStyleClass().add("form-label");
+        statusLabel.setStyle("-fx-text-fill: #dc2626;");
+        statusLabel.setVisible(false);
 
         loginButton.setOnAction(event -> {
             // Validasi input tidak boleh kosong
             if (usernameField.getText() == null || usernameField.getText().trim().isEmpty()) {
-                System.err.println("Username tidak boleh kosong");
+                statusLabel.setText("Username tidak boleh kosong");
+                statusLabel.setVisible(true);
                 return;
             }
             if (passwordField.getText() == null || passwordField.getText().isEmpty()) {
-                System.err.println("Password tidak boleh kosong");
+                statusLabel.setText("Password tidak boleh kosong");
+                statusLabel.setVisible(true);
                 return;
             }
             
-            try {
-                userApi.login(usernameField.getText(), passwordField.getText());
-                LoginSession.setPegawaiDto(userApi.getPegawaionSession());
-                System.out.println("JWT DI LOGIN VIEW" + LoginSession.getJwt());
-
-                if (LoginSession.getJwt() != null) {
-                    System.out.println("SUKSES LOGIN HARUSNYA??");
+            // Disable button dan tampilkan loading
+            loginButton.setDisable(true);
+            loginButton.setText("Loading...");
+            statusLabel.setVisible(false);
+            
+            // Jalankan login di background thread
+            javafx.concurrent.Task<Boolean> loginTask = new javafx.concurrent.Task<>() {
+                @Override
+                protected Boolean call() throws Exception {
+                    try {
+                        userApi.login(usernameField.getText(), passwordField.getText());
+                        LoginSession.setPegawaiDto(userApi.getPegawaionSession());
+                        return LoginSession.getJwt() != null;
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                        return false;
+                    }
+                }
+            };
+            
+            loginTask.setOnSucceeded(e -> {
+                loginButton.setDisable(false);
+                loginButton.setText("Login");
+                
+                if (loginTask.getValue()) {
+                    System.out.println("Login berhasil!");
                     onLogin.ifPresent(Runnable::run);
                 } else {
-                    System.out.println("GAGAL LOGIN HARUSNYA??");
+                    statusLabel.setText("Login gagal. Periksa username dan password.");
+                    statusLabel.setVisible(true);
                 }
-
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
+            });
+            
+            loginTask.setOnFailed(e -> {
+                loginButton.setDisable(false);
+                loginButton.setText("Login");
+                statusLabel.setText("Terjadi kesalahan. Coba lagi.");
+                statusLabel.setVisible(true);
+            });
+            
+            new Thread(loginTask).start();
         });
 
 
@@ -101,6 +133,7 @@ public class LoginView extends StackPane {
                 usernameField,
                 passwordLabel,
                 passwordField,
+                statusLabel,
                 loginButton
         );
         form.setPrefWidth(360);

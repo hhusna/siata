@@ -20,19 +20,19 @@ public class LogRiwayat {
     @Column(name = "id_log")
     private Long idLog;
 
-    @ManyToOne(fetch = FetchType.EAGER) // AWALNYA LAZY
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "id_permohonan", referencedColumnName = "id_permohonan")
     private PermohonanAset permohonan;
 
-    @ManyToOne(fetch = FetchType.EAGER)
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "id_pengajuan", referencedColumnName = "id_pengajuan")
     private PengajuanAset pengajuan;
 
-    @ManyToOne(fetch = FetchType.EAGER)
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "id_aset", referencedColumnName = "id_aset")
     private Aset aset;
 
-    @ManyToOne(fetch = FetchType.EAGER)
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "nip_pegawai", referencedColumnName = "nip")
     private Pegawai pegawai;
 

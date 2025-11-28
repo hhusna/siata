@@ -1,6 +1,8 @@
 package siata.siata.service;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import siata.siata.entity.Aset;
@@ -26,8 +28,9 @@ public class AsetService {
     @Autowired
     private PenghapusanAsetRepository penghapusanAsetRepository;
 
+    @Cacheable(value = "asetList", unless = "#result == null || #result.isEmpty()")
     public List<Aset> getAllAset() {
-        return asetRepository.findAll();
+        return asetRepository.findAllWithPegawai();
     }
 
     public Optional<Aset> getAsetById(Long id) {
@@ -35,10 +38,12 @@ public class AsetService {
     }
 
     // MODIFIKASI METHOD INI
+    @Cacheable(value = "asetSearch", key = "#jenis + '_' + #status + '_' + #namaPegawai + '_' + #namaSubdir", unless = "#result == null || #result.isEmpty()")
     public List<Aset> searchAset(String jenis, String status, String namaPegawai, String namaSubdir) {
         return asetRepository.searchAset(jenis, status, namaPegawai, namaSubdir);
     }
 
+    @CacheEvict(value = {"asetList", "asetSearch", "dashboardStats"}, allEntries = true)
     public Aset saveAset(Aset aset, Pegawai userPegawai) {
         boolean isNew = aset.getIdAset() == null;
         Aset savedAset = asetRepository.save(aset);
@@ -51,6 +56,7 @@ public class AsetService {
         return savedAset;
     }
 
+    @CacheEvict(value = {"asetList", "asetSearch", "dashboardStats"}, allEntries = true)
     public void tandaiUntukPenghapusan(Long id, Pegawai userPegawai) {
         Aset aset = asetRepository.findById(id).orElseThrow(() -> new RuntimeException("Aset not found"));
 
@@ -84,6 +90,7 @@ public class AsetService {
 
     // Otomatisasi Status Aset (dijalankan setiap hari jam 1 pagi)
     @Scheduled(cron = "0 0 1 * * ?")
+    @CacheEvict(value = {"asetList", "asetSearch", "dashboardStats"}, allEntries = true)
     public void updateStatusAsetSiapLelang() {
         LocalDate tanggalBatas = LocalDate.now().minusYears(4);
         List<Aset> asetUntukDilelang = asetRepository.findAsetSiapLelang(tanggalBatas);
@@ -99,6 +106,7 @@ public class AsetService {
     }
 
     // Ini adalah HAPUS permanen (jika diperlukan admin)
+    @CacheEvict(value = {"asetList", "asetSearch", "dashboardStats"}, allEntries = true)
     public void deleteAset(Long id, Pegawai userPegawai) {
         Aset aset = asetRepository.findById(id).orElseThrow(() -> new RuntimeException("Aset not found"));
 

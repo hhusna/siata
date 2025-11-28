@@ -11,10 +11,13 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
+import org.hibernate.annotations.Cache;
+import org.hibernate.annotations.CacheConcurrencyStrategy;
 
 @Data
 @Entity
 @Table(name = "aset")
+@Cache(usage = CacheConcurrencyStrategy.READ_WRITE)
 public class Aset {
 
     @Id
@@ -52,15 +55,15 @@ public class Aset {
     @Column(name = "subdirektorat", length = 100)
     private String subdirektorat;
 
-    @ManyToOne(fetch = FetchType.EAGER)
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "nip_pegawai", referencedColumnName = "nip")
     private Pegawai pegawai;
 
     @JsonIgnore
-    @OneToOne(mappedBy = "aset", cascade = CascadeType.ALL)
+    @OneToOne(mappedBy = "aset", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private PenghapusanAset penghapusanAset;
 
     @JsonIgnore
-    @OneToMany(mappedBy = "aset", cascade = CascadeType.ALL)
+    @OneToMany(mappedBy = "aset", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<LogRiwayat> logList;
 }

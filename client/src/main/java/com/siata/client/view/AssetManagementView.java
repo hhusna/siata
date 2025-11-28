@@ -181,7 +181,16 @@ public class AssetManagementView extends VBox {
                     }
                     if (confirmDelete(asset)) {
                         dataService.deleteAsset(asset);
-                        refreshTable();
+                        
+                        // Tunggu sebentar untuk memastikan server selesai update cache
+                        new Thread(() -> {
+                            try {
+                                Thread.sleep(200); // 200ms delay
+                            } catch (InterruptedException ex) {
+                                ex.printStackTrace();
+                            }
+                            javafx.application.Platform.runLater(() -> refreshTable());
+                        }).start();
                     }
                 });
             }

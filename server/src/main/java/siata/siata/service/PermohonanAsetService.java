@@ -1,11 +1,14 @@
 package siata.siata.service;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import siata.siata.entity.Pegawai;
 import siata.siata.entity.PermohonanAset;
 import siata.siata.entity.LogRiwayat;
 import siata.siata.repository.PermohonanAsetRepository;
+import siata.siata.repository.PegawaiRepository;
 import java.util.List;
 import java.util.Optional;
 import java.time.LocalDate;
@@ -19,14 +22,40 @@ public class PermohonanAsetService {
     @Autowired
     private LogRiwayatService logRiwayatService;
 
+    @Autowired
+    private PegawaiRepository pegawaiRepository;
+
+    /**
+     * Validasi apakah nama pemohon terdaftar di unit yang sesuai
+     * @return error message jika tidak valid, null jika valid
+     */
+    public String validatePemohonByUnit(String namaPemohon, String unit) {
+        if (namaPemohon == null || unit == null) {
+            return "Nama pemohon dan unit tidak boleh kosong";
+        }
+        
+        // Cek apakah ada pegawai dengan nama dan unit yang sesuai
+        boolean exists = pegawaiRepository.findAll().stream()
+            .anyMatch(p -> p.getNama().equalsIgnoreCase(namaPemohon.trim()) && 
+                          p.getNamaSubdir().equals(unit));
+        
+        if (!exists) {
+            return "Nama pemohon '" + namaPemohon + "' tidak terdaftar di subdirektorat " + unit;
+        }
+        
+        return null; // Valid
+    }
+
+    @Cacheable("permohonanList")
     public List<PermohonanAset> getAll() {
-        return repository.findAll();
+        return repository.findAllWithPegawai();
     }
 
     public Optional<PermohonanAset> getById(Long id) {
         return repository.findById(id);
     }
 
+    @CacheEvict(value = {"permohonanList", "approvalLogs"}, allEntries = true)
     public PermohonanAset save(PermohonanAset data, Pegawai userPegawai) {
         boolean isNew = data.getIdPermohonan() == null;
 
@@ -49,6 +78,7 @@ public class PermohonanAsetService {
         return savedData;
     }
 
+    @CacheEvict(value = {"permohonanList", "approvalLogs"}, allEntries = true)
     public PermohonanAset updateStatus(Long id, String status, Pegawai userPegawai) {
         PermohonanAset data = repository.findById(id).orElseThrow(() -> new RuntimeException("Permohonan not found"));
         data.setStatusPersetujuan(status);
@@ -60,6 +90,7 @@ public class PermohonanAsetService {
         return savedData;
     }
 
+    @CacheEvict(value = {"permohonanList", "approvalLogs"}, allEntries = true)
     public void delete(Long id, Pegawai userPegawai) {
         PermohonanAset data = repository.findById(id).orElseThrow(() -> new RuntimeException("Permohonan not found"));
 

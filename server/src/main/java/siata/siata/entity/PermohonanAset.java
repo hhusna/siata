@@ -21,7 +21,7 @@ public class PermohonanAset {
     @Column(name = "kode_permohonan", length = 100)
     private String kodePermohonan;
 
-    @ManyToOne(fetch = FetchType.EAGER)
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "nip", referencedColumnName = "nip")
     private Pegawai pegawai;
 
@@ -64,6 +64,6 @@ public class PermohonanAset {
     private LocalDate timestamp;
 
     @JsonIgnore
-    @OneToMany(mappedBy = "permohonan", cascade = CascadeType.ALL)
+    @OneToMany(mappedBy = "permohonan", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<LogRiwayat> logList;
 }

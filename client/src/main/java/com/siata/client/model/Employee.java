@@ -6,28 +6,18 @@ import java.util.List;
 public class Employee {
     private String nip;
     private String namaLengkap;
-    private String jabatan;
     private String unit;
-    private List<String> asetDimiliki;
+    private List<String> asetDimiliki; // Deprecated - akan diambil dari manajemen aset
 
     public Employee() {
         this.asetDimiliki = new ArrayList<>();
     }
 
-    public Employee(String nip, String namaLengkap, String jabatan, String unit) {
+    public Employee(String nip, String namaLengkap, String unit) {
         this.nip = nip;
         this.namaLengkap = namaLengkap;
-        this.jabatan = jabatan;
         this.unit = unit;
         this.asetDimiliki = new ArrayList<>();
-    }
-
-    public Employee(String nip, String namaLengkap, String jabatan, String unit, List<String> asetDimiliki) {
-        this.nip = nip;
-        this.namaLengkap = namaLengkap;
-        this.jabatan = jabatan;
-        this.unit = unit;
-        this.asetDimiliki = asetDimiliki == null ? new ArrayList<>() : new ArrayList<>(asetDimiliki);
     }
 
     public String getNip() {
@@ -46,14 +36,6 @@ public class Employee {
         this.namaLengkap = namaLengkap;
     }
 
-    public String getJabatan() {
-        return jabatan;
-    }
-
-    public void setJabatan(String jabatan) {
-        this.jabatan = jabatan;
-    }
-
     public String getUnit() {
         return unit;
     }
@@ -62,6 +44,10 @@ public class Employee {
         this.unit = unit;
     }
 
+    /**
+     * @deprecated Gunakan getAsetDimilikiFromManagement() dari DataService
+     */
+    @Deprecated
     public List<String> getAsetDimiliki() {
         if (asetDimiliki == null) {
             asetDimiliki = new ArrayList<>();
@@ -73,7 +59,12 @@ public class Employee {
         this.asetDimiliki = asetDimiliki == null ? new ArrayList<>() : new ArrayList<>(asetDimiliki);
     }
 
+    /**
+     * Summary aset yang dimiliki - akan diisi dari DataService
+     * Format: "5 aset" atau "0 aset"
+     */
     public String getAsetDimilikiSummary() {
+        // Akan di-override di EmployeeManagementView dengan data dari DataService
         int total = getAsetDimiliki().size();
         return total + " aset";
     }

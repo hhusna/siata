@@ -32,10 +32,55 @@ public class DashboardContentView extends VBox {
 
     private final DataService dataService = DataService.getInstance();
     private final AssetApi assetApi = new AssetApi();
+    
+    // Cache dashboard data untuk menghindari multiple API calls
+    private com.siata.client.dto.DashboardDto cachedDashboardData = null;
 
     public DashboardContentView() {
         setSpacing(24);
-        buildContent();
+        loadDashboardData();
+    }
+    
+    /**
+     * Public method untuk refresh dashboard data
+     * Dipanggil ketika user kembali ke dashboard atau setelah ada perubahan data
+     */
+    public void refreshDashboard() {
+        // Clear cached data dan reload
+        cachedDashboardData = null;
+        loadDashboardData();
+    }
+    
+    private void loadDashboardData() {
+        // Load data di background thread
+        Label loadingLabel = new Label("Loading dashboard...");
+        loadingLabel.getStyleClass().add("section-heading");
+        getChildren().clear();
+        getChildren().add(loadingLabel);
+        
+        javafx.concurrent.Task<Void> loadTask = new javafx.concurrent.Task<>() {
+            @Override
+            protected Void call() throws Exception {
+                // Fetch dashboard data dari API
+                cachedDashboardData = assetApi.getDashboard();
+                return null;
+            }
+        };
+        
+        loadTask.setOnSucceeded(e -> {
+            getChildren().clear();
+            buildContent();
+        });
+        
+        loadTask.setOnFailed(e -> {
+            getChildren().clear();
+            Label errorLabel = new Label("Gagal memuat dashboard. Silakan refresh.");
+            errorLabel.getStyleClass().add("section-heading");
+            errorLabel.setStyle("-fx-text-fill: #dc2626;");
+            getChildren().add(errorLabel);
+        });
+        
+        new Thread(loadTask).start();
     }
 
     private void buildContent() {
@@ -62,11 +107,16 @@ public class DashboardContentView extends VBox {
             statsGrid.getColumnConstraints().add(column);
         }
 
+        // Gunakan cachedDashboardData yang sudah di-fetch sekali
         List<CardData> cards = List.of(
-                new CardData("Total Aset", "Semua jenis aset terdaftar",Long.toString(assetApi.getDashboard().getTotalAset()) , "🧱"),
-                new CardData("Siap Dilelang", "Aset dalam proses lelang", Long.toString(assetApi.getDashboard().getAsetSiapDilelang()), "♻"),
-                new CardData("Rusak Berat", "Memerlukan penghapusan", Long.toString(assetApi.getDashboard().getAsetRusakBerat()), "⚠"),
-                new CardData("Sedang Diproses", "Permohonan menunggu persetujuan", Long.toString(assetApi.getDashboard().getPermohonanPending()), "🔄")
+                new CardData("Total Aset", "Semua jenis aset terdaftar",
+                    Long.toString(cachedDashboardData != null ? cachedDashboardData.getTotalAset() : 0) , "🧱"),
+                new CardData("Siap Dilelang", "Aset dalam proses lelang", 
+                    Long.toString(cachedDashboardData != null ? cachedDashboardData.getAsetSiapDilelang() : 0), "♻"),
+                new CardData("Rusak Berat", "Memerlukan penghapusan", 
+                    Long.toString(cachedDashboardData != null ? cachedDashboardData.getAsetRusakBerat() : 0), "⚠"),
+                new CardData("Sedang Diproses", "Permohonan menunggu persetujuan", 
+                    Long.toString(cachedDashboardData != null ? cachedDashboardData.getPermohonanPending() : 0), "🔄")
         );
 
         for (int i = 0; i < cards.size(); i++) {
@@ -76,42 +126,6 @@ public class DashboardContentView extends VBox {
 
         VBox container = new VBox(16, title, sectionTitle, statsGrid);
         return container;
-    }
-
-    private int getTotalAsset() {
-        AssetDto[] assetDtos = assetApi.getAsset();
-        int count = 0;
-        for (AssetDto dto : assetDtos) {
-            count += 1;
-        }
-        return count;
-    }
-
-    private int getSiapDilelang() {
-        AssetDto[] assetDtos = assetApi.getAsset();
-        int count = 0;
-        LocalDate timeNow = LocalDate.now();
-        for (AssetDto dto : assetDtos) {
-            Long selisihHari = ChronoUnit.DAYS.between(dto.getTanggalPerolehan(), timeNow);
-
-            if (selisihHari >= 1460) {
-                count += 1;
-            }
-        }
-
-        return count;
-    }
-
-    private int getRusakBerat() {
-        AssetDto[] assetDtos = assetApi.getAsset();
-        int count = 0;
-        for (AssetDto dto : assetDtos) {
-            if (dto.getKondisi().equals("Rusak Berat")) {
-                count += 1;
-            }
-        }
-
-        return count;
     }
 
     private Node buildChartsColumn() {

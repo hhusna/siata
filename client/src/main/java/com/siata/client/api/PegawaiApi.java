@@ -96,7 +96,7 @@ public class PegawaiApi {
             payload.setNip(nip);
             payload.setNama(nama);
             payload.setNamaSubdir(namaSubdir);
-            payload.setJabatan(jabatan);
+            // jabatan tidak diset lagi
 
             ObjectMapper mapper = new ObjectMapper();
 
@@ -169,7 +169,7 @@ public class PegawaiApi {
             payload.setNip(nip);
             payload.setNama(nama);
             payload.setNamaSubdir(namaSubdir);
-            payload.setJabatan(jabatan);
+            // jabatan tidak diset lagi
 
             ObjectMapper mapper = new ObjectMapper();
             String requestBodyJson = mapper.writeValueAsString(payload);

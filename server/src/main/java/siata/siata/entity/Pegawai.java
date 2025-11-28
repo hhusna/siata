@@ -8,10 +8,13 @@ import jakarta.validation.constraints.Size;
 import lombok.Data;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import java.util.List;
+import org.hibernate.annotations.Cache;
+import org.hibernate.annotations.CacheConcurrencyStrategy;
 
 @Data
 @Entity
 @Table(name = "pegawai")
+@Cache(usage = CacheConcurrencyStrategy.READ_WRITE)
 public class Pegawai {
 
     @Id
@@ -28,29 +31,24 @@ public class Pegawai {
     @Column(name = "nama_subdir", length = 100)
     private String namaSubdir;
 
-    @Column(name = "jabatan", length = 100)
-    @Size(min = 3, max = 100, message = "Jabatan minimal 3 karakter")
-    @Pattern(regexp = "[a-zA-Z\\s]+", message = "Jabatan hanya boleh berisi huruf dan spasi")
-    private String jabatan;
-
     @JsonIgnore
-    @OneToOne(mappedBy = "pegawai", cascade = CascadeType.ALL)
+    @OneToOne(mappedBy = "pegawai", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private User user;
 
     @JsonIgnore
-    @OneToMany(mappedBy = "pegawai", cascade = CascadeType.ALL)
+    @OneToMany(mappedBy = "pegawai", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<Aset> asetList;
 
     @JsonIgnore
-    @OneToMany(mappedBy = "pegawai", cascade = CascadeType.ALL)
+    @OneToMany(mappedBy = "pegawai", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<PermohonanAset> permohonanList;
 
     @JsonIgnore
-    @OneToMany(mappedBy = "pegawai", cascade = CascadeType.ALL)
+    @OneToMany(mappedBy = "pegawai", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<PengajuanAset> pengajuanList;
 
     @Override
     public String toString() {
-        return "Pegawai{nip=" + nip+ ", nama=" + nama + ", namaSubdir= " + namaSubdir +", jabatan=" + jabatan + "}";
+        return "Pegawai{nip=" + nip+ ", nama=" + nama + ", namaSubdir= " + namaSubdir +"}";
     }
 }

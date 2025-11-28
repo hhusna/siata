@@ -33,7 +33,6 @@ public class RecapitulationView extends VBox {
 
     private final DataService dataService;
     private final ExportPdfApi exportApi = new ExportPdfApi();
-    private final AssetApi assetApi = new AssetApi();
 
     // Daftar Jenis Aset Standar untuk Laporan
     private final List<String> JENIS_ASET_LIST = List.of("Mobil", "Motor", "Scanner", "PC", "Laptop", "Tablet", "Printer", "Speaker", "Parabot");
@@ -42,6 +41,16 @@ public class RecapitulationView extends VBox {
         this.dataService = DataService.getInstance();
         setSpacing(24);
         getStyleClass().add("dashboard-content");
+        buildView();
+    }
+    
+    /**
+     * Public method untuk refresh rekapitulasi data
+     * Dipanggil ketika user kembali ke menu rekapitulasi atau setelah ada perubahan data
+     */
+    public void refreshData() {
+        // Clear children dan rebuild view dengan data terbaru
+        getChildren().clear();
         buildView();
     }
 
@@ -104,10 +113,23 @@ public class RecapitulationView extends VBox {
             statsGrid.getColumnConstraints().add(column);
         }
 
-        long totalAset = assetApi.getDashboard().getTotalAset();
-        long asetAktif = assetApi.getDashboard().getAsetAktif();
-        long asetNonAktif = assetApi.getDashboard().getAsetNonAktif();
-        long asetRusak = assetApi.getDashboard().getAsetRusakBerat();
+        // Ambil semua aset TERMASUK yang "Tandai Dihapus" untuk perhitungan yang akurat
+        List<Asset> allAssets = dataService.getAllAssetsIncludingDeleted();
+        long totalAset = allAssets.size();
+        
+        // Hitung jumlah aset per kategori
+        long asetAktif = allAssets.stream()
+                .filter(a -> "Aktif".equals(a.getStatus()))
+                .count();
+        
+        long asetNonAktif = allAssets.stream()
+                .filter(a -> "Non Aktif".equals(a.getStatus()))
+                .count();
+        
+        // Rusak = Rusak Ringan + Rusak Berat
+        long asetRusak = allAssets.stream()
+                .filter(a -> "Rusak Ringan".equals(a.getKondisi()) || "Rusak Berat".equals(a.getKondisi()))
+                .count();
 
         // Hitung persentase
         String aktifPercent = totalAset > 0 ? String.format("%.1f", (double) asetAktif / totalAset * 100) : "0";

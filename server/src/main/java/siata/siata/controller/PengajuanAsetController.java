@@ -34,12 +34,17 @@ public class PengajuanAsetController {
 
     @PostMapping
     @PreAuthorize("hasRole('TIM_MANAJEMEN_ASET')")
-    public PengajuanAset create(@Valid @RequestBody PengajuanAset pengajuanAset, Authentication authentication) {
-        return pengajuanAsetService.save(pengajuanAset, getPegawaiFromAuth(authentication));
+    public ResponseEntity<?> create(@Valid @RequestBody PengajuanAset pengajuanAset, Authentication authentication) {
+        // Validasi: cek apakah nama pengaju terdaftar di unit yang sesuai
+        String validationError = pengajuanAsetService.validatePengajuByUnit(pengajuanAset.getNamaPengaju(), pengajuanAset.getUnit());
+        if (validationError != null) {
+            return ResponseEntity.badRequest().body(validationError);
+        }
+        return ResponseEntity.ok(pengajuanAsetService.save(pengajuanAset, getPegawaiFromAuth(authentication)));
     }
 
     @PatchMapping("/{id}/status")
-    @PreAuthorize("hasAnyRole('PPBJ', 'PPK', 'DIREKTUR')")
+    @PreAuthorize("hasAnyRole('TIM_MANAJEMEN_ASET', 'PPBJ', 'PPK', 'DIREKTUR')")
     public ResponseEntity<PengajuanAset> updateStatus(@PathVariable Long id, @Valid @RequestBody StatusUpdateDTO statusUpdate, Authentication authentication) {
         try {
             String status = statusUpdate.getStatus();
@@ -58,7 +63,13 @@ public class PengajuanAsetController {
 
     @PutMapping("/{id}")
     @PreAuthorize("hasRole('TIM_MANAJEMEN_ASET')")
-    public ResponseEntity<PengajuanAset> update(@PathVariable Long id, @Valid @RequestBody PengajuanAset pengajuanDetails, Authentication authentication) {
+    public ResponseEntity<?> update(@PathVariable Long id, @Valid @RequestBody PengajuanAset pengajuanDetails, Authentication authentication) {
+        // Validasi: cek apakah nama pengaju terdaftar di unit yang sesuai
+        String validationError = pengajuanAsetService.validatePengajuByUnit(pengajuanDetails.getNamaPengaju(), pengajuanDetails.getUnit());
+        if (validationError != null) {
+            return ResponseEntity.badRequest().body(validationError);
+        }
+        
         return pengajuanAsetService.getById(id)
                 .map(existing -> {
                     // Update field yang diizinkan

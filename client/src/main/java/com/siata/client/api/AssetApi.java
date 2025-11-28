@@ -24,7 +24,7 @@ public class AssetApi {
             String requestBodyJson = mapper.writeValueAsString(payload);
 
             HttpClient client = HttpClient.newBuilder()
-                    .connectTimeout(Duration.ofSeconds(10))
+                    .connectTimeout(Duration.ofSeconds(5))
                     .build();
 
             long idAset = payload.getIdAset();
@@ -60,7 +60,7 @@ public class AssetApi {
             ObjectMapper mapper = new ObjectMapper();
 
             HttpClient client = HttpClient.newBuilder()
-                    .connectTimeout(Duration.ofSeconds(10))
+                    .connectTimeout(Duration.ofSeconds(5))
                     .build();
 
             String targetUrl = ApiConfig.getDashboardUrl() + "/stats";
@@ -92,7 +92,7 @@ public class AssetApi {
     public boolean deleteAssetById(long idAset) {
         try {
             HttpClient client = HttpClient.newBuilder()
-                    .connectTimeout(Duration.ofSeconds(10))
+                    .connectTimeout(Duration.ofSeconds(5))
                     .build();
 
             String targetUrl = ApiConfig.getAsetUrl() + "/hapus/" + idAset;
@@ -126,7 +126,7 @@ public class AssetApi {
             mapper.registerModule(new JavaTimeModule());
 
             HttpClient client = HttpClient.newBuilder()
-                    .connectTimeout(Duration.ofSeconds(10))
+                    .connectTimeout(Duration.ofSeconds(5))
                     .build();
 
             String targetUrl = ApiConfig.getAsetUrl() + "/" + idAset;
@@ -161,7 +161,7 @@ public class AssetApi {
             mapper.registerModule(new JavaTimeModule());
 
             HttpClient client = HttpClient.newBuilder()
-                    .connectTimeout(Duration.ofSeconds(10))
+                    .connectTimeout(Duration.ofSeconds(5))
                     .build();
 
             String targetUrl = ApiConfig.getAsetUrl();
@@ -198,7 +198,7 @@ public class AssetApi {
             System.out.println("AssetApi: Mengirim Payload -> " + requestBodyJson);
 
             HttpClient client = HttpClient.newBuilder()
-                    .connectTimeout(Duration.ofSeconds(10))
+                    .connectTimeout(Duration.ofSeconds(5))
                     .build();
 
             String targetUrl = ApiConfig.getAsetUrl();
@@ -231,7 +231,7 @@ public class AssetApi {
     public int cleanDuplicates() {
         try {
             HttpClient client = HttpClient.newBuilder()
-                    .connectTimeout(Duration.ofSeconds(10))
+                    .connectTimeout(Duration.ofSeconds(5))
                     .build();
 
             String targetUrl = ApiConfig.getAsetUrl() + "/clean-duplicates";

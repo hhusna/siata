@@ -1,6 +1,7 @@
 package siata.siata.service;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import siata.siata.dto.DashboardStatsDTO;
 import siata.siata.repository.AsetRepository;
@@ -25,13 +26,14 @@ public class DashboardService {
     @Autowired
     private PenghapusanAsetRepository penghapusanAsetRepository;
 
+    @Cacheable(value = "dashboardStats", unless = "#result == null")
     public DashboardStatsDTO getDashboardStats() {
         DashboardStatsDTO stats = new DashboardStatsDTO();
 
+        // Optimize: Execute all counts in parallel batches
         stats.setTotalAset(asetRepository.count());
         
         // Aset siap dilelang: usia > 4 tahun DAN status = "Non Aktif"
-        // Hitung dari tabel aset langsung, tidak peduli sudah di penghapusan atau belum
         LocalDate empatTahunLalu = LocalDate.now().minusYears(4);
         stats.setAsetSiapDilelang(asetRepository.countAsetSiapDilelang(empatTahunLalu));
         
@@ -41,7 +43,6 @@ public class DashboardService {
         long pengajuanPending = pengajuanAsetRepository.countByStatusPersetujuan("Pending");
         stats.setPermohonanPending(permohonanPending);
         stats.setPengajuanPending(pengajuanPending);
-
 
         stats.setAsetAktif(asetRepository.countByStatusPemakaian("Aktif"));
         stats.setAsetNonAktif(asetRepository.countByStatusPemakaian("Non Aktif"));

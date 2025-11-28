@@ -55,7 +55,7 @@ public class PegawaiController {
                 .map(pegawai -> {
                     pegawai.setNama(pegawaiDetails.getNama());
                     pegawai.setNamaSubdir(pegawaiDetails.getNamaSubdir());
-                    pegawai.setJabatan(pegawaiDetails.getJabatan());
+                    // jabatan dihapus
                     return ResponseEntity.ok(pegawaiService.savePegawai(pegawai, getPegawaiFromAuth(authentication)));
                 })
                 .orElse(ResponseEntity.notFound().build());

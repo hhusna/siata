@@ -219,8 +219,17 @@ public class MainShellView extends BorderPane {
         }
         updateActiveMenu(page);
         updateHeader(page);
-        pageContent.remove(page);
+        // Cache view untuk reuse - TIDAK menghapus dari cache
         Node content = resolveContent(page);
+        
+        // PENTING: Refresh dashboard setiap kali navigate ke DASHBOARD atau RECAPITULATION
+        // untuk memastikan data terbaru (setelah ada perubahan aset)
+        if (page == MainPage.DASHBOARD && content instanceof DashboardContentView) {
+            ((DashboardContentView) content).refreshDashboard();
+        } else if (page == MainPage.RECAPITULATION && content instanceof RecapitulationView) {
+            ((RecapitulationView) content).refreshData();
+        }
+        
         contentContainer.getChildren().setAll(content);
         activePage = page;
     }

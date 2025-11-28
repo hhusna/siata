@@ -23,7 +23,7 @@ public class UserApi {
             ObjectMapper mapper = new ObjectMapper();
 
             HttpClient client = HttpClient.newBuilder()
-                    .connectTimeout(Duration.ofSeconds(10))
+                    .connectTimeout(Duration.ofSeconds(5))
                     .build();
 
             String targetUrl = ApiConfig.getAuthUrl() + "/pegawai";
@@ -62,7 +62,7 @@ public class UserApi {
             System.out.println("Mengirim Payload: " + requestBodyJson);
 
             HttpClient client = HttpClient.newBuilder()
-                    .connectTimeout(Duration.ofSeconds(10))
+                    .connectTimeout(Duration.ofSeconds(5))
                     .build();
 
             String targetUrl = ApiConfig.getAuthUrl() + "/login";

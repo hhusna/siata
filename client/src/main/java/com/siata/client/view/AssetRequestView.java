@@ -356,6 +356,18 @@ public class AssetRequestView extends VBox {
             showAlert("Pilih subdirektorat");
             return false;
         }
+        
+        // Validasi: cek apakah nama pegawai terdaftar di subdirektorat yang dipilih
+        boolean namaDitemukan = dataService.getEmployees().stream()
+            .anyMatch(emp -> emp.getNamaLengkap().equalsIgnoreCase(nama.trim()) && 
+                           emp.getUnit().equals(unit));
+        
+        if (!namaDitemukan) {
+            showAlert("Nama " + ("Permohonan".equals(tipe) ? "pemohon" : "pengaju") + 
+                     " '" + nama.trim() + "' tidak terdaftar di subdirektorat " + unit + ".\n" +
+                     "Pastikan nama dan subdirektorat sesuai dengan data pegawai.");
+            return false;
+        }
         if (jenis == null || jenis.trim().isEmpty()) {
             showAlert("Pilih jenis aset");
             return false;

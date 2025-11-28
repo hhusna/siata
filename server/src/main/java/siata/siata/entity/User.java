@@ -11,10 +11,13 @@ import org.springframework.security.core.userdetails.UserDetails;
 
 import java.util.Collection;
 import java.util.List;
+import org.hibernate.annotations.Cache;
+import org.hibernate.annotations.CacheConcurrencyStrategy;
 
 @Data
 @Entity
 @Table(name = "user")
+@Cache(usage = CacheConcurrencyStrategy.READ_WRITE)
 public class User implements UserDetails {
 
     @Id
@@ -23,7 +26,7 @@ public class User implements UserDetails {
     @Size(min = 3, max = 50, message = "Username harus 3-50 karakter")
     private String username;
 
-    @OneToOne
+    @OneToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "nip_pegawai", referencedColumnName = "nip", unique = true)
     private Pegawai pegawai;
 

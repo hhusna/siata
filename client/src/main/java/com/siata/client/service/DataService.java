@@ -79,6 +79,37 @@ public class DataService {
         return listAsset;
     }
 
+    /**
+     * Mendapatkan semua aset TERMASUK yang berstatus "Tandai Dihapus"
+     * Digunakan untuk perhitungan rekapitulasi yang akurat
+     */
+    public List<Asset> getAllAssetsIncludingDeleted() {
+        List<Asset> listAsset = new ArrayList<>();
+        for (AssetDto assetDto : assetApi.getAsset()) {
+            Asset assetValue = new Asset();
+            assetValue.setIdAset(assetDto.getIdAset());
+            assetValue.setKodeAset(assetDto.getKodeAset());
+            assetValue.setJenisAset(assetDto.getJenisAset());
+            assetValue.setMerkBarang(assetDto.getMerkAset());
+            assetValue.setTanggalPerolehan(assetDto.getTanggalPerolehan());
+            assetValue.setNilaiRupiah(assetDto.getHargaAset());
+            assetValue.setKondisi(assetDto.getKondisi());
+            assetValue.setStatus(assetDto.getStatusPemakaian());
+            if (assetDto.getPegawaiDto() != null) {
+                assetValue.setKeterangan(Long.toString(assetDto.getPegawaiDto().getNip()));
+                assetValue.setSubdir(assetDto.getPegawaiDto().getNamaSubdir());
+            } else {
+                assetValue.setKeterangan("-");
+                assetValue.setSubdir(assetDto.getSubdirektorat());
+            }
+            
+            // Tambahkan SEMUA aset, termasuk yang "Tandai Dihapus"
+            listAsset.add(assetValue);
+        }
+
+        return listAsset;
+    }
+
     public int getAssetBySubdir(String Subdir) {
         List<Asset> assetList = getAssets();
         int count = 0;
@@ -298,7 +329,8 @@ public class DataService {
         PegawaiDto[] pegawaiDto = pegawaiApi.getPegawai();
         List<Employee> employeeList = new ArrayList<>();
         for (PegawaiDto dto : pegawaiDto) {
-            Employee emp = new Employee(Long.toString(dto.getNip()), dto.getNama(), dto.getJabatan(), dto.getNamaSubdir());
+            // Constructor baru tanpa jabatan: Employee(nip, nama, unit)
+            Employee emp = new Employee(Long.toString(dto.getNip()), dto.getNama(), dto.getNamaSubdir());
             employeeList.add(emp);
         }
         return employeeList;

@@ -70,16 +70,18 @@ public class EmployeeManagementView extends VBox {
         TableColumn<Employee, String> namaCol = new TableColumn<>("Nama");
         namaCol.setCellValueFactory(new PropertyValueFactory<>("namaLengkap"));
         
-        TableColumn<Employee, String> jabatanCol = new TableColumn<>("Jabatan");
-        jabatanCol.setCellValueFactory(new PropertyValueFactory<>("jabatan"));
-        
         TableColumn<Employee, String> unitCol = new TableColumn<>("Subdir");
         unitCol.setCellValueFactory(new PropertyValueFactory<>("unit"));
         
         TableColumn<Employee, String> asetCol = new TableColumn<>("Aset yang Dimiliki");
-        asetCol.setCellValueFactory(cellData -> new javafx.beans.property.SimpleStringProperty(
-            cellData.getValue().getAsetDimilikiSummary()
-        ));
+        asetCol.setCellValueFactory(cellData -> {
+            Employee emp = cellData.getValue();
+            // Ambil jumlah aset dari manajemen aset berdasarkan NIP
+            long jumlahAset = dataService.getAssets().stream()
+                .filter(asset -> emp.getNip().equals(asset.getKeterangan()))
+                .count();
+            return new javafx.beans.property.SimpleStringProperty(jumlahAset + " aset");
+        });
         asetCol.setCellFactory(column -> new TableCell<>() {
             private final Hyperlink detailLink = new Hyperlink();
             {
@@ -134,7 +136,7 @@ public class EmployeeManagementView extends VBox {
         });
         aksiCol.setPrefWidth(150);
         
-        table.getColumns().setAll(List.of(nipCol, namaCol, jabatanCol, unitCol, asetCol, aksiCol));
+        table.getColumns().setAll(List.of(nipCol, namaCol, unitCol, asetCol, aksiCol));
 
         VBox tableContainer = new VBox(16);
         tableContainer.setPadding(new Insets(20));
@@ -222,14 +224,6 @@ public class EmployeeManagementView extends VBox {
             namaField.setText(editableEmployee.getNamaLengkap());
         }
 
-        TextField jabatanField = new TextField();
-        jabatanField.setPromptText("Contoh: Analis Data");
-        Label jabatanLabel = new Label("Jabatan");
-        jabatanLabel.getStyleClass().add("form-label");
-        if (editableEmployee != null) {
-            jabatanField.setText(editableEmployee.getJabatan());
-        }
-
         ComboBox<String> unitCombo = new ComboBox<>();
         unitCombo.getItems().addAll("PPTAU", "AUNB", "AUNTB", "KAU", "SILAU", "Tata Usaha", "Direktur");
         unitCombo.setPromptText("Pilih unit");
@@ -237,15 +231,6 @@ public class EmployeeManagementView extends VBox {
         unitLabel.getStyleClass().add("form-label");
         if (editableEmployee != null) {
             unitCombo.setValue(editableEmployee.getUnit());
-        }
-
-        TextArea asetArea = new TextArea();
-        asetArea.setPromptText("Pisahkan dengan enter, contoh:\nLaptop Dell Latitude 5420\nPC");
-        asetArea.setPrefRowCount(4);
-        Label asetLabel = new Label("Daftar Aset yang Dimiliki");
-        asetLabel.getStyleClass().add("form-label");
-        if (editableEmployee != null && !editableEmployee.getAsetDimiliki().isEmpty()) {
-            asetArea.setText(String.join("\n", editableEmployee.getAsetDimiliki()));
         }
 
         HBox buttonBox = new HBox(12);
@@ -262,7 +247,6 @@ public class EmployeeManagementView extends VBox {
             String nipInput = nipField.getText();
             String nama = namaField.getText();
             String unit = unitCombo.getValue();
-            String jabatan = jabatanField.getText();
 
             // Validasi input dasar
             if (nipInput == null || nipInput.trim().isEmpty()) {
@@ -275,18 +259,6 @@ public class EmployeeManagementView extends VBox {
             }
             if (unit == null || unit.trim().isEmpty()) {
                 showAlert("Pilih subdirektorat");
-                return;
-            }
-            if (jabatan == null || jabatan.trim().isEmpty()) {
-                showAlert("Jabatan tidak boleh kosong");
-                return;
-            }
-            if (jabatan.trim().length() < 3) {
-                showAlert("Jabatan minimal 3 karakter");
-                return;
-            }
-            if (!jabatan.trim().matches("[a-zA-Z\\s]+")) {
-                showAlert("Jabatan hanya boleh berisi huruf dan spasi");
                 return;
             }
 
@@ -320,11 +292,11 @@ public class EmployeeManagementView extends VBox {
                     return;
                 }
                 
-                // Mode Tambah (POST)
-                success = pegawaiApi.addPegawai(nip, nama, unit, jabatan);
+                // Mode Tambah (POST) - jabatan dihilangkan
+                success = pegawaiApi.addPegawai(nip, nama, unit, "");
             } else {
-                // Mode Edit (PUT) - Method yang baru Anda buat
-                success = pegawaiApi.updatePegawai(nip, nama, unit, jabatan);
+                // Mode Edit (PUT) - jabatan dihilangkan
+                success = pegawaiApi.updatePegawai(nip, nama, unit, "");
             }
 
             if (success) {
@@ -342,9 +314,7 @@ public class EmployeeManagementView extends VBox {
         formContent.getChildren().addAll(
             nipLabel, nipField,
             namaLabel, namaField,
-            jabatanLabel, jabatanField,
-            unitLabel, unitCombo,
-            asetLabel, asetArea
+            unitLabel, unitCombo
         );
 
         ScrollPane scrollPane = new ScrollPane(formContent);
@@ -384,7 +354,7 @@ public class EmployeeManagementView extends VBox {
         VBox titleBox = new VBox(4);
         Label title = new Label("Aset yang Dimiliki");
         title.getStyleClass().add("modal-title");
-        Label subtitle = new Label(employee.getNamaLengkap() + " - " + employee.getJabatan());
+        Label subtitle = new Label(employee.getNamaLengkap() + " - " + employee.getUnit());
         subtitle.getStyleClass().add("modal-subtitle");
         titleBox.getChildren().addAll(title, subtitle);
         
@@ -397,11 +367,17 @@ public class EmployeeManagementView extends VBox {
         
         headerBox.getChildren().addAll(titleBox, spacer, closeButton);
 
+        // Ambil list aset dari manajemen aset berdasarkan NIP
+        List<String> asetList = dataService.getAssets().stream()
+            .filter(asset -> employee.getNip().equals(asset.getKeterangan()))
+            .map(asset -> asset.getJenisAset() + " " + asset.getMerkBarang() + " (" + asset.getKodeAset() + ")")
+            .toList();
+
         ListView<String> listView = new ListView<>();
-        if (employee.getAsetDimiliki().isEmpty()) {
+        if (asetList.isEmpty()) {
             listView.getItems().add("Belum ada aset yang tercatat");
         } else {
-            listView.getItems().addAll(employee.getAsetDimiliki());
+            listView.getItems().addAll(asetList);
         }
         listView.setPrefHeight(300);
         listView.setPadding(new Insets(0, 24, 0, 24));

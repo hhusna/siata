@@ -10,15 +10,18 @@ import java.util.List;
 
 public interface AsetRepository extends JpaRepository<Aset, Long> {
 
+    @Query("SELECT DISTINCT a FROM Aset a LEFT JOIN FETCH a.pegawai")
+    List<Aset> findAllWithPegawai();
+
     List<Aset> findByJenisAsetContainingIgnoreCase(String jenisAset);
     List<Aset> findByStatusPemakaianContainingIgnoreCase(String statusPemakaian);
     List<Aset> findByPegawaiNamaContainingIgnoreCase(String namaPegawai);
 
-    @Query("SELECT a FROM Aset a LEFT JOIN a.pegawai p " +
+    @Query("SELECT DISTINCT a FROM Aset a LEFT JOIN FETCH a.pegawai p " +
             "WHERE (:jenis IS NULL OR a.jenisAset = :jenis) " +
             "AND (:status IS NULL OR a.statusPemakaian = :status) " +
             "AND (:namaPegawai IS NULL OR p.nama LIKE %:namaPegawai%) " +
-            "AND (:namaSubdir IS NULL OR p.namaSubdir = :namaSubdir)") // Tambahkan kondisi baru
+            "AND (:namaSubdir IS NULL OR p.namaSubdir = :namaSubdir)")
     List<Aset> searchAset(@Param("jenis") String jenis,
                           @Param("status") String status,
                           @Param("namaPegawai") String namaPegawai,
