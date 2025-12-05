@@ -4,12 +4,12 @@ import com.fasterxml.jackson.annotation.JsonAlias;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
-@JsonIgnoreProperties
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class PegawaiDto {
 
     @JsonProperty("nip")
     @JsonAlias("nip_pegawai")
-    private long nip;
+    private Long nip;
     private String nama;
 
     @JsonProperty("namaSubdir")
@@ -17,21 +17,27 @@ public class PegawaiDto {
     private String namaSubdir;
     private String jabatan;
 
+    @JsonProperty("isPpnpn")
+    private Boolean isPpnpn = false;
+
+    @JsonProperty("status")
+    private String status = "AKTIF";
+
     public PegawaiDto() {
     }
 
-    public PegawaiDto(long nip, String nama, String namaSubdir, String jabatan) {
+    public PegawaiDto(Long nip, String nama, String namaSubdir, String jabatan) {
         this.nip = nip;
         this.nama = nama;
         this.namaSubdir = namaSubdir;
         this.jabatan = jabatan;
     }
 
-    public long getNip() {
+    public Long getNip() {
         return nip;
     }
 
-    public void setNip(long nip) {
+    public void setNip(Long nip) {
         this.nip = nip;
     }
 
@@ -61,5 +67,21 @@ public class PegawaiDto {
 
     public void setJabatan(String jabatan) {
         this.jabatan = jabatan;
+    }
+
+    public Boolean getIsPpnpn() {
+        return isPpnpn;
+    }
+
+    public void setIsPpnpn(Boolean isPpnpn) {
+        this.isPpnpn = isPpnpn;
+    }
+
+    public String getStatus() {
+        return status;
+    }
+
+    public void setStatus(String status) {
+        this.status = status;
     }
 }

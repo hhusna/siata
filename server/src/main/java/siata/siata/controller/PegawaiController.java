@@ -66,4 +66,24 @@ public class PegawaiController {
         pegawaiService.deletePegawai(nip, getPegawaiFromAuth(authentication));
         return ResponseEntity.ok().build();
     }
+
+    @PostMapping("/batch")
+    public ResponseEntity<List<Pegawai>> batchCreatePegawai(@RequestBody List<Pegawai> pegawaiList, Authentication authentication) {
+        System.out.println("=== BATCH ENDPOINT CALLED ===");
+        System.out.println("User: " + (authentication != null ? authentication.getName() : "null"));
+        System.out.println("Authorities: " + (authentication != null ? authentication.getAuthorities() : "null"));
+        System.out.println("Pegawai count: " + (pegawaiList != null ? pegawaiList.size() : "null"));
+        
+        List<Pegawai> savedPegawai = pegawaiService.batchSavePegawai(pegawaiList, getPegawaiFromAuth(authentication));
+        return ResponseEntity.ok(savedPegawai);
+    }
+
+    @DeleteMapping("/batch")
+    public ResponseEntity<Integer> batchDeletePegawai(@RequestBody List<Long> nipList, Authentication authentication) {
+        System.out.println("=== BATCH DELETE CALLED ===");
+        System.out.println("NIPs to delete: " + nipList.size());
+        
+        int deletedCount = pegawaiService.batchDeletePegawai(nipList, getPegawaiFromAuth(authentication));
+        return ResponseEntity.ok(deletedCount);
+    }
 }

@@ -203,4 +203,34 @@ public class AsetService {
                    a2.getPegawai() != null ? a2.getPegawai().getNip() : null
                );
     }
+
+    @CacheEvict(value = {"asetList", "asetSearch", "dashboardStats"}, allEntries = true)
+    public int batchDeleteAset(List<Long> idList, Pegawai userPegawai) {
+        int deletedCount = 0;
+        StringBuilder deletedCodes = new StringBuilder();
+        
+        for (Long id : idList) {
+            try {
+                Optional<Aset> asetOpt = asetRepository.findById(id);
+                if (asetOpt.isPresent()) {
+                    Aset aset = asetOpt.get();
+                    if (deletedCodes.length() > 0) deletedCodes.append(", ");
+                    deletedCodes.append(aset.getKodeAset());
+                    asetRepository.deleteById(id);
+                    deletedCount++;
+                }
+            } catch (Exception e) {
+                System.err.println("Failed to delete Aset ID: " + id + " - " + e.getMessage());
+            }
+        }
+        
+        if (deletedCount > 0) {
+            String isiLog = "Hapus batch " + deletedCount + " aset: " + (deletedCodes.length() > 100 
+                ? deletedCodes.substring(0, 100) + "..." 
+                : deletedCodes.toString());
+            logRiwayatService.saveLog(new LogRiwayat(userPegawai, (Aset) null, "BATCH_DELETE_ASET", isiLog));
+        }
+        
+        return deletedCount;
+    }
 }

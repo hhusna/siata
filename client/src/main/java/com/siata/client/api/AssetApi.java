@@ -257,4 +257,43 @@ public class AssetApi {
 
         return 0;
     }
+
+    /**
+     * Batch delete multiple assets in one API call.
+     */
+    public int batchDeleteAset(java.util.List<Long> idList) {
+        try {
+            String currentJwt = LoginSession.getJwt();
+            
+            com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
+            String requestBodyJson = mapper.writeValueAsString(idList);
+            System.out.println("Batch delete aset payload: " + idList.size() + " IDs");
+
+            HttpClient client = HttpClient.newBuilder()
+                    .connectTimeout(Duration.ofSeconds(30))
+                    .build();
+
+            String targetUrl = ApiConfig.getAsetUrl() + "/batch";
+            HttpRequest request = HttpRequest.newBuilder()
+                    .uri(URI.create(targetUrl))
+                    .header("Content-Type", "application/json")
+                    .header("Authorization", "Bearer " + currentJwt)
+                    .method("DELETE", HttpRequest.BodyPublishers.ofString(requestBodyJson))
+                    .build();
+
+            HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+
+            if (response.statusCode() == 200) {
+                System.out.println("AssetApi: Batch delete berhasil!");
+                return mapper.readValue(response.body(), Integer.class);
+            } else {
+                System.err.println("Gagal batch delete aset. Status: " + response.statusCode());
+                return -1;
+            }
+        } catch (Exception e) {
+            System.err.println("Exception during batch delete aset:");
+            e.printStackTrace();
+            return -1;
+        }
+    }
 }

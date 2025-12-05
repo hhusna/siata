@@ -7,6 +7,7 @@ public class Employee {
     private String nip;
     private String namaLengkap;
     private String unit;
+    private String status = "AKTIF"; // AKTIF atau NONAKTIF
     private List<String> asetDimiliki; // Deprecated - akan diambil dari manajemen aset
 
     public Employee() {
@@ -17,6 +18,15 @@ public class Employee {
         this.nip = nip;
         this.namaLengkap = namaLengkap;
         this.unit = unit;
+        this.status = "AKTIF";
+        this.asetDimiliki = new ArrayList<>();
+    }
+
+    public Employee(String nip, String namaLengkap, String unit, String status) {
+        this.nip = nip;
+        this.namaLengkap = namaLengkap;
+        this.unit = unit;
+        this.status = status != null ? status : "AKTIF";
         this.asetDimiliki = new ArrayList<>();
     }
 
@@ -42,6 +52,14 @@ public class Employee {
 
     public void setUnit(String unit) {
         this.unit = unit;
+    }
+
+    public String getStatus() {
+        return status;
+    }
+
+    public void setStatus(String status) {
+        this.status = status;
     }
 
     /**

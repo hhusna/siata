@@ -53,4 +53,53 @@ public class PegawaiService {
 
         pegawaiRepository.deleteById(nip);
     }
+
+    public List<Pegawai> batchSavePegawai(List<Pegawai> pegawaiList, Pegawai userPegawai) {
+        List<Pegawai> savedList = new java.util.ArrayList<>();
+        int newCount = 0;
+        int updateCount = 0;
+        
+        for (Pegawai pegawai : pegawaiList) {
+            boolean isNew = pegawai.getNip() == null || !pegawaiRepository.existsById(pegawai.getNip());
+            Pegawai saved = pegawaiRepository.save(pegawai);
+            savedList.add(saved);
+            
+            if (isNew) newCount++;
+            else updateCount++;
+        }
+        
+        // Single log entry for batch operation
+        String isiLog = "Import batch pegawai: " + newCount + " baru, " + updateCount + " diperbarui";
+        logRiwayatService.saveLog(new LogRiwayat(userPegawai, "BATCH_IMPORT_PEGAWAI", isiLog));
+        
+        return savedList;
+    }
+
+    public int batchDeletePegawai(List<Long> nipList, Pegawai userPegawai) {
+        int deletedCount = 0;
+        StringBuilder deletedNames = new StringBuilder();
+        
+        for (Long nip : nipList) {
+            try {
+                Optional<Pegawai> pegawaiOpt = pegawaiRepository.findById(nip);
+                if (pegawaiOpt.isPresent()) {
+                    if (deletedNames.length() > 0) deletedNames.append(", ");
+                    deletedNames.append(pegawaiOpt.get().getNama());
+                    pegawaiRepository.deleteById(nip);
+                    deletedCount++;
+                }
+            } catch (Exception e) {
+                System.err.println("Failed to delete NIP: " + nip + " - " + e.getMessage());
+            }
+        }
+        
+        if (deletedCount > 0) {
+            String isiLog = "Hapus batch " + deletedCount + " pegawai: " + (deletedNames.length() > 100 
+                ? deletedNames.substring(0, 100) + "..." 
+                : deletedNames.toString());
+            logRiwayatService.saveLog(new LogRiwayat(userPegawai, "BATCH_DELETE_PEGAWAI", isiLog));
+        }
+        
+        return deletedCount;
+    }
 }

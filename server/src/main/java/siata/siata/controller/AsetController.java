@@ -113,4 +113,13 @@ public class AsetController {
         int deletedCount = asetService.cleanDuplicates(getPegawaiFromAuth(authentication));
         return ResponseEntity.ok(deletedCount);
     }
+
+    @DeleteMapping("/batch")
+    public ResponseEntity<Integer> batchDeleteAset(@RequestBody List<Long> idList, Authentication authentication) {
+        System.out.println("=== BATCH DELETE ASET CALLED ===");
+        System.out.println("IDs to delete: " + idList.size());
+        
+        int deletedCount = asetService.batchDeleteAset(idList, getPegawaiFromAuth(authentication));
+        return ResponseEntity.ok(deletedCount);
+    }
 }

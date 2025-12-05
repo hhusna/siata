@@ -1,10 +1,15 @@
 package com.siata.client.view;
 
+import com.siata.client.api.AssetApi;
+import com.siata.client.component.PaginatedTableView;
 import com.siata.client.model.Asset;
 import com.siata.client.model.Employee;
 import com.siata.client.service.DataService;
 import com.siata.client.util.AnimationUtils;
+import com.siata.client.util.AssetExcelHelper;
 import javafx.application.Platform;
+import javafx.beans.property.SimpleBooleanProperty;
+import javafx.beans.property.SimpleStringProperty;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.collections.transformation.FilteredList;
@@ -16,29 +21,32 @@ import javafx.scene.control.*;
 import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.layout.*;
 import javafx.scene.text.Text;
+import javafx.stage.FileChooser;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
 import javafx.stage.StageStyle;
 import javafx.util.StringConverter;
 
+import java.io.File;
 import java.math.BigDecimal;
 import java.text.NumberFormat;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.stream.Collectors;
 
 public class AssetManagementView extends VBox {
 
-    private TableView<Asset> table;
-    private final ObservableList<Asset> assetList;
+    private PaginatedTableView<Asset> paginatedTable;
     private final DataService dataService;
+    private final AssetApi assetApi = new AssetApi();
     private final NumberFormat currencyFormat = NumberFormat.getCurrencyInstance(Locale.forLanguageTag("id-ID"));
 
     public AssetManagementView() {
         setSpacing(20);
         dataService = DataService.getInstance();
-        assetList = FXCollections.observableArrayList();
         
         buildView();
         
@@ -51,11 +59,24 @@ public class AssetManagementView extends VBox {
         addButton.getStyleClass().add("primary-button");
         addButton.setOnAction(e -> showAssetForm(null));
 
+        Button importButton = new Button("📥 Import Excel");
+        importButton.getStyleClass().add("secondary-button");
+        importButton.setOnAction(e -> showImportModal());
+
+        Button exportButton = new Button("📤 Export Excel");
+        exportButton.getStyleClass().add("secondary-button");
+        exportButton.setOnAction(e -> handleExport());
+
+        Button deleteSelectedBtn = new Button("🗑 Hapus Terpilih");
+        deleteSelectedBtn.getStyleClass().add("secondary-button");
+        deleteSelectedBtn.setStyle("-fx-text-fill: #dc2626;");
+        deleteSelectedBtn.setOnAction(e -> handleBulkDelete());
+
         Button cleanDuplicatesButton = new Button("🧹 Bersihkan Duplikat");
         cleanDuplicatesButton.getStyleClass().add("secondary-button");
         cleanDuplicatesButton.setOnAction(e -> cleanDuplicates());
 
-        HBox actionButtons = new HBox(12, addButton, cleanDuplicatesButton);
+        HBox actionButtons = new HBox(12, deleteSelectedBtn, exportButton, importButton, cleanDuplicatesButton, addButton);
         actionButtons.setAlignment(Pos.CENTER_RIGHT);
 
         getChildren().add(buildPageHeader(actionButtons));
@@ -100,11 +121,10 @@ public class AssetManagementView extends VBox {
             filterBar.getChildren().addAll(searchField, jenisCombo, statusCombo);
         }
 
-        // Table
-        table = new TableView<>();
-        table.setItems(assetList);
-        table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
-        table.getStyleClass().add("data-table");
+        // Paginated Table with multi-selection
+        paginatedTable = new PaginatedTableView<>();
+        TableView<Asset> table = paginatedTable.getTable();
+        table.getSelectionModel().setSelectionMode(SelectionMode.MULTIPLE);
 
         TableColumn<Asset, String> kodeCol = new TableColumn<>("Kode Aset");
         kodeCol.setCellValueFactory(new PropertyValueFactory<>("kodeAset"));
@@ -224,7 +244,8 @@ public class AssetManagementView extends VBox {
         VBox tableContainer = new VBox(16);
         tableContainer.setPadding(new Insets(20));
         tableContainer.getStyleClass().add("table-container");
-        tableContainer.getChildren().addAll(filterBar, table);
+        VBox.setVgrow(paginatedTable, Priority.ALWAYS);
+        tableContainer.getChildren().addAll(filterBar, paginatedTable);
 
         getChildren().addAll(tableContainer);
     }
@@ -660,13 +681,13 @@ public class AssetManagementView extends VBox {
     }
 
     private void refreshTable() {
-        assetList.setAll(dataService.getAssets());
+        paginatedTable.setItems(dataService.getAssets());
     }
 
     private void filterTable(String searchText, String jenisFilter, String statusFilter, String kesiapanLelangFilter) {
         List<Asset> allAssets = dataService.getAssets();
         
-        assetList.setAll(allAssets.stream()
+        List<Asset> filtered = allAssets.stream()
             .filter(asset -> {
                 // Search filter
                 if (searchText != null && !searchText.isEmpty()) {
@@ -704,8 +725,9 @@ public class AssetManagementView extends VBox {
                 
                 return true;
             })
-            .toList()
-        );
+            .toList();
+        
+        paginatedTable.setItems(filtered);
     }
 
     private boolean confirmDelete(Asset asset) {
@@ -737,8 +759,6 @@ public class AssetManagementView extends VBox {
         
         if (confirmAlert.showAndWait().orElse(ButtonType.CANCEL) == ButtonType.OK) {
             try {
-                // Call API to clean duplicates
-                com.siata.client.api.AssetApi assetApi = new com.siata.client.api.AssetApi();
                 int deletedCount = assetApi.cleanDuplicates();
                 
                 refreshTable();
@@ -756,6 +776,432 @@ public class AssetManagementView extends VBox {
                 errorAlert.showAndWait();
             }
         }
+    }
+
+    // ==================== IMPORT MODAL ====================
+    private void showImportModal() {
+        Stage modalStage = new Stage();
+        modalStage.initModality(Modality.APPLICATION_MODAL);
+        modalStage.initStyle(StageStyle.UNDECORATED);
+        modalStage.setTitle("Import Data Aset");
+
+        VBox modalContent = new VBox(0);
+        modalContent.setPrefWidth(950);
+        modalContent.setPrefHeight(750);
+        modalContent.getStyleClass().add("modal-content");
+
+        // Header
+        HBox headerBox = new HBox();
+        headerBox.setAlignment(Pos.CENTER_LEFT);
+        headerBox.setPadding(new Insets(24, 24, 16, 24));
+        
+        VBox titleBox = new VBox(4);
+        Label title = new Label("Import Data Aset");
+        title.getStyleClass().add("modal-title");
+        Label subtitle = new Label("Import data aset dari file Excel (.xlsx)");
+        subtitle.getStyleClass().add("modal-subtitle");
+        titleBox.getChildren().addAll(title, subtitle);
+        
+        Region spacer = new Region();
+        HBox.setHgrow(spacer, Priority.ALWAYS);
+        
+        Button closeButton = new Button("✕");
+        closeButton.getStyleClass().add("modal-close-button");
+        closeButton.setOnAction(e -> modalStage.close());
+        
+        headerBox.getChildren().addAll(titleBox, spacer, closeButton);
+
+        // File picker
+        HBox filePickerBox = new HBox(12);
+        filePickerBox.setAlignment(Pos.CENTER_LEFT);
+        filePickerBox.setPadding(new Insets(0, 24, 16, 24));
+        
+        TextField filePathField = new TextField();
+        filePathField.setPromptText("Pilih file Excel...");
+        filePathField.setEditable(false);
+        filePathField.setPrefWidth(450);
+        HBox.setHgrow(filePathField, Priority.ALWAYS);
+        
+        Button browseButton = new Button("📁 Pilih File");
+        browseButton.getStyleClass().add("secondary-button");
+        
+        Button templateButton = new Button("📄 Download Template");
+        templateButton.getStyleClass().add("ghost-button");
+        templateButton.setOnAction(e -> downloadTemplate());
+        
+        filePickerBox.getChildren().addAll(filePathField, browseButton, templateButton);
+
+        // Data wrapper class for import
+        class ImportRow {
+            Asset asset;
+            SimpleBooleanProperty selected = new SimpleBooleanProperty(false);
+            String status = "";
+            
+            ImportRow(Asset a) {
+                this.asset = a;
+            }
+        }
+
+        // Preview table (top) - Data dari Excel
+        ObservableList<ImportRow> previewData = FXCollections.observableArrayList();
+        TableView<ImportRow> previewTable = new TableView<>(previewData);
+        previewTable.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
+        previewTable.setEditable(true);
+        previewTable.setPrefHeight(180);
+
+        TableColumn<ImportRow, Boolean> selectCol = new TableColumn<>("Pilih");
+        selectCol.setCellValueFactory(cellData -> cellData.getValue().selected);
+        selectCol.setCellFactory(javafx.scene.control.cell.CheckBoxTableCell.forTableColumn(selectCol));
+        selectCol.setEditable(true);
+        selectCol.setPrefWidth(50);
+
+        TableColumn<ImportRow, String> prevKodeCol = new TableColumn<>("Kode Aset");
+        prevKodeCol.setCellValueFactory(cellData -> new SimpleStringProperty(cellData.getValue().asset.getKodeAset()));
+
+        TableColumn<ImportRow, String> prevJenisCol = new TableColumn<>("Jenis Aset");
+        prevJenisCol.setCellValueFactory(cellData -> new SimpleStringProperty(cellData.getValue().asset.getJenisAset()));
+
+        TableColumn<ImportRow, String> prevPemegangCol = new TableColumn<>("Pemegang");
+        prevPemegangCol.setCellValueFactory(cellData -> new SimpleStringProperty(cellData.getValue().asset.getKeterangan()));
+
+        TableColumn<ImportRow, String> prevSubdirCol = new TableColumn<>("Subdir");
+        prevSubdirCol.setCellValueFactory(cellData -> new SimpleStringProperty(cellData.getValue().asset.getSubdir()));
+
+        previewTable.getColumns().addAll(List.of(selectCol, prevKodeCol, prevJenisCol, prevPemegangCol, prevSubdirCol));
+
+        // Result table (bottom) - Data yang Akan Disimpan (with existing data)
+        ObservableList<ImportRow> resultData = FXCollections.observableArrayList();
+        TableView<ImportRow> resultTable = new TableView<>(resultData);
+        resultTable.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
+        VBox.setVgrow(resultTable, Priority.ALWAYS);
+
+        TableColumn<ImportRow, String> resKodeCol = new TableColumn<>("Kode Aset");
+        resKodeCol.setCellValueFactory(cellData -> new SimpleStringProperty(cellData.getValue().asset.getKodeAset()));
+
+        TableColumn<ImportRow, String> resJenisCol = new TableColumn<>("Jenis Aset");
+        resJenisCol.setCellValueFactory(cellData -> new SimpleStringProperty(cellData.getValue().asset.getJenisAset()));
+
+        TableColumn<ImportRow, String> resPemegangCol = new TableColumn<>("Pemegang");
+        resPemegangCol.setCellValueFactory(cellData -> new SimpleStringProperty(cellData.getValue().asset.getKeterangan()));
+
+        TableColumn<ImportRow, String> resSubdirCol = new TableColumn<>("Subdir");
+        resSubdirCol.setCellValueFactory(cellData -> new SimpleStringProperty(cellData.getValue().asset.getSubdir()));
+
+        TableColumn<ImportRow, String> resStatusCol = new TableColumn<>("Status");
+        resStatusCol.setCellValueFactory(cellData -> new SimpleStringProperty(cellData.getValue().status));
+        resStatusCol.setCellFactory(column -> new TableCell<>() {
+            @Override
+            protected void updateItem(String item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || item == null) {
+                    setText(null);
+                    setStyle("");
+                } else {
+                    setText(item);
+                    if ("Duplikat".equals(item)) {
+                        setStyle("-fx-text-fill: #e74c3c; -fx-font-weight: bold;");
+                    } else if ("Baru".equals(item)) {
+                        setStyle("-fx-text-fill: #27ae60; -fx-font-weight: bold;");
+                    } else if ("Existing".equals(item)) {
+                        setStyle("-fx-text-fill: #3498db; -fx-font-weight: bold;");
+                    } else {
+                        setStyle("");
+                    }
+                }
+            }
+        });
+
+        TableColumn<ImportRow, Void> removeCol = new TableColumn<>("Hapus");
+        removeCol.setCellFactory(column -> new TableCell<>() {
+            private final Button removeBtn = new Button("✕");
+            {
+                removeBtn.getStyleClass().add("ghost-button");
+                removeBtn.setStyle("-fx-text-fill: #e74c3c;");
+                removeBtn.setOnAction(e -> {
+                    ImportRow row = getTableView().getItems().get(getIndex());
+                    if (!"Existing".equals(row.status)) {
+                        resultData.remove(row);
+                        updateAssetResultStatuses(resultData);
+                    }
+                });
+            }
+            @Override
+            protected void updateItem(Void item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty) {
+                    setGraphic(null);
+                } else {
+                    ImportRow row = getTableView().getItems().get(getIndex());
+                    setGraphic("Existing".equals(row.status) ? null : removeBtn);
+                }
+            }
+        });
+        removeCol.setPrefWidth(60);
+
+        resultTable.getColumns().addAll(List.of(resKodeCol, resJenisCol, resPemegangCol, resSubdirCol, resStatusCol, removeCol));
+
+        // Load existing assets into result table
+        List<Asset> existingAssets = dataService.getAssets();
+        for (Asset a : existingAssets) {
+            ImportRow row = new ImportRow(a);
+            row.status = "Existing";
+            resultData.add(row);
+        }
+
+        // Browse button action
+        browseButton.setOnAction(e -> {
+            FileChooser fileChooser = new FileChooser();
+            fileChooser.setTitle("Pilih File Excel");
+            fileChooser.getExtensionFilters().add(
+                new FileChooser.ExtensionFilter("Excel Files", "*.xlsx", "*.xls")
+            );
+            File file = fileChooser.showOpenDialog(modalStage);
+            if (file != null) {
+                filePathField.setText(file.getAbsolutePath());
+                try {
+                    List<Asset> assets = AssetExcelHelper.parseExcel(file);
+                    previewData.clear();
+                    for (Asset a : assets) {
+                        previewData.add(new ImportRow(a));
+                    }
+                } catch (Exception ex) {
+                    showAlert("Gagal membaca file Excel: " + ex.getMessage());
+                }
+            }
+        });
+
+        // Preview section (top)
+        VBox previewSection = new VBox(8);
+        previewSection.setPadding(new Insets(0, 24, 8, 24));
+        Label previewLabel = new Label("Data dari Excel");
+        previewLabel.setStyle("-fx-font-weight: bold; -fx-font-size: 14px;");
+        
+        HBox previewButtons = new HBox(8);
+        previewButtons.setAlignment(Pos.CENTER_LEFT);
+        Button selectAllBtn = new Button("Select All");
+        selectAllBtn.getStyleClass().add("ghost-button");
+        selectAllBtn.setOnAction(e -> previewData.forEach(r -> r.selected.set(true)));
+        
+        Button deselectAllBtn = new Button("Deselect All");
+        deselectAllBtn.getStyleClass().add("ghost-button");
+        deselectAllBtn.setOnAction(e -> previewData.forEach(r -> r.selected.set(false)));
+        
+        Button addSelectedBtn = new Button("Tambahkan →");
+        addSelectedBtn.getStyleClass().add("primary-button");
+        addSelectedBtn.setOnAction(e -> {
+            List<ImportRow> selected = previewData.stream()
+                .filter(r -> r.selected.get())
+                .map(r -> new ImportRow(r.asset))
+                .toList();
+            resultData.addAll(selected);
+            updateAssetResultStatuses(resultData);
+        });
+        
+        previewButtons.getChildren().addAll(selectAllBtn, deselectAllBtn, addSelectedBtn);
+        previewSection.getChildren().addAll(previewLabel, previewTable, previewButtons);
+
+        // Result section (bottom)
+        VBox resultSection = new VBox(8);
+        resultSection.setPadding(new Insets(8, 24, 8, 24));
+        VBox.setVgrow(resultSection, Priority.ALWAYS);
+        Label resultLabel = new Label("Data yang Akan Disimpan");
+        resultLabel.setStyle("-fx-font-weight: bold; -fx-font-size: 14px;");
+        
+        HBox resultButtons = new HBox(8);
+        resultButtons.setAlignment(Pos.CENTER_LEFT);
+        Button removeDuplicatesBtn = new Button("🗑 Hapus Duplikat");
+        removeDuplicatesBtn.getStyleClass().add("secondary-button");
+        removeDuplicatesBtn.setStyle("-fx-text-fill: #e74c3c;");
+        removeDuplicatesBtn.setOnAction(e -> {
+            // Keep only first occurrence of each Kode Aset
+            java.util.Set<String> seenCodes = new java.util.HashSet<>();
+            List<ImportRow> toRemove = new ArrayList<>();
+            for (ImportRow row : resultData) {
+                if (seenCodes.contains(row.asset.getKodeAset())) {
+                    toRemove.add(row);
+                } else {
+                    seenCodes.add(row.asset.getKodeAset());
+                }
+            }
+            resultData.removeAll(toRemove);
+            updateAssetResultStatuses(resultData);
+            showSuccessAlert("Berhasil menghapus " + toRemove.size() + " data duplikat.");
+        });
+        
+        resultButtons.getChildren().addAll(removeDuplicatesBtn);
+        resultSection.getChildren().addAll(resultLabel, resultTable, resultButtons);
+        VBox.setVgrow(resultTable, Priority.ALWAYS);
+
+        // Footer buttons
+        HBox footerBox = new HBox(12);
+        footerBox.setAlignment(Pos.CENTER_RIGHT);
+        footerBox.setPadding(new Insets(16, 24, 24, 24));
+        
+        Button cancelButton = new Button("Batal");
+        cancelButton.getStyleClass().add("secondary-button");
+        cancelButton.setOnAction(e -> modalStage.close());
+        
+        Button updateButton = new Button("Update Database");
+        updateButton.getStyleClass().add("primary-button");
+        updateButton.setOnAction(e -> {
+            // Get only new items (not existing)
+            List<ImportRow> newItems = resultData.stream()
+                .filter(r -> !"Existing".equals(r.status))
+                .toList();
+            
+            if (newItems.isEmpty()) {
+                showAlert("Tidak ada data baru untuk disimpan.");
+                return;
+            }
+            
+            // Check for duplicates
+            long dupCount = newItems.stream().filter(r -> "Duplikat".equals(r.status)).count();
+            if (dupCount > 0) {
+                showAlert("Masih ada " + dupCount + " data duplikat. Hapus duplikat terlebih dahulu.");
+                return;
+            }
+            
+            int successCount = 0;
+            for (ImportRow row : newItems) {
+                try {
+                    dataService.addAsset(row.asset);
+                    successCount++;
+                } catch (Exception ex) {
+                    System.err.println("Error importing asset: " + ex.getMessage());
+                }
+            }
+            
+            showSuccessAlert("Berhasil mengimport " + successCount + " aset baru.");
+            modalStage.close();
+            refreshTable();
+        });
+        
+        footerBox.getChildren().addAll(cancelButton, updateButton);
+
+        modalContent.getChildren().addAll(headerBox, filePickerBox, previewSection, resultSection, footerBox);
+
+        Scene scene = new Scene(modalContent);
+        scene.getStylesheets().add(getClass().getResource("/styles.css").toExternalForm());
+        modalStage.setScene(scene);
+        modalStage.showAndWait();
+    }
+
+    private void updateAssetResultStatuses(ObservableList<?> resultData) {
+        // Get existing kode asets from database
+        java.util.Set<String> existingCodes = dataService.getAssets().stream()
+            .map(Asset::getKodeAset)
+            .collect(Collectors.toSet());
+        
+        // Track seen codes for duplicate detection
+        java.util.Set<String> seenCodes = new java.util.HashSet<>();
+        
+        for (Object obj : resultData) {
+            if (obj instanceof Object) {
+                try {
+                    java.lang.reflect.Field assetField = obj.getClass().getDeclaredField("asset");
+                    assetField.setAccessible(true);
+                    Asset asset = (Asset) assetField.get(obj);
+                    
+                    java.lang.reflect.Field statusField = obj.getClass().getDeclaredField("status");
+                    statusField.setAccessible(true);
+                    String currentStatus = (String) statusField.get(obj);
+                    
+                    // Skip existing items
+                    if ("Existing".equals(currentStatus)) {
+                        seenCodes.add(asset.getKodeAset());
+                        continue;
+                    }
+                    
+                    String code = asset.getKodeAset();
+                    if (seenCodes.contains(code)) {
+                        statusField.set(obj, "Duplikat");
+                    } else if (existingCodes.contains(code)) {
+                        statusField.set(obj, "Duplikat");
+                    } else {
+                        statusField.set(obj, "Baru");
+                        seenCodes.add(code);
+                    }
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            }
+        }
+    }
+
+    private void downloadTemplate() {
+        FileChooser fileChooser = new FileChooser();
+        fileChooser.setTitle("Simpan Template Excel");
+        fileChooser.setInitialFileName("template_aset.xlsx");
+        fileChooser.getExtensionFilters().add(
+            new FileChooser.ExtensionFilter("Excel Files", "*.xlsx")
+        );
+        File file = fileChooser.showSaveDialog(getScene().getWindow());
+        if (file != null) {
+            try {
+                AssetExcelHelper.createTemplate(file);
+                showSuccessAlert("Template berhasil disimpan di: " + file.getAbsolutePath());
+            } catch (Exception e) {
+                showAlert("Gagal menyimpan template: " + e.getMessage());
+            }
+        }
+    }
+
+    private void handleExport() {
+        FileChooser fileChooser = new FileChooser();
+        fileChooser.setTitle("Export Data Aset");
+        fileChooser.setInitialFileName("data_aset_" + LocalDate.now() + ".xlsx");
+        fileChooser.getExtensionFilters().add(
+            new FileChooser.ExtensionFilter("Excel Files", "*.xlsx")
+        );
+        File file = fileChooser.showSaveDialog(getScene().getWindow());
+        if (file != null) {
+            try {
+                List<Asset> assets = dataService.getAssets();
+                AssetExcelHelper.exportToExcel(assets, file);
+                showSuccessAlert("Data berhasil diekspor ke: " + file.getAbsolutePath());
+            } catch (Exception e) {
+                showAlert("Gagal mengekspor data: " + e.getMessage());
+            }
+        }
+    }
+
+    private void handleBulkDelete() {
+        ObservableList<Asset> selectedItems = paginatedTable.getTable().getSelectionModel().getSelectedItems();
+        
+        if (selectedItems == null || selectedItems.isEmpty()) {
+            showAlert("Pilih aset yang akan dihapus terlebih dahulu.\n\nTip: Gunakan Ctrl+Klik untuk memilih beberapa aset.");
+            return;
+        }
+        
+        Alert confirmAlert = new Alert(Alert.AlertType.CONFIRMATION);
+        confirmAlert.setTitle("Konfirmasi Hapus");
+        confirmAlert.setHeaderText("Hapus " + selectedItems.size() + " Aset");
+        confirmAlert.setContentText("Apakah Anda yakin ingin menghapus " + selectedItems.size() + " aset yang dipilih?\n\nAksi ini tidak dapat dibatalkan.");
+        
+        if (confirmAlert.showAndWait().orElse(ButtonType.CANCEL) != ButtonType.OK) {
+            return;
+        }
+        
+        List<Long> idList = selectedItems.stream()
+            .map(Asset::getIdAset)
+            .collect(Collectors.toList());
+        
+        int result = assetApi.batchDeleteAset(idList);
+        
+        if (result >= 0) {
+            showSuccessAlert("Berhasil menghapus " + result + " aset.");
+            refreshTable();
+        } else {
+            showAlert("Gagal menghapus aset. Silakan coba lagi.");
+        }
+    }
+
+    private void showSuccessAlert(String message) {
+        Alert alert = new Alert(Alert.AlertType.INFORMATION);
+        alert.setTitle("Berhasil");
+        alert.setHeaderText(null);
+        alert.setContentText(message);
+        alert.showAndWait();
     }
 }
 

@@ -90,13 +90,13 @@ public class PegawaiApi {
     }
 
 
-    public boolean addPegawai(long nip, String nama, String namaSubdir, String jabatan) {
+    public boolean addPegawai(long nip, String nama, String namaSubdir, String status) {
         try {
             PegawaiDto payload = new PegawaiDto();
             payload.setNip(nip);
             payload.setNama(nama);
             payload.setNamaSubdir(namaSubdir);
-            // jabatan tidak diset lagi
+            payload.setStatus(status != null ? status : "AKTIF");
 
             ObjectMapper mapper = new ObjectMapper();
 
@@ -163,13 +163,13 @@ public class PegawaiApi {
         return false;
     }
 
-    public boolean updatePegawai(long nip, String nama, String namaSubdir, String jabatan) {
+    public boolean updatePegawai(long nip, String nama, String namaSubdir, String status) {
         try {
             PegawaiDto payload = new PegawaiDto();
             payload.setNip(nip);
             payload.setNama(nama);
             payload.setNamaSubdir(namaSubdir);
-            // jabatan tidak diset lagi
+            payload.setStatus(status != null ? status : "AKTIF");
 
             ObjectMapper mapper = new ObjectMapper();
             String requestBodyJson = mapper.writeValueAsString(payload);
@@ -203,4 +203,105 @@ public class PegawaiApi {
         }
     }
 
+    /**
+     * Batch add multiple pegawai in one API call.
+     * Returns the number of successfully added pegawai, or -1 on error.
+     */
+    public int batchAddPegawai(java.util.List<PegawaiDto> pegawaiList) {
+        try {
+            // Get fresh JWT token
+            String currentJwt = LoginSession.getJwt();
+            
+            // Debug logging
+            System.out.println("=== BATCH IMPORT DEBUG ===");
+            System.out.println("JWT Token exists: " + (currentJwt != null && !currentJwt.isEmpty()));
+            if (currentJwt != null && currentJwt.length() > 20) {
+                System.out.println("JWT Token (first 20 chars): " + currentJwt.substring(0, 20) + "...");
+            }
+            System.out.println("Jumlah pegawai: " + pegawaiList.size());
+            
+            ObjectMapper mapper = new ObjectMapper();
+            String requestBodyJson = mapper.writeValueAsString(pegawaiList);
+            System.out.println("Payload size: " + requestBodyJson.length() + " bytes");
+
+            HttpClient client = HttpClient.newBuilder()
+                    .connectTimeout(Duration.ofSeconds(30))
+                    .build();
+
+            String targetUrl = ApiConfig.getPegawaiUrl() + "/batch";
+            System.out.println("Target URL: " + targetUrl);
+            
+            HttpRequest request = HttpRequest.newBuilder()
+                    .uri(URI.create(targetUrl))
+                    .header("Content-Type", "application/json")
+                    .header("Authorization", "Bearer " + currentJwt)
+                    .POST(HttpRequest.BodyPublishers.ofString(requestBodyJson))
+                    .build();
+
+            HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+
+            System.out.println("Response status: " + response.statusCode());
+            if (response.statusCode() != 200) {
+                System.out.println("Response body: " + response.body());
+            }
+            System.out.println("=== END DEBUG ===");
+
+            if (response.statusCode() == 200) {
+                System.out.println("PegawaiApi: Batch import berhasil!");
+                PegawaiDto[] saved = mapper.readValue(response.body(), PegawaiDto[].class);
+                return saved.length;
+            } else {
+                System.err.println("Gagal batch import. Status: " + response.statusCode());
+                System.err.println("Response: " + response.body());
+                return -1;
+            }
+        } catch (Exception e) {
+            System.err.println("Exception during batch import:");
+            e.printStackTrace();
+            return -1;
+        }
+    }
+
+    /**
+     * Batch delete multiple pegawai in one API call.
+     * Returns the number of successfully deleted pegawai, or -1 on error.
+     */
+    public int batchDeletePegawai(java.util.List<Long> nipList) {
+        try {
+            String currentJwt = LoginSession.getJwt();
+            
+            ObjectMapper mapper = new ObjectMapper();
+            String requestBodyJson = mapper.writeValueAsString(nipList);
+            System.out.println("Batch delete payload: " + nipList.size() + " NIPs");
+
+            HttpClient client = HttpClient.newBuilder()
+                    .connectTimeout(Duration.ofSeconds(30))
+                    .build();
+
+            String targetUrl = ApiConfig.getPegawaiUrl() + "/batch";
+            HttpRequest request = HttpRequest.newBuilder()
+                    .uri(URI.create(targetUrl))
+                    .header("Content-Type", "application/json")
+                    .header("Authorization", "Bearer " + currentJwt)
+                    .method("DELETE", HttpRequest.BodyPublishers.ofString(requestBodyJson))
+                    .build();
+
+            HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+
+            if (response.statusCode() == 200) {
+                System.out.println("PegawaiApi: Batch delete berhasil!");
+                return mapper.readValue(response.body(), Integer.class);
+            } else {
+                System.err.println("Gagal batch delete. Status: " + response.statusCode());
+                System.err.println("Response: " + response.body());
+                return -1;
+            }
+        } catch (Exception e) {
+            System.err.println("Exception during batch delete:");
+            e.printStackTrace();
+            return -1;
+        }
+    }
+
 }
+

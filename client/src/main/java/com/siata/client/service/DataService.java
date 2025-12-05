@@ -329,8 +329,9 @@ public class DataService {
         PegawaiDto[] pegawaiDto = pegawaiApi.getPegawai();
         List<Employee> employeeList = new ArrayList<>();
         for (PegawaiDto dto : pegawaiDto) {
-            // Constructor baru tanpa jabatan: Employee(nip, nama, unit)
-            Employee emp = new Employee(Long.toString(dto.getNip()), dto.getNama(), dto.getNamaSubdir());
+            // Constructor dengan status: Employee(nip, nama, unit, status)
+            String status = dto.getStatus() != null ? dto.getStatus() : "AKTIF";
+            Employee emp = new Employee(Long.toString(dto.getNip()), dto.getNama(), dto.getNamaSubdir(), status);
             employeeList.add(emp);
         }
         return employeeList;

@@ -1,8 +1,13 @@
 package com.siata.client.view;
 
 import com.siata.client.api.PegawaiApi;
+import com.siata.client.component.PaginatedTableView;
+import com.siata.client.dto.PegawaiDto;
 import com.siata.client.model.Employee;
 import com.siata.client.service.DataService;
+import com.siata.client.util.ExcelHelper;
+import javafx.beans.property.SimpleBooleanProperty;
+import javafx.beans.property.SimpleStringProperty;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.geometry.Insets;
@@ -10,25 +15,27 @@ import javafx.geometry.Pos;
 import javafx.scene.Node;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
+import javafx.scene.control.cell.CheckBoxTableCell;
 import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.layout.*;
+import javafx.stage.FileChooser;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
 import javafx.stage.StageStyle;
 
-import java.util.List;
+import java.io.File;
+import java.util.*;
+import java.util.stream.Collectors;
 
 public class EmployeeManagementView extends VBox {
 
-    private TableView<Employee> table;
-    private final ObservableList<Employee> employeeList;
+    private PaginatedTableView<Employee> paginatedTable;
     private final DataService dataService;
     private final PegawaiApi pegawaiApi = new PegawaiApi();
 
     public EmployeeManagementView() {
         setSpacing(20);
         dataService = DataService.getInstance();
-        employeeList = FXCollections.observableArrayList();
         buildView();
         refreshTable();
     }
@@ -38,31 +45,49 @@ public class EmployeeManagementView extends VBox {
         addButton.getStyleClass().add("primary-button");
         addButton.setOnAction(e -> showEmployeeForm(null));
 
-        getChildren().add(buildPageHeader(addButton));
+        Button importButton = new Button("📥 Import Excel");
+        importButton.getStyleClass().add("secondary-button");
+        importButton.setOnAction(e -> showImportModal());
+
+        Button exportButton = new Button("📤 Export Excel");
+        exportButton.getStyleClass().add("secondary-button");
+        exportButton.setOnAction(e -> handleExport());
+
+        Button deleteSelectedBtn = new Button("🗑 Hapus Terpilih");
+        deleteSelectedBtn.getStyleClass().add("secondary-button");
+        deleteSelectedBtn.setStyle("-fx-text-fill: #dc2626;");
+        deleteSelectedBtn.setOnAction(e -> handleBulkDelete());
+
+        getChildren().add(buildPageHeader(deleteSelectedBtn, exportButton, importButton, addButton));
 
         // Search and filter bar
         HBox filterBar = new HBox(12);
         filterBar.setAlignment(Pos.CENTER_LEFT);
         
         ComboBox<String> unitCombo = new ComboBox<>();
-        unitCombo.getItems().addAll("Semua Subdir", "PPTAU", "AUNB", "AUNTB", "KAU", "SILAU", "Tata Usaha", "Direktur");
+        unitCombo.getItems().addAll("Semua Subdir", "PPTAU", "AUNB", "AUNTB", "KAU", "SILAU", "Tata Usaha", "Direktur", "PINDAH");
         unitCombo.setValue("Semua Subdir");
         unitCombo.setPrefWidth(150);
+        
+        ComboBox<String> statusCombo = new ComboBox<>();
+        statusCombo.getItems().addAll("Semua Status", "AKTIF", "NONAKTIF");
+        statusCombo.setValue("Semua Status");
+        statusCombo.setPrefWidth(130);
         
         TextField searchField = new TextField();
         searchField.setPromptText("Cari berdasarkan nama atau NIP...");
         searchField.setPrefWidth(300);
-        searchField.textProperty().addListener((obs, oldVal, newVal) -> filterTable(newVal, unitCombo.getValue()));
+        searchField.textProperty().addListener((obs, oldVal, newVal) -> filterTable(newVal, unitCombo.getValue(), statusCombo.getValue()));
         
-        unitCombo.setOnAction(e -> filterTable(searchField.getText(), unitCombo.getValue()));
+        unitCombo.setOnAction(e -> filterTable(searchField.getText(), unitCombo.getValue(), statusCombo.getValue()));
+        statusCombo.setOnAction(e -> filterTable(searchField.getText(), unitCombo.getValue(), statusCombo.getValue()));
         
-        filterBar.getChildren().addAll(searchField, unitCombo);
+        filterBar.getChildren().addAll(searchField, unitCombo, statusCombo);
 
-        // Table
-        table = new TableView<>();
-        table.setItems(employeeList);
-        table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
-        table.getStyleClass().add("data-table");
+        // Paginated Table with multi-selection
+        paginatedTable = new PaginatedTableView<>();
+        TableView<Employee> table = paginatedTable.getTable();
+        table.getSelectionModel().setSelectionMode(SelectionMode.MULTIPLE);
 
         TableColumn<Employee, String> nipCol = new TableColumn<>("NIP");
         nipCol.setCellValueFactory(new PropertyValueFactory<>("nip"));
@@ -72,6 +97,23 @@ public class EmployeeManagementView extends VBox {
         
         TableColumn<Employee, String> unitCol = new TableColumn<>("Subdir");
         unitCol.setCellValueFactory(new PropertyValueFactory<>("unit"));
+        unitCol.setCellFactory(column -> new TableCell<Employee, String>() {
+            @Override
+            protected void updateItem(String item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || item == null) {
+                    setText(null);
+                    setStyle("");
+                } else {
+                    setText(item);
+                    if ("PINDAH".equalsIgnoreCase(item)) {
+                        setStyle("-fx-text-fill: #dc2626; -fx-font-weight: bold;");
+                    } else {
+                        setStyle("");
+                    }
+                }
+            }
+        });
         
         TableColumn<Employee, String> asetCol = new TableColumn<>("Aset yang Dimiliki");
         asetCol.setCellValueFactory(cellData -> {
@@ -136,18 +178,40 @@ public class EmployeeManagementView extends VBox {
         });
         aksiCol.setPrefWidth(150);
         
-        table.getColumns().setAll(List.of(nipCol, namaCol, unitCol, asetCol, aksiCol));
+        // Status column with color styling
+        TableColumn<Employee, String> statusCol = new TableColumn<>("Status");
+        statusCol.setCellValueFactory(new PropertyValueFactory<>("status"));
+        statusCol.setCellFactory(column -> new TableCell<Employee, String>() {
+            @Override
+            protected void updateItem(String item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || item == null) {
+                    setText(null);
+                    setStyle("");
+                } else {
+                    setText(item);
+                    if ("NONAKTIF".equalsIgnoreCase(item)) {
+                        setStyle("-fx-text-fill: #dc2626; -fx-font-weight: bold;");
+                    } else {
+                        setStyle("-fx-text-fill: #16a34a; -fx-font-weight: bold;");
+                    }
+                }
+            }
+        });
+        
+        table.getColumns().setAll(List.of(nipCol, namaCol, unitCol, statusCol, asetCol, aksiCol));
 
         VBox tableContainer = new VBox(16);
         tableContainer.setPadding(new Insets(20));
         tableContainer.getStyleClass().add("table-container");
-        tableContainer.getChildren().addAll(filterBar, table);
+        VBox.setVgrow(paginatedTable, Priority.ALWAYS);
+        tableContainer.getChildren().addAll(filterBar, paginatedTable);
 
         getChildren().addAll(tableContainer);
     }
 
-    private Node buildPageHeader(Button actionButton) {
-        HBox header = new HBox(16);
+    private Node buildPageHeader(Button... actionButtons) {
+        HBox header = new HBox(12);
         header.setAlignment(Pos.CENTER_LEFT);
 
         VBox textGroup = new VBox(4);
@@ -160,7 +224,11 @@ public class EmployeeManagementView extends VBox {
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
 
-        header.getChildren().addAll(textGroup, spacer, actionButton);
+        HBox buttonGroup = new HBox(8);
+        buttonGroup.setAlignment(Pos.CENTER_RIGHT);
+        buttonGroup.getChildren().addAll(actionButtons);
+
+        header.getChildren().addAll(textGroup, spacer, buttonGroup);
         return header;
     }
 
@@ -170,6 +238,421 @@ public class EmployeeManagementView extends VBox {
         button.setStyle("-fx-font-size: 14px; -fx-padding: 6 10;");
         return button;
     }
+
+    // ==================== IMPORT MODAL ====================
+
+    private void showImportModal() {
+        Stage modalStage = new Stage();
+        modalStage.initModality(Modality.APPLICATION_MODAL);
+        modalStage.initStyle(StageStyle.UNDECORATED);
+        modalStage.setTitle("Import Data Pegawai");
+
+        VBox modalContent = new VBox(0);
+        modalContent.setPrefWidth(900);
+        modalContent.setMaxWidth(900);
+        modalContent.setPrefHeight(650);
+        modalContent.getStyleClass().add("modal-content");
+
+        // Header
+        HBox headerBox = new HBox();
+        headerBox.setAlignment(Pos.CENTER_LEFT);
+        headerBox.setPadding(new Insets(24, 24, 16, 24));
+        
+        VBox titleBox = new VBox(4);
+        Label title = new Label("Import Data Pegawai");
+        title.getStyleClass().add("modal-title");
+        Label subtitle = new Label("Import data pegawai dari file Excel (.xlsx)");
+        subtitle.getStyleClass().add("modal-subtitle");
+        titleBox.getChildren().addAll(title, subtitle);
+        
+        Region spacer = new Region();
+        HBox.setHgrow(spacer, Priority.ALWAYS);
+        
+        Button closeButton = new Button("✕");
+        closeButton.getStyleClass().add("modal-close-button");
+        closeButton.setOnAction(e -> modalStage.close());
+        
+        headerBox.getChildren().addAll(titleBox, spacer, closeButton);
+
+        // File picker
+        HBox filePickerBox = new HBox(12);
+        filePickerBox.setAlignment(Pos.CENTER_LEFT);
+        filePickerBox.setPadding(new Insets(0, 24, 16, 24));
+        
+        TextField filePathField = new TextField();
+        filePathField.setPromptText("Pilih file Excel...");
+        filePathField.setEditable(false);
+        filePathField.setPrefWidth(400);
+        HBox.setHgrow(filePathField, Priority.ALWAYS);
+        
+        Button browseButton = new Button("📁 Pilih File");
+        browseButton.getStyleClass().add("secondary-button");
+        
+        Button downloadTemplateButton = new Button("📄 Download Template");
+        downloadTemplateButton.getStyleClass().add("ghost-button");
+        downloadTemplateButton.setOnAction(e -> downloadTemplate());
+        
+        filePickerBox.getChildren().addAll(filePathField, browseButton, downloadTemplateButton);
+
+        // Data wrapper class for import
+        class ImportRow {
+            Employee employee;
+            SimpleBooleanProperty selected = new SimpleBooleanProperty(false);
+            String status = "";
+            
+            ImportRow(Employee emp) {
+                this.employee = emp;
+            }
+        }
+
+        // Preview table (left)
+        ObservableList<ImportRow> previewData = FXCollections.observableArrayList();
+        TableView<ImportRow> previewTable = new TableView<>(previewData);
+        previewTable.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
+        previewTable.setEditable(true);
+
+        TableColumn<ImportRow, Boolean> selectCol = new TableColumn<>("Pilih");
+        selectCol.setCellValueFactory(cellData -> cellData.getValue().selected);
+        selectCol.setCellFactory(CheckBoxTableCell.forTableColumn(selectCol));
+        selectCol.setEditable(true);
+        selectCol.setPrefWidth(50);
+
+        TableColumn<ImportRow, String> prevNipCol = new TableColumn<>("NIP");
+        prevNipCol.setCellValueFactory(cellData -> new SimpleStringProperty(cellData.getValue().employee.getNip()));
+
+        TableColumn<ImportRow, String> prevNamaCol = new TableColumn<>("Nama");
+        prevNamaCol.setCellValueFactory(cellData -> new SimpleStringProperty(cellData.getValue().employee.getNamaLengkap()));
+
+        TableColumn<ImportRow, String> prevSubdirCol = new TableColumn<>("Subdirektorat");
+        prevSubdirCol.setCellValueFactory(cellData -> new SimpleStringProperty(cellData.getValue().employee.getUnit()));
+
+        previewTable.getColumns().addAll(selectCol, prevNipCol, prevNamaCol, prevSubdirCol);
+
+        // Result table (right)
+        ObservableList<ImportRow> resultData = FXCollections.observableArrayList();
+        TableView<ImportRow> resultTable = new TableView<>(resultData);
+        resultTable.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
+
+        TableColumn<ImportRow, String> resNipCol = new TableColumn<>("NIP");
+        resNipCol.setCellValueFactory(cellData -> new SimpleStringProperty(cellData.getValue().employee.getNip()));
+
+        TableColumn<ImportRow, String> resNamaCol = new TableColumn<>("Nama");
+        resNamaCol.setCellValueFactory(cellData -> new SimpleStringProperty(cellData.getValue().employee.getNamaLengkap()));
+
+        TableColumn<ImportRow, String> resSubdirCol = new TableColumn<>("Subdirektorat");
+        resSubdirCol.setCellValueFactory(cellData -> new SimpleStringProperty(cellData.getValue().employee.getUnit()));
+
+        TableColumn<ImportRow, String> statusCol = new TableColumn<>("Status");
+        statusCol.setCellValueFactory(cellData -> new SimpleStringProperty(cellData.getValue().status));
+        statusCol.setCellFactory(column -> new TableCell<>() {
+            @Override
+            protected void updateItem(String item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || item == null) {
+                    setText(null);
+                    setStyle("");
+                } else {
+                    setText(item);
+                    if ("Duplikat".equals(item)) {
+                        setStyle("-fx-text-fill: #e74c3c; -fx-font-weight: bold;");
+                    } else if ("Baru".equals(item)) {
+                        setStyle("-fx-text-fill: #27ae60; -fx-font-weight: bold;");
+                    } else if ("Update".equals(item)) {
+                        setStyle("-fx-text-fill: #f39c12; -fx-font-weight: bold;");
+                    } else {
+                        setStyle("");
+                    }
+                }
+            }
+        });
+
+        TableColumn<ImportRow, Void> removeCol = new TableColumn<>("Hapus");
+        removeCol.setCellFactory(column -> new TableCell<>() {
+            private final Button removeBtn = new Button("✕");
+            {
+                removeBtn.getStyleClass().add("ghost-button");
+                removeBtn.setStyle("-fx-text-fill: #e74c3c;");
+                removeBtn.setOnAction(e -> {
+                    ImportRow row = getTableView().getItems().get(getIndex());
+                    resultData.remove(row);
+                    updateResultStatuses(resultData);
+                });
+            }
+            @Override
+            protected void updateItem(Void item, boolean empty) {
+                super.updateItem(item, empty);
+                setGraphic(empty ? null : removeBtn);
+            }
+        });
+        removeCol.setPrefWidth(60);
+
+        resultTable.getColumns().addAll(resNipCol, resNamaCol, resSubdirCol, statusCol, removeCol);
+
+        // Browse button action
+        browseButton.setOnAction(e -> {
+            FileChooser fileChooser = new FileChooser();
+            fileChooser.setTitle("Pilih File Excel");
+            fileChooser.getExtensionFilters().add(
+                new FileChooser.ExtensionFilter("Excel Files", "*.xlsx")
+            );
+            File file = fileChooser.showOpenDialog(modalStage);
+            if (file != null) {
+                filePathField.setText(file.getAbsolutePath());
+                try {
+                    List<Employee> employees = ExcelHelper.parseExcel(file);
+                    previewData.clear();
+                    for (Employee emp : employees) {
+                        previewData.add(new ImportRow(emp));
+                    }
+                } catch (Exception ex) {
+                    showAlert("Gagal membaca file Excel: " + ex.getMessage());
+                }
+            }
+        });
+
+        // Preview section
+        VBox previewSection = new VBox(8);
+        Label previewLabel = new Label("Data dari Excel");
+        previewLabel.setStyle("-fx-font-weight: bold; -fx-font-size: 14px;");
+        
+        HBox previewButtons = new HBox(8);
+        Button selectAllBtn = new Button("Select All");
+        selectAllBtn.getStyleClass().add("ghost-button");
+        selectAllBtn.setOnAction(e -> previewData.forEach(r -> r.selected.set(true)));
+        
+        Button deselectAllBtn = new Button("Deselect All");
+        deselectAllBtn.getStyleClass().add("ghost-button");
+        deselectAllBtn.setOnAction(e -> previewData.forEach(r -> r.selected.set(false)));
+        
+        Button addSelectedBtn = new Button("Tambahkan →");
+        addSelectedBtn.getStyleClass().add("primary-button");
+        addSelectedBtn.setOnAction(e -> {
+            List<ImportRow> selected = previewData.stream()
+                .filter(r -> r.selected.get())
+                .map(r -> new ImportRow(r.employee))
+                .toList();
+            resultData.addAll(selected);
+            updateResultStatuses(resultData);
+        });
+        
+        previewButtons.getChildren().addAll(selectAllBtn, deselectAllBtn, addSelectedBtn);
+        previewSection.getChildren().addAll(previewLabel, previewTable, previewButtons);
+        VBox.setVgrow(previewTable, Priority.ALWAYS);
+
+        // Result section
+        VBox resultSection = new VBox(8);
+        Label resultLabel = new Label("Data yang Akan Disimpan");
+        resultLabel.setStyle("-fx-font-weight: bold; -fx-font-size: 14px;");
+        
+        HBox resultButtons = new HBox(8);
+        Button removeDuplicatesBtn = new Button("🗑 Hapus Duplikat");
+        removeDuplicatesBtn.getStyleClass().add("secondary-button");
+        removeDuplicatesBtn.setStyle("-fx-text-fill: #e74c3c;");
+        removeDuplicatesBtn.setOnAction(e -> {
+            // Keep only first occurrence of each NIP
+            Set<String> seenNips = new HashSet<>();
+            List<ImportRow> toRemove = new ArrayList<>();
+            for (ImportRow row : resultData) {
+                if (seenNips.contains(row.employee.getNip())) {
+                    toRemove.add(row);
+                } else {
+                    seenNips.add(row.employee.getNip());
+                }
+            }
+            resultData.removeAll(toRemove);
+            updateResultStatuses(resultData);
+        });
+        
+        resultButtons.getChildren().addAll(removeDuplicatesBtn);
+        resultSection.getChildren().addAll(resultLabel, resultTable, resultButtons);
+        VBox.setVgrow(resultTable, Priority.ALWAYS);
+
+        // Tables container
+        HBox tablesBox = new HBox(16);
+        tablesBox.setPadding(new Insets(0, 24, 16, 24));
+        HBox.setHgrow(previewSection, Priority.ALWAYS);
+        HBox.setHgrow(resultSection, Priority.ALWAYS);
+        previewSection.setPrefWidth(400);
+        resultSection.setPrefWidth(450);
+        tablesBox.getChildren().addAll(previewSection, resultSection);
+        VBox.setVgrow(tablesBox, Priority.ALWAYS);
+
+        // Footer buttons
+        HBox footerBox = new HBox(12);
+        footerBox.setAlignment(Pos.CENTER_RIGHT);
+        footerBox.setPadding(new Insets(16, 24, 24, 24));
+        
+        Button cancelButton = new Button("Batal");
+        cancelButton.getStyleClass().add("secondary-button");
+        cancelButton.setOnAction(e -> modalStage.close());
+        
+        Button updateButton = new Button("Update Database");
+        updateButton.getStyleClass().add("primary-button");
+        updateButton.setOnAction(e -> {
+            if (resultData.isEmpty()) {
+                showAlert("Tidak ada data untuk disimpan.");
+                return;
+            }
+            
+            // Check for duplicates (only for non-PPNPN with same NIP)
+            long dupCount = resultData.stream().filter(r -> "Duplikat".equals(r.status)).count();
+            if (dupCount > 0) {
+                showAlert("Masih ada " + dupCount + " data duplikat. Hapus duplikat terlebih dahulu.");
+                return;
+            }
+            
+            // Convert to PegawaiDto list
+            List<PegawaiDto> dtoList = resultData.stream()
+                .map(r -> {
+                    PegawaiDto dto = new PegawaiDto();
+                    String nipStr = r.employee.getNip();
+                    
+                    // Check if PPNPN (empty NIP)
+                    if (nipStr == null || nipStr.trim().isEmpty()) {
+                        // Generate unique ID for PPNPN (timestamp-based)
+                        long generatedNip = System.currentTimeMillis();
+                        dto.setNip(generatedNip);
+                        dto.setIsPpnpn(true);
+                    } else {
+                        dto.setNip(Long.parseLong(nipStr));
+                        dto.setIsPpnpn(false);
+                    }
+                    
+                    dto.setNama(r.employee.getNamaLengkap());
+                    dto.setNamaSubdir(r.employee.getUnit());
+                    dto.setStatus(r.employee.getStatus() != null ? r.employee.getStatus() : "AKTIF");
+                    return dto;
+                })
+                .collect(Collectors.toList());
+            
+            int result = pegawaiApi.batchAddPegawai(dtoList);
+            if (result >= 0) {
+                showSuccessAlert("Berhasil menyimpan " + result + " data pegawai.");
+                modalStage.close();
+                refreshTable();
+            } else {
+                showAlert("Gagal menyimpan data ke database.");
+            }
+        });
+        
+        footerBox.getChildren().addAll(cancelButton, updateButton);
+
+        modalContent.getChildren().addAll(headerBox, filePickerBox, tablesBox, footerBox);
+
+        Scene modalScene = new Scene(modalContent);
+        modalScene.getStylesheets().add(getClass().getResource("/styles.css").toExternalForm());
+        modalStage.setScene(modalScene);
+        modalStage.showAndWait();
+    }
+
+    private void updateResultStatuses(ObservableList<? extends Object> resultData) {
+        // Get existing NIPs from database
+        Set<String> existingNips = dataService.getEmployees().stream()
+            .map(Employee::getNip)
+            .filter(nip -> nip != null && !nip.trim().isEmpty()) // Exclude PPNPN
+            .collect(Collectors.toSet());
+        
+        // Count occurrences in result list (excluding empty NIPs / PPNPN)
+        Map<String, Integer> nipCounts = new HashMap<>();
+        for (Object obj : resultData) {
+            if (obj instanceof EmployeeManagementView) continue; // Skip wrong types
+            try {
+                java.lang.reflect.Field empField = obj.getClass().getDeclaredField("employee");
+                empField.setAccessible(true);
+                Employee emp = (Employee) empField.get(obj);
+                String nip = emp.getNip();
+                // Only count non-empty NIPs (skip PPNPN)
+                if (nip != null && !nip.trim().isEmpty()) {
+                    nipCounts.merge(nip, 1, Integer::sum);
+                }
+            } catch (Exception ex) {
+                // Ignore
+            }
+        }
+        
+        // Update statuses
+        Set<String> seenNips = new HashSet<>();
+        for (Object obj : resultData) {
+            try {
+                java.lang.reflect.Field empField = obj.getClass().getDeclaredField("employee");
+                java.lang.reflect.Field statusField = obj.getClass().getDeclaredField("status");
+                empField.setAccessible(true);
+                statusField.setAccessible(true);
+                
+                Employee emp = (Employee) empField.get(obj);
+                String nip = emp.getNip();
+                
+                // PPNPN (empty NIP) - always mark as "Baru (PPNPN)"
+                if (nip == null || nip.trim().isEmpty()) {
+                    statusField.set(obj, "Baru (PPNPN)");
+                    continue;
+                }
+                
+                if (seenNips.contains(nip)) {
+                    statusField.set(obj, "Duplikat");
+                } else if (nipCounts.getOrDefault(nip, 0) > 1) {
+                    seenNips.add(nip);
+                    // First occurrence, others will be marked as duplicate
+                    if (existingNips.contains(nip)) {
+                        statusField.set(obj, "Update");
+                    } else {
+                        statusField.set(obj, "Baru");
+                    }
+                } else if (existingNips.contains(nip)) {
+                    statusField.set(obj, "Update");
+                    seenNips.add(nip);
+                } else {
+                    statusField.set(obj, "Baru");
+                    seenNips.add(nip);
+                }
+            } catch (Exception ex) {
+                // Ignore
+            }
+        }
+    }
+
+    // ==================== EXPORT ====================
+
+    private void handleExport() {
+        FileChooser fileChooser = new FileChooser();
+        fileChooser.setTitle("Simpan File Excel");
+        fileChooser.setInitialFileName("data_pegawai.xlsx");
+        fileChooser.getExtensionFilters().add(
+            new FileChooser.ExtensionFilter("Excel Files", "*.xlsx")
+        );
+        
+        File file = fileChooser.showSaveDialog(getScene().getWindow());
+        if (file != null) {
+            try {
+                List<Employee> allEmployees = dataService.getEmployees();
+                ExcelHelper.exportToExcel(allEmployees, file);
+                showSuccessAlert("Data berhasil diekspor ke:\n" + file.getAbsolutePath());
+            } catch (Exception e) {
+                showAlert("Gagal mengekspor data: " + e.getMessage());
+            }
+        }
+    }
+
+    private void downloadTemplate() {
+        FileChooser fileChooser = new FileChooser();
+        fileChooser.setTitle("Simpan Template Excel");
+        fileChooser.setInitialFileName("template_pegawai.xlsx");
+        fileChooser.getExtensionFilters().add(
+            new FileChooser.ExtensionFilter("Excel Files", "*.xlsx")
+        );
+        
+        File file = fileChooser.showSaveDialog(getScene().getWindow());
+        if (file != null) {
+            try {
+                ExcelHelper.createTemplate(file);
+                showSuccessAlert("Template berhasil disimpan ke:\n" + file.getAbsolutePath());
+            } catch (Exception e) {
+                showAlert("Gagal membuat template: " + e.getMessage());
+            }
+        }
+    }
+
+    // ==================== EXISTING METHODS ====================
 
     private void showEmployeeForm(Employee editableEmployee) {
         Stage modalStage = new Stage();
@@ -225,12 +708,22 @@ public class EmployeeManagementView extends VBox {
         }
 
         ComboBox<String> unitCombo = new ComboBox<>();
-        unitCombo.getItems().addAll("PPTAU", "AUNB", "AUNTB", "KAU", "SILAU", "Tata Usaha", "Direktur");
+        unitCombo.getItems().addAll("PPTAU", "AUNB", "AUNTB", "KAU", "SILAU", "Tata Usaha", "Direktur", "PINDAH");
         unitCombo.setPromptText("Pilih unit");
         Label unitLabel = new Label("Unit / Subdirektorat");
         unitLabel.getStyleClass().add("form-label");
         if (editableEmployee != null) {
             unitCombo.setValue(editableEmployee.getUnit());
+        }
+
+        ComboBox<String> statusCombo = new ComboBox<>();
+        statusCombo.getItems().addAll("AKTIF", "NONAKTIF");
+        statusCombo.setPromptText("Pilih status");
+        statusCombo.setValue("AKTIF");
+        Label statusLabel = new Label("Status Pegawai");
+        statusLabel.getStyleClass().add("form-label");
+        if (editableEmployee != null && editableEmployee.getStatus() != null) {
+            statusCombo.setValue(editableEmployee.getStatus());
         }
 
         HBox buttonBox = new HBox(12);
@@ -247,6 +740,7 @@ public class EmployeeManagementView extends VBox {
             String nipInput = nipField.getText();
             String nama = namaField.getText();
             String unit = unitCombo.getValue();
+            String status = statusCombo.getValue();
 
             // Validasi input dasar
             if (nipInput == null || nipInput.trim().isEmpty()) {
@@ -259,6 +753,10 @@ public class EmployeeManagementView extends VBox {
             }
             if (unit == null || unit.trim().isEmpty()) {
                 showAlert("Pilih subdirektorat");
+                return;
+            }
+            if (status == null || status.trim().isEmpty()) {
+                showAlert("Pilih status pegawai");
                 return;
             }
 
@@ -292,11 +790,11 @@ public class EmployeeManagementView extends VBox {
                     return;
                 }
                 
-                // Mode Tambah (POST) - jabatan dihilangkan
-                success = pegawaiApi.addPegawai(nip, nama, unit, "");
+                // Mode Tambah (POST) - include status
+                success = pegawaiApi.addPegawai(nip, nama, unit, status);
             } else {
-                // Mode Edit (PUT) - jabatan dihilangkan
-                success = pegawaiApi.updatePegawai(nip, nama, unit, "");
+                // Mode Edit (PUT) - include status
+                success = pegawaiApi.updatePegawai(nip, nama, unit, status);
             }
 
             if (success) {
@@ -314,7 +812,8 @@ public class EmployeeManagementView extends VBox {
         formContent.getChildren().addAll(
             nipLabel, nipField,
             namaLabel, namaField,
-            unitLabel, unitCombo
+            unitLabel, unitCombo,
+            statusLabel, statusCombo
         );
 
         ScrollPane scrollPane = new ScrollPane(formContent);
@@ -399,13 +898,13 @@ public class EmployeeManagementView extends VBox {
     }
 
     private void refreshTable() {
-        employeeList.setAll(dataService.getEmployees());
+        paginatedTable.setItems(dataService.getEmployees());
     }
 
-    private void filterTable(String searchText, String unitFilter) {
+    private void filterTable(String searchText, String unitFilter, String statusFilter) {
         List<Employee> allEmployees = dataService.getEmployees();
         
-        employeeList.setAll(allEmployees.stream()
+        List<Employee> filtered = allEmployees.stream()
             .filter(employee -> {
                 // Search filter
                 if (searchText != null && !searchText.isEmpty()) {
@@ -423,10 +922,64 @@ public class EmployeeManagementView extends VBox {
                     }
                 }
                 
+                // Status filter
+                if (statusFilter != null && !statusFilter.equals("Semua Status")) {
+                    if (!statusFilter.equalsIgnoreCase(employee.getStatus())) {
+                        return false;
+                    }
+                }
+                
                 return true;
             })
-            .toList()
-        );
+            .toList();
+        
+        paginatedTable.setItems(filtered);
+    }
+
+    private void handleBulkDelete() {
+        ObservableList<Employee> selectedItems = paginatedTable.getTable().getSelectionModel().getSelectedItems();
+        
+        if (selectedItems == null || selectedItems.isEmpty()) {
+            showAlert("Pilih pegawai yang akan dihapus terlebih dahulu.\n\nTip: Gunakan Ctrl+Klik untuk memilih beberapa pegawai.");
+            return;
+        }
+        
+        // Confirmation dialog
+        Alert confirmAlert = new Alert(Alert.AlertType.CONFIRMATION);
+        confirmAlert.setTitle("Konfirmasi Hapus");
+        confirmAlert.setHeaderText("Hapus " + selectedItems.size() + " Pegawai");
+        confirmAlert.setContentText("Apakah Anda yakin ingin menghapus " + selectedItems.size() + " pegawai yang dipilih?\n\nAksi ini tidak dapat dibatalkan.");
+        
+        if (confirmAlert.showAndWait().orElse(ButtonType.CANCEL) != ButtonType.OK) {
+            return;
+        }
+        
+        // Collect NIPs to delete
+        List<Long> nipList = selectedItems.stream()
+            .map(emp -> {
+                try {
+                    return Long.parseLong(emp.getNip());
+                } catch (NumberFormatException e) {
+                    return null;
+                }
+            })
+            .filter(nip -> nip != null)
+            .collect(Collectors.toList());
+        
+        if (nipList.isEmpty()) {
+            showAlert("Tidak ada NIP valid untuk dihapus.");
+            return;
+        }
+        
+        // Call API
+        int result = pegawaiApi.batchDeletePegawai(nipList);
+        
+        if (result >= 0) {
+            showSuccessAlert("Berhasil menghapus " + result + " pegawai.");
+            refreshTable();
+        } else {
+            showAlert("Gagal menghapus pegawai. Silakan coba lagi.");
+        }
     }
 
     private void showAlert(String message) {
@@ -436,5 +989,12 @@ public class EmployeeManagementView extends VBox {
         alert.setContentText(message);
         alert.showAndWait();
     }
-}
 
+    private void showSuccessAlert(String message) {
+        Alert alert = new Alert(Alert.AlertType.INFORMATION);
+        alert.setTitle("Sukses");
+        alert.setHeaderText(null);
+        alert.setContentText(message);
+        alert.showAndWait();
+    }
+}
