@@ -14,11 +14,13 @@ import java.net.http.HttpResponse;
 import java.time.Duration;
 
 public class LogApi {
-    String jwt = LoginSession.getJwt();
 
     public LogDto[] getLog() {
         LogDto[] logDtos = {};
         try {
+            // Get fresh JWT token on each call
+            String jwt = LoginSession.getJwt();
+            
             ObjectMapper mapper = new ObjectMapper();
             mapper.registerModule(new JavaTimeModule());
             mapper.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
@@ -28,6 +30,7 @@ public class LogApi {
                     .build();
 
             String targetUrl = ApiConfig.getLogbookUrl();
+            System.out.println("LogApi: Fetching logs from " + targetUrl);
 
             HttpRequest request = HttpRequest.newBuilder()
                     .uri(URI.create(targetUrl))
@@ -38,14 +41,22 @@ public class LogApi {
 
             HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
 
+            System.out.println("LogApi: Response status = " + response.statusCode());
+            
             if (response.statusCode() == 200) {
                 String jsonResponse = response.body();
+                System.out.println("LogApi: Received " + jsonResponse.length() + " bytes");
 
                 logDtos = mapper.readValue(jsonResponse, LogDto[].class);
+                System.out.println("LogApi: Parsed " + logDtos.length + " log entries");
 
                 return logDtos;
+            } else {
+                System.err.println("LogApi: Failed with status " + response.statusCode());
+                System.err.println("LogApi: Response body: " + response.body());
             }
         } catch (Exception e) {
+            System.err.println("LogApi: Exception occurred");
             e.printStackTrace();
         }
         return logDtos;

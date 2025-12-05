@@ -8,6 +8,7 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import lombok.Data;
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
@@ -18,6 +19,7 @@ import org.hibernate.annotations.CacheConcurrencyStrategy;
 @Entity
 @Table(name = "aset")
 @Cache(usage = CacheConcurrencyStrategy.READ_WRITE)
+@JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
 public class Aset {
 
     @Id

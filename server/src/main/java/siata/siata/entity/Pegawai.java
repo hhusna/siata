@@ -6,6 +6,7 @@ import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import lombok.Data;
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import java.util.List;
 import org.hibernate.annotations.Cache;
 import org.hibernate.annotations.CacheConcurrencyStrategy;
@@ -14,6 +15,7 @@ import org.hibernate.annotations.CacheConcurrencyStrategy;
 @Entity
 @Table(name = "pegawai")
 @Cache(usage = CacheConcurrencyStrategy.READ_WRITE)
+@JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
 public class Pegawai {
 
     @Id

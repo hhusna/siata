@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 import jakarta.validation.constraints.*;
 import lombok.Data;
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -11,6 +12,7 @@ import java.util.List;
 @Data
 @Entity
 @Table(name = "permohonan_aset")
+@JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
 public class PermohonanAset {
 
     @Id
