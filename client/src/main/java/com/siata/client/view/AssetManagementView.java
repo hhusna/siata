@@ -72,11 +72,7 @@ public class AssetManagementView extends VBox {
         deleteSelectedBtn.setStyle("-fx-text-fill: #dc2626;");
         deleteSelectedBtn.setOnAction(e -> handleBulkDelete());
 
-        Button cleanDuplicatesButton = new Button("🧹 Bersihkan Duplikat");
-        cleanDuplicatesButton.getStyleClass().add("secondary-button");
-        cleanDuplicatesButton.setOnAction(e -> cleanDuplicates());
-
-        HBox actionButtons = new HBox(12, deleteSelectedBtn, exportButton, importButton, cleanDuplicatesButton, addButton);
+        HBox actionButtons = new HBox(12, deleteSelectedBtn, exportButton, importButton, addButton);
         actionButtons.setAlignment(Pos.CENTER_RIGHT);
 
         getChildren().add(buildPageHeader(actionButtons));
