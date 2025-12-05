@@ -4,6 +4,8 @@ import com.siata.client.api.AssetApi;
 import com.siata.client.dto.AssetDto;
 import com.siata.client.model.Activity;
 import com.siata.client.service.DataService;
+import com.siata.client.util.AnimationUtils;
+import javafx.application.Platform;
 import javafx.collections.FXCollections;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
@@ -20,10 +22,10 @@ import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.Region;
 import javafx.scene.layout.VBox;
+import javafx.util.Duration;
 
-import java.time.Duration;
-import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -37,7 +39,7 @@ public class DashboardContentView extends VBox {
     private com.siata.client.dto.DashboardDto cachedDashboardData = null;
 
     public DashboardContentView() {
-        setSpacing(24);
+        setSpacing(20);
         loadDashboardData();
     }
     
@@ -84,9 +86,18 @@ public class DashboardContentView extends VBox {
     }
 
     private void buildContent() {
-        getChildren().add(buildSummaryGrid());
-        getChildren().add(buildChartsColumn());
-        getChildren().add(buildRecentActivities());
+        Node summarySection = buildSummaryGrid();
+        Node chartsSection = buildChartsColumn();
+        Node activitySection = buildRecentActivities();
+        
+        getChildren().addAll(summarySection, chartsSection, activitySection);
+        
+        // Animate page content
+        Platform.runLater(() -> {
+            AnimationUtils.fadeIn(summarySection, AnimationUtils.NORMAL, Duration.ZERO);
+            AnimationUtils.fadeIn(chartsSection, AnimationUtils.NORMAL, Duration.millis(100));
+            AnimationUtils.fadeIn(activitySection, AnimationUtils.NORMAL, Duration.millis(200));
+        });
     }
 
     private Node buildSummaryGrid() {
@@ -97,8 +108,8 @@ public class DashboardContentView extends VBox {
         sectionTitle.getStyleClass().add("section-subtitle");
 
         GridPane statsGrid = new GridPane();
-        statsGrid.setHgap(20);
-        statsGrid.setVgap(20);
+        statsGrid.setHgap(16);
+        statsGrid.setVgap(16);
         statsGrid.getStyleClass().add("stats-grid");
 
         for (int i = 0; i < 2; i++) {
@@ -110,13 +121,13 @@ public class DashboardContentView extends VBox {
         // Gunakan cachedDashboardData yang sudah di-fetch sekali
         List<CardData> cards = List.of(
                 new CardData("Total Aset", "Semua jenis aset terdaftar",
-                    Long.toString(cachedDashboardData != null ? cachedDashboardData.getTotalAset() : 0) , "🧱"),
+                    Long.toString(cachedDashboardData != null ? cachedDashboardData.getTotalAset() : 0) , "◇"),
                 new CardData("Siap Dilelang", "Aset dalam proses lelang", 
-                    Long.toString(cachedDashboardData != null ? cachedDashboardData.getAsetSiapDilelang() : 0), "♻"),
+                    Long.toString(cachedDashboardData != null ? cachedDashboardData.getAsetSiapDilelang() : 0), "◎"),
                 new CardData("Rusak Berat", "Memerlukan penghapusan", 
-                    Long.toString(cachedDashboardData != null ? cachedDashboardData.getAsetRusakBerat() : 0), "⚠"),
+                    Long.toString(cachedDashboardData != null ? cachedDashboardData.getAsetRusakBerat() : 0), "△"),
                 new CardData("Sedang Diproses", "Permohonan menunggu persetujuan", 
-                    Long.toString(cachedDashboardData != null ? cachedDashboardData.getPermohonanPending() : 0), "🔄")
+                    Long.toString(cachedDashboardData != null ? cachedDashboardData.getPermohonanPending() : 0), "○")
         );
 
         for (int i = 0; i < cards.size(); i++) {
@@ -125,14 +136,35 @@ public class DashboardContentView extends VBox {
         }
 
         VBox container = new VBox(16, title, sectionTitle, statsGrid);
+        
+        // Animate stat cards with stagger effect
+        Platform.runLater(() -> {
+            List<Node> cardNodes = new ArrayList<>();
+            for (int i = 0; i < statsGrid.getChildren().size(); i++) {
+                Node card = statsGrid.getChildren().get(i);
+                cardNodes.add(card);
+                // Add hover lift effect
+                AnimationUtils.addHoverLiftEffect(card);
+            }
+            AnimationUtils.staggerSlideInFromBottom(cardNodes, Duration.millis(80));
+        });
+        
         return container;
     }
 
     private Node buildChartsColumn() {
-        VBox column = new VBox(24);
-        column.getChildren().addAll(createHistogramCard(), createPieCard());
-        column.getChildren().forEach(node -> VBox.setVgrow(node, Priority.ALWAYS));
-        return column;
+        HBox row = new HBox(16);
+        row.setAlignment(Pos.TOP_CENTER);
+        
+        Node histogramCard = createHistogramCard();
+        Node pieCard = createPieCard();
+        
+        // Set each chart to take 50% width
+        HBox.setHgrow(histogramCard, Priority.ALWAYS);
+        HBox.setHgrow(pieCard, Priority.ALWAYS);
+        
+        row.getChildren().addAll(histogramCard, pieCard);
+        return row;
     }
 
     private Node createHistogramCard() {
@@ -267,9 +299,11 @@ public class DashboardContentView extends VBox {
     }
 
     private VBox createChartShell(String title) {
-        VBox card = new VBox(16);
+        VBox card = new VBox(12);
         card.getStyleClass().addAll("table-container", "chart-card");
-        card.setPadding(new Insets(20));
+        card.setPadding(new Insets(16));
+        card.setMaxHeight(280);
+        card.setPrefHeight(280);
 
         Label chartTitle = new Label(title);
         chartTitle.getStyleClass().add("chart-title");
@@ -278,7 +312,7 @@ public class DashboardContentView extends VBox {
     }
 
     private Node createStatCard(CardData data) {
-        VBox card = new VBox(12);
+        VBox card = new VBox(8);
         card.getStyleClass().add("stat-card");
 
         HBox heading = new HBox(8);
@@ -307,7 +341,7 @@ public class DashboardContentView extends VBox {
 
     private static class DashboardTextFormatter {
         private static String formatRelativeTime(java.time.LocalDateTime timestamp) {
-            Duration duration = Duration.between(timestamp, java.time.LocalDateTime.now());
+            java.time.Duration duration = java.time.Duration.between(timestamp, java.time.LocalDateTime.now());
             long minutes = duration.toMinutes();
             if (minutes < 60) {
                 return minutes + " menit yang lalu";

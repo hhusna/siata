@@ -6,6 +6,7 @@ import com.siata.client.dto.AssetDto;
 import com.siata.client.model.Asset;
 import com.siata.client.model.Employee;
 import com.siata.client.service.DataService;
+import com.siata.client.util.AnimationUtils;
 import javafx.beans.binding.Bindings;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.collections.FXCollections;
@@ -497,6 +498,10 @@ public class RecapitulationView extends VBox {
         descLabel.getStyleClass().add("stat-card-description");
 
         card.getChildren().addAll(heading, valueLabel, descLabel);
+        
+        // Add hover lift animation
+        AnimationUtils.addHoverLiftEffect(card);
+        
         return card;
     }
 

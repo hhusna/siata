@@ -3,6 +3,7 @@ package com.siata.client.view;
 import com.siata.client.MainApplication;
 import com.siata.client.api.UserApi;
 import com.siata.client.session.LoginSession;
+import com.siata.client.util.AnimationUtils;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.control.Button;
@@ -12,6 +13,7 @@ import javafx.scene.control.TextField;
 import javafx.scene.layout.Region;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
+import javafx.application.Platform;
 
 import java.util.Optional;
 import java.util.prefs.Preferences;
@@ -30,14 +32,14 @@ public class LoginView extends StackPane {
         gradientBackground.prefWidthProperty().bind(widthProperty());
         gradientBackground.prefHeightProperty().bind(heightProperty());
 
-        VBox card = new VBox(20);
-        card.setPadding(new Insets(32, 36, 36, 36));
+        VBox card = new VBox(16);
+        card.setPadding(new Insets(24, 28, 28, 28));
         card.setAlignment(Pos.TOP_CENTER);
         card.getStyleClass().add("login-card");
-        card.setMaxWidth(420);
-        card.setMinWidth(360);
+        card.setMaxWidth(380);
+        card.setMinWidth(320);
 
-        Label iconCircle = new Label("✈");
+        Label iconCircle = new Label("◈");
         iconCircle.getStyleClass().add("login-icon");
 
         Label title = new Label("Sistem Informasi Administrasi");
@@ -143,6 +145,9 @@ public class LoginView extends StackPane {
 
         StackPane.setAlignment(card, Pos.CENTER);
         getChildren().addAll(gradientBackground, card);
+        
+        // Animation: scale in the login card
+        Platform.runLater(() -> AnimationUtils.scaleIn(card, AnimationUtils.SLOW));
     }
 
     public void setOnLogin(Runnable onLogin) {

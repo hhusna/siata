@@ -2,6 +2,7 @@ package com.siata.client.view;
 
 import com.siata.client.MainApplication;
 import com.siata.client.session.LoginSession;
+import com.siata.client.util.AnimationUtils;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Node;
@@ -48,15 +49,15 @@ public class MainShellView extends BorderPane {
     private Node buildSidebar() {
         BorderPane sidebar = new BorderPane();
         sidebar.getStyleClass().add("sidebar");
-        sidebar.setPrefWidth(260);
+        sidebar.setPrefWidth(220);
 
         Label title = new Label("SIAD - Direktorat Angkutan Udara");
         title.getStyleClass().add("sidebar-title");
         Label subtitle = new Label("Kementerian Perhubungan");
         subtitle.getStyleClass().add("sidebar-subtitle");
 
-        VBox branding = new VBox(6, title, subtitle);
-        branding.setPadding(new Insets(28, 24, 12, 24));
+        VBox branding = new VBox(4, title, subtitle);
+        branding.setPadding(new Insets(20, 16, 10, 16));
 
         VBox menu = new VBox(10);
 
@@ -93,13 +94,13 @@ public class MainShellView extends BorderPane {
         menuScroll.setFitToWidth(true);
         menuScroll.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
         menuScroll.getStyleClass().add("sidebar-scroll");
-        BorderPane.setMargin(menuScroll, new Insets(0, 12, 0, 12));
+        BorderPane.setMargin(menuScroll, new Insets(0, 10, 0, 10));
 
         Button logoutButton = new Button("Logout");
         logoutButton.getStyleClass().add("sidebar-logout-button");
         logoutButton.setMaxWidth(Double.MAX_VALUE);
         logoutButton.setOnAction(event -> onLogout.ifPresent(Runnable::run));
-        BorderPane.setMargin(logoutButton, new Insets(16, 24, 24, 24));
+        BorderPane.setMargin(logoutButton, new Insets(12, 16, 16, 16));
 
         sidebar.setTop(branding);
         sidebar.setCenter(menuScroll);
@@ -137,6 +138,9 @@ public class MainShellView extends BorderPane {
             item.getChildren().addAll(spacer, badge);
         }
 
+        // Add hover scale animation
+        AnimationUtils.addHoverScaleEffect(item, 1.03);
+        
         item.setOnMouseClicked(event -> switchPage(page));
         return item;
     }
@@ -144,7 +148,7 @@ public class MainShellView extends BorderPane {
     private Node buildHeader() {
         HBox header = new HBox();
         header.getStyleClass().add("dashboard-header");
-        header.setPadding(new Insets(16, 24, 16, 24));
+        header.setPadding(new Insets(12, 20, 12, 20));
         header.setAlignment(Pos.CENTER_LEFT);
         header.setSpacing(16);
 
@@ -182,8 +186,8 @@ public class MainShellView extends BorderPane {
     }
 
     private Node buildContentContainer() {
-        contentContainer.setSpacing(24);
-        contentContainer.setPadding(new Insets(32));
+        contentContainer.setSpacing(20);
+        contentContainer.setPadding(new Insets(24));
         contentContainer.getStyleClass().add("dashboard-content");
 
         ScrollPane scrollPane = new ScrollPane(contentContainer);
@@ -231,6 +235,10 @@ public class MainShellView extends BorderPane {
         }
         
         contentContainer.getChildren().setAll(content);
+        
+        // Animate page transition
+        AnimationUtils.pageTransitionIn(content);
+        
         activePage = page;
     }
 

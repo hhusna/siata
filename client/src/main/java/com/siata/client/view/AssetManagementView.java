@@ -1,9 +1,13 @@
 package com.siata.client.view;
 
 import com.siata.client.model.Asset;
+import com.siata.client.model.Employee;
 import com.siata.client.service.DataService;
+import com.siata.client.util.AnimationUtils;
+import javafx.application.Platform;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
+import javafx.collections.transformation.FilteredList;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Node;
@@ -15,6 +19,7 @@ import javafx.scene.text.Text;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
 import javafx.stage.StageStyle;
+import javafx.util.StringConverter;
 
 import java.math.BigDecimal;
 import java.text.NumberFormat;
@@ -312,23 +317,176 @@ public class AssetManagementView extends VBox {
             merkField.setText(editableAsset.getMerkBarang());
         }
 
-        TextField pemegangField = new TextField();
-        pemegangField.setPromptText("NIP pegawai atau Kode Subdir");
+        // Searchable Employee picker with TextField + ListView
         Label pemegangLabel = new Label("NIP Pemegang (Keterangan)");
         pemegangLabel.getStyleClass().add("form-label");
-        Text pemegangHint = new Text("Kosongkan jika aset belum memiliki pemegang");
+        Text pemegangHint = new Text("Cari dan pilih pegawai, atau kosongkan jika belum ada pemegang");
         pemegangHint.getStyleClass().add("form-hint");
-        if (editableAsset != null) {
-            pemegangField.setText(editableAsset.getKeterangan());
+        
+        // Load employees from DataService
+        List<Employee> allEmployees = dataService.getEmployees();
+        
+        // Container for search field + list
+        VBox pemegangContainer = new VBox(8);
+        pemegangContainer.setMaxWidth(Double.MAX_VALUE);
+        
+        // Search TextField
+        TextField pemegangSearch = new TextField();
+        pemegangSearch.setPromptText("Ketik nama atau NIP untuk mencari...");
+        pemegangSearch.setMaxWidth(Double.MAX_VALUE);
+        
+        // Selected employee display
+        final Employee[] selectedEmployee = {null};
+        Label selectedLabel = new Label("Belum ada pegawai dipilih");
+        selectedLabel.setStyle("-fx-font-size: 12px; -fx-text-fill: #64748b; -fx-padding: 8 0 0 0;");
+        
+        // ListView for employee results
+        ListView<Employee> employeeListView = new ListView<>();
+        employeeListView.setPrefHeight(180); // ~5 items visible
+        employeeListView.setMaxHeight(180);
+        employeeListView.setStyle("-fx-background-color: white; -fx-border-color: #e2e8f0; -fx-border-radius: 6; -fx-background-radius: 6;");
+        
+        // Custom cell for ListView (Name large, NIP small gray)
+        employeeListView.setCellFactory(lv -> new ListCell<Employee>() {
+            @Override
+            protected void updateItem(Employee emp, boolean empty) {
+                super.updateItem(emp, empty);
+                if (empty || emp == null) {
+                    setGraphic(null);
+                    setText(null);
+                } else {
+                    VBox container = new VBox(2);
+                    container.setPadding(new Insets(6, 10, 6, 10));
+                    
+                    Label nameLabel = new Label(emp.getNamaLengkap());
+                    nameLabel.setStyle("-fx-font-size: 14px; -fx-font-weight: 600; -fx-text-fill: #1e293b;");
+                    
+                    Label nipLabel = new Label(emp.getNip());
+                    nipLabel.setStyle("-fx-font-size: 11px; -fx-text-fill: #94a3b8;");
+                    
+                    container.getChildren().addAll(nameLabel, nipLabel);
+                    setGraphic(container);
+                    setText(null);
+                }
+            }
+        });
+        
+        // Initial list - show all employees
+        ObservableList<Employee> filteredEmployees = FXCollections.observableArrayList(allEmployees);
+        employeeListView.setItems(filteredEmployees);
+        
+        // Search filter logic
+        pemegangSearch.textProperty().addListener((obs, oldVal, newVal) -> {
+            filteredEmployees.clear();
+            if (newVal == null || newVal.isEmpty()) {
+                filteredEmployees.addAll(allEmployees);
+            } else {
+                String lower = newVal.toLowerCase();
+                allEmployees.stream()
+                    .filter(e -> e.getNamaLengkap().toLowerCase().contains(lower) || e.getNip().contains(newVal))
+                    .forEach(filteredEmployees::add);
+            }
+        });
+        
+        // Selection handler
+        employeeListView.getSelectionModel().selectedItemProperty().addListener((obs, oldVal, newVal) -> {
+            if (newVal != null) {
+                selectedEmployee[0] = newVal;
+                selectedLabel.setText("✓ " + newVal.getNamaLengkap() + " (" + newVal.getNip() + ")");
+                selectedLabel.setStyle("-fx-font-size: 13px; -fx-text-fill: #16a34a; -fx-font-weight: 600; -fx-padding: 8 0 0 0;");
+            }
+        });
+        
+        // Clear selection button
+        Button clearBtn = new Button("Hapus Pilihan");
+        clearBtn.setStyle("-fx-background-color: transparent; -fx-text-fill: #ef4444; -fx-font-size: 11px; -fx-padding: 4 8; -fx-cursor: hand;");
+        clearBtn.setOnAction(e -> {
+            selectedEmployee[0] = null;
+            employeeListView.getSelectionModel().clearSelection();
+            selectedLabel.setText("Belum ada pegawai dipilih");
+            selectedLabel.setStyle("-fx-font-size: 12px; -fx-text-fill: #64748b; -fx-padding: 8 0 0 0;");
+        });
+        
+        HBox selectionRow = new HBox(12);
+        selectionRow.setAlignment(Pos.CENTER_LEFT);
+        selectionRow.getChildren().addAll(selectedLabel, clearBtn);
+        
+        pemegangContainer.getChildren().addAll(pemegangSearch, employeeListView, selectionRow);
+        
+        // Set initial value if editing
+        if (editableAsset != null && editableAsset.getKeterangan() != null && !editableAsset.getKeterangan().isEmpty()) {
+            String nipToFind = editableAsset.getKeterangan();
+            allEmployees.stream()
+                .filter(e -> e.getNip().equals(nipToFind))
+                .findFirst()
+                .ifPresent(emp -> {
+                    selectedEmployee[0] = emp;
+                    employeeListView.getSelectionModel().select(emp);
+                    selectedLabel.setText("✓ " + emp.getNamaLengkap() + " (" + emp.getNip() + ")");
+                    selectedLabel.setStyle("-fx-font-size: 13px; -fx-text-fill: #16a34a; -fx-font-weight: 600; -fx-padding: 8 0 0 0;");
+                });
         }
 
+        // Subdirektorat - show/hide based on employee selection
         ComboBox<String> SubdirCombo = new ComboBox<>();
         SubdirCombo.getItems().addAll("PPTAU", "AUNB", "AUNTB", "KAU", "SILAU", "Tata Usaha", "Direktur");
         SubdirCombo.setPromptText("Pilih subdirektorat");
         Label SubdirLabel = new Label("Subdirektorat");
         SubdirLabel.getStyleClass().add("form-label");
+        
+        // Container for Subdir field (will be shown/hidden)
+        VBox subdirContainer = new VBox(8);
+        subdirContainer.getChildren().addAll(SubdirLabel, SubdirCombo);
+        subdirContainer.setManaged(true);
+        subdirContainer.setVisible(true);
+        
         if (editableAsset != null) {
             SubdirCombo.setValue(editableAsset.getSubdir());
+        }
+        
+        // Update existing selection handler to hide subdir and auto-fill
+        employeeListView.getSelectionModel().selectedItemProperty().addListener((obs, oldVal, newVal) -> {
+            if (newVal != null) {
+                selectedEmployee[0] = newVal;
+                selectedLabel.setText("✓ " + newVal.getNamaLengkap() + " (" + newVal.getNip() + ")");
+                selectedLabel.setStyle("-fx-font-size: 13px; -fx-text-fill: #16a34a; -fx-font-weight: 600; -fx-padding: 8 0 0 0;");
+                
+                // Auto-fill subdirektorat from employee and hide the field
+                SubdirCombo.setValue(newVal.getUnit());
+                subdirContainer.setVisible(false);
+                subdirContainer.setManaged(false);
+            }
+        });
+        
+        // Update clear button to show subdir field again
+        clearBtn.setOnAction(e -> {
+            selectedEmployee[0] = null;
+            employeeListView.getSelectionModel().clearSelection();
+            selectedLabel.setText("Belum ada pegawai dipilih");
+            selectedLabel.setStyle("-fx-font-size: 12px; -fx-text-fill: #64748b; -fx-padding: 8 0 0 0;");
+            
+            // Show subdirektorat field again
+            subdirContainer.setVisible(true);
+            subdirContainer.setManaged(true);
+            SubdirCombo.setValue(null);
+        });
+        
+        // If editing with existing employee, hide subdir initially
+        if (editableAsset != null && editableAsset.getKeterangan() != null && !editableAsset.getKeterangan().isEmpty()) {
+            String nipToFind = editableAsset.getKeterangan();
+            allEmployees.stream()
+                .filter(e -> e.getNip().equals(nipToFind))
+                .findFirst()
+                .ifPresent(emp -> {
+                    selectedEmployee[0] = emp;
+                    employeeListView.getSelectionModel().select(emp);
+                    selectedLabel.setText("✓ " + emp.getNamaLengkap() + " (" + emp.getNip() + ")");
+                    selectedLabel.setStyle("-fx-font-size: 13px; -fx-text-fill: #16a34a; -fx-font-weight: 600; -fx-padding: 8 0 0 0;");
+                    
+                    // Hide subdir since employee is selected
+                    subdirContainer.setVisible(false);
+                    subdirContainer.setManaged(false);
+                });
         }
 
         DatePicker tanggalPicker = new DatePicker(editableAsset == null ? LocalDate.now() : editableAsset.getTanggalPerolehan());
@@ -364,8 +522,10 @@ public class AssetManagementView extends VBox {
         Button saveButton = new Button(editableAsset == null ? "Simpan" : "Simpan Perubahan");
         saveButton.getStyleClass().add("primary-button");
         saveButton.setOnAction(e -> {
+            // Get NIP from selected employee or empty
+            String pemegangNip = selectedEmployee[0] != null ? selectedEmployee[0].getNip() : "";
             if (saveAsset(editableAsset, kodeField.getText(), jenisCombo.getValue(),
-                    merkField.getText(), pemegangField.getText(), SubdirCombo.getValue(),
+                    merkField.getText(), pemegangNip, SubdirCombo.getValue(),
                     tanggalPicker.getValue(), rupiahField.getText(), kondisiCombo.getValue(), statusCombo.getValue())) {
                 modalStage.close();
             }
@@ -379,8 +539,8 @@ public class AssetManagementView extends VBox {
             kodeLabel, kodeField, kodeHint,
             jenisLabel, jenisCombo,
             merkLabel, merkField,
-            pemegangLabel, pemegangField, pemegangHint,
-            SubdirLabel, SubdirCombo,
+            pemegangLabel, pemegangContainer, pemegangHint,
+            subdirContainer,
             tanggalLabel, tanggalPicker,
             rupiahLabel, rupiahField,
             kondisiLabel, kondisiCombo,
@@ -400,6 +560,10 @@ public class AssetManagementView extends VBox {
         Scene modalScene = new Scene(modalContent);
         modalScene.getStylesheets().add(getClass().getResource("/styles.css").toExternalForm());
         modalStage.setScene(modalScene);
+        
+        // Animate modal open
+        Platform.runLater(() -> AnimationUtils.modalOpen(modalContent));
+        
         modalStage.showAndWait();
     }
 
