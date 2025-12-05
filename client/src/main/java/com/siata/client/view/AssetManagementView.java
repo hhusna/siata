@@ -131,8 +131,41 @@ public class AssetManagementView extends VBox {
         TableColumn<Asset, String> merkCol = new TableColumn<>("Merk Barang");
         merkCol.setCellValueFactory(new PropertyValueFactory<>("merkBarang"));
         
-        TableColumn<Asset, String> keteranganCol = new TableColumn<>("Keterangan");
+        // Build employee NIP to Name map for display
+        java.util.Map<String, String> nipToNameMap = new java.util.HashMap<>();
+        for (Employee emp : dataService.getEmployees()) {
+            nipToNameMap.put(emp.getNip(), emp.getNamaLengkap());
+        }
+
+        TableColumn<Asset, String> keteranganCol = new TableColumn<>("Pemegang");
         keteranganCol.setCellValueFactory(new PropertyValueFactory<>("keterangan"));
+        keteranganCol.setCellFactory(column -> new TableCell<Asset, String>() {
+            @Override
+            protected void updateItem(String nip, boolean empty) {
+                super.updateItem(nip, empty);
+                if (empty || nip == null || nip.isBlank()) {
+                    setText(null);
+                    setGraphic(null);
+                    setStyle("");
+                } else {
+                    // Lookup employee name from NIP
+                    String employeeName = nipToNameMap.getOrDefault(nip, nip);
+                    
+                    // Create clickable hyperlink-style label
+                    Label nameLabel = new Label(employeeName);
+                    nameLabel.setStyle("-fx-text-fill: #2563eb; -fx-cursor: hand; -fx-underline: true;");
+                    nameLabel.setOnMouseEntered(e -> nameLabel.setStyle("-fx-text-fill: #1d4ed8; -fx-cursor: hand; -fx-underline: true;"));
+                    nameLabel.setOnMouseExited(e -> nameLabel.setStyle("-fx-text-fill: #2563eb; -fx-cursor: hand; -fx-underline: true;"));
+                    nameLabel.setOnMouseClicked(e -> {
+                        // Navigate to EmployeeManagementView and search for this employee
+                        navigateToEmployee(nip);
+                    });
+                    
+                    setGraphic(nameLabel);
+                    setText(null);
+                }
+            }
+        });
         
         TableColumn<Asset, String> SubdirCol = new TableColumn<>("Subdir");
         SubdirCol.setCellValueFactory(new PropertyValueFactory<>("Subdir"));
@@ -1198,6 +1231,22 @@ public class AssetManagementView extends VBox {
         alert.setHeaderText(null);
         alert.setContentText(message);
         alert.showAndWait();
+    }
+
+    private void navigateToEmployee(String nip) {
+        // Find parent MainShellView and navigate to Employee Management
+        javafx.scene.Parent parent = getParent();
+        while (parent != null && !(parent instanceof MainShellView)) {
+            parent = parent.getParent();
+        }
+        
+        if (parent instanceof MainShellView mainShell) {
+            // Store the NIP to search for after navigation
+            mainShell.navigateToPageWithSearch(MainPage.EMPLOYEE_MANAGEMENT, nip);
+        } else {
+            // Fallback: just show info with employee NIP
+            showAlert("Pegawai dengan NIP: " + nip + "\n\nNavigasi ke Manajemen Pegawai untuk melihat detail.");
+        }
     }
 }
 

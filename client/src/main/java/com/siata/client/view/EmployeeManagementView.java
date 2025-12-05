@@ -997,4 +997,25 @@ public class EmployeeManagementView extends VBox {
         alert.setContentText(message);
         alert.showAndWait();
     }
+
+    /**
+     * Search and highlight an employee by NIP.
+     * Called from MainShellView when navigating from Asset Management.
+     */
+    public void searchAndHighlight(String nipOrName) {
+        // Filter table by NIP
+        List<Employee> allEmployees = dataService.getEmployees();
+        List<Employee> filtered = allEmployees.stream()
+            .filter(emp -> emp.getNip().contains(nipOrName) || 
+                          (emp.getNamaLengkap() != null && emp.getNamaLengkap().toLowerCase().contains(nipOrName.toLowerCase())))
+            .toList();
+        
+        paginatedTable.setItems(filtered);
+        
+        // Select and scroll to the first match
+        if (!filtered.isEmpty()) {
+            paginatedTable.getTable().getSelectionModel().select(filtered.get(0));
+            paginatedTable.getTable().scrollTo(filtered.get(0));
+        }
+    }
 }

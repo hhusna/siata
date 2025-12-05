@@ -3,17 +3,23 @@ package com.siata.client.view;
 import com.siata.client.MainApplication;
 import com.siata.client.session.LoginSession;
 import com.siata.client.util.AnimationUtils;
+import javafx.animation.FadeTransition;
+import javafx.application.Platform;
+import javafx.concurrent.Task;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Node;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
+import javafx.scene.control.ProgressIndicator;
 import javafx.scene.control.ScrollPane;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.Region;
+import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
+import javafx.util.Duration;
 
 import java.util.EnumMap;
 import java.util.Map;
@@ -30,6 +36,7 @@ public class MainShellView extends BorderPane {
     private final Label pageSubtitle = new Label();
     private BorderPane sidebar;
     private boolean sidebarVisible = true;
+    private boolean isLoading = false;
 
     private Optional<Runnable> onLogout = Optional.empty();
     private MainPage activePage;
@@ -218,28 +225,96 @@ public class MainShellView extends BorderPane {
     }
 
     public void switchPage(MainPage page) {
-        if (page == null) {
+        if (page == null || isLoading) {
             return;
         }
+        
         updateActiveMenu(page);
         updateHeader(page);
-        // Cache view untuk reuse - TIDAK menghapus dari cache
-        Node content = resolveContent(page);
         
-        // PENTING: Refresh dashboard setiap kali navigate ke DASHBOARD atau RECAPITULATION
-        // untuk memastikan data terbaru (setelah ada perubahan aset)
-        if (page == MainPage.DASHBOARD && content instanceof DashboardContentView) {
-            ((DashboardContentView) content).refreshDashboard();
-        } else if (page == MainPage.RECAPITULATION && content instanceof RecapitulationView) {
-            ((RecapitulationView) content).refreshData();
+        // Use async loading with fade animation for all pages
+        if (!contentContainer.getChildren().isEmpty()) {
+            isLoading = true;
+            Node currentContent = contentContainer.getChildren().get(0);
+            
+            // Fade out current content (opacity to 0.4)
+            FadeTransition fadeOut = new FadeTransition(Duration.millis(200), currentContent);
+            fadeOut.setFromValue(1.0);
+            fadeOut.setToValue(0.4);
+            fadeOut.play();
+            
+            // Load data in background thread
+            Task<Node> loadTask = new Task<>() {
+                @Override
+                protected Node call() {
+                    // This runs in background thread - just get the view (no UI updates here)
+                    return resolveContent(page);
+                }
+            };
+            
+            loadTask.setOnSucceeded(event -> {
+                Node newContent = loadTask.getValue();
+                
+                // Refresh data on FX thread
+                if (page == MainPage.DASHBOARD && newContent instanceof DashboardContentView) {
+                    ((DashboardContentView) newContent).refreshDashboard();
+                } else if (page == MainPage.RECAPITULATION && newContent instanceof RecapitulationView) {
+                    ((RecapitulationView) newContent).refreshData();
+                }
+                
+                // Set new content with initial low opacity
+                newContent.setOpacity(0.4);
+                contentContainer.getChildren().setAll(newContent);
+                
+                // Fade in new content
+                FadeTransition fadeIn = new FadeTransition(Duration.millis(300), newContent);
+                fadeIn.setFromValue(0.4);
+                fadeIn.setToValue(1.0);
+                fadeIn.setOnFinished(e -> isLoading = false);
+                fadeIn.play();
+                
+                activePage = page;
+            });
+            
+            loadTask.setOnFailed(event -> {
+                isLoading = false;
+                currentContent.setOpacity(1.0);
+            });
+            
+            new Thread(loadTask).start();
+        } else {
+            // For lighter pages, load synchronously
+            Node content = resolveContent(page);
+            
+            if (page == MainPage.DASHBOARD && content instanceof DashboardContentView) {
+                ((DashboardContentView) content).refreshDashboard();
+            } else if (page == MainPage.RECAPITULATION && content instanceof RecapitulationView) {
+                ((RecapitulationView) content).refreshData();
+            }
+            
+            contentContainer.getChildren().setAll(content);
+            AnimationUtils.pageTransitionIn(content);
+            activePage = page;
         }
+    }
+
+    /**
+     * Navigate to a page and trigger a search with the given query.
+     * Used for cross-page navigation (e.g., clicking employee name in Asset Management)
+     */
+    public void navigateToPageWithSearch(MainPage page, String searchQuery) {
+        // First, force recreate the page to ensure we have a fresh instance
+        pageContent.remove(page);
         
-        contentContainer.getChildren().setAll(content);
+        // Navigate to the page
+        switchPage(page);
         
-        // Animate page transition
-        AnimationUtils.pageTransitionIn(content);
-        
-        activePage = page;
+        // After navigation, find the search field and set the query
+        Node content = pageContent.get(page);
+        if (content instanceof EmployeeManagementView empView) {
+            // Trigger search in EmployeeManagementView
+            empView.searchAndHighlight(searchQuery);
+        }
     }
 
     private void updateActiveMenu(MainPage page) {
