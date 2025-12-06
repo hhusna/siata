@@ -4,6 +4,9 @@ import com.siata.client.MainApplication;
 import com.siata.client.session.LoginSession;
 import com.siata.client.util.AnimationUtils;
 import javafx.animation.FadeTransition;
+import javafx.animation.KeyFrame;
+import javafx.animation.KeyValue;
+import javafx.animation.Timeline;
 import javafx.application.Platform;
 import javafx.concurrent.Task;
 import javafx.geometry.Insets;
@@ -28,15 +31,23 @@ import java.util.prefs.Preferences;
 
 public class MainShellView extends BorderPane {
 
+    private static final double SIDEBAR_EXPANDED_WIDTH = 220;
+    private static final double SIDEBAR_COLLAPSED_WIDTH = 75;
+
     private final Map<MainPage, Node> pageContent = new EnumMap<>(MainPage.class);
     private final Map<MainPage, HBox> menuItems = new EnumMap<>(MainPage.class);
+    private final java.util.List<Label> menuTextLabels = new java.util.ArrayList<>();
 
     private final VBox contentContainer = new VBox();
     private final Label pageTitle = new Label();
     private final Label pageSubtitle = new Label();
     private BorderPane sidebar;
-    private boolean sidebarVisible = true;
+    private VBox brandingBox;
+    private Label collapsedBrandingLabel;
+    private Button logoutButton;
+    private boolean sidebarExpanded = true;
     private boolean isLoading = false;
+    private boolean isAnimating = false;
 
     private Optional<Runnable> onLogout = Optional.empty();
     private MainPage activePage;
@@ -56,15 +67,27 @@ public class MainShellView extends BorderPane {
     private Node buildSidebar() {
         BorderPane sidebar = new BorderPane();
         sidebar.getStyleClass().add("sidebar");
-        sidebar.setPrefWidth(220);
+        sidebar.setPrefWidth(SIDEBAR_EXPANDED_WIDTH);
+        sidebar.setMinWidth(SIDEBAR_COLLAPSED_WIDTH);
 
         Label title = new Label("SIAD - Direktorat Angkutan Udara");
         title.getStyleClass().add("sidebar-title");
         Label subtitle = new Label("Kementerian Perhubungan");
         subtitle.getStyleClass().add("sidebar-subtitle");
 
-        VBox branding = new VBox(4, title, subtitle);
-        branding.setPadding(new Insets(20, 16, 10, 16));
+        brandingBox = new VBox(4, title, subtitle);
+        brandingBox.setPadding(new Insets(20, 16, 10, 16));
+        
+        // Collapsed branding - show plane icon when collapsed
+        collapsedBrandingLabel = new Label("✈️");
+        collapsedBrandingLabel.setStyle("-fx-font-size: 28px; -fx-text-fill: white;");
+        collapsedBrandingLabel.setPadding(new Insets(16, 16, 10, 16));
+        collapsedBrandingLabel.setVisible(false);
+        collapsedBrandingLabel.setOpacity(0);
+        
+        // Stack both brandings
+        StackPane brandingStack = new StackPane(brandingBox, collapsedBrandingLabel);
+        brandingStack.setAlignment(Pos.TOP_LEFT);
 
         VBox menu = new VBox(10);
 
@@ -103,13 +126,13 @@ public class MainShellView extends BorderPane {
         menuScroll.getStyleClass().add("sidebar-scroll");
         BorderPane.setMargin(menuScroll, new Insets(0, 10, 0, 10));
 
-        Button logoutButton = new Button("Logout");
+        logoutButton = new Button("🚪 Logout");
         logoutButton.getStyleClass().add("sidebar-logout-button");
         logoutButton.setMaxWidth(Double.MAX_VALUE);
         logoutButton.setOnAction(event -> onLogout.ifPresent(Runnable::run));
         BorderPane.setMargin(logoutButton, new Insets(12, 16, 16, 16));
 
-        sidebar.setTop(branding);
+        sidebar.setTop(brandingStack);
         sidebar.setCenter(menuScroll);
         sidebar.setBottom(logoutButton);
         return sidebar;
@@ -129,9 +152,12 @@ public class MainShellView extends BorderPane {
 
         Label iconLabel = new Label(page.icon());
         iconLabel.getStyleClass().add("sidebar-item-icon");
+        iconLabel.setMinWidth(40);
+        iconLabel.setWrapText(false);
 
         Label titleLabel = new Label(page.title());
         titleLabel.getStyleClass().add("sidebar-item-text");
+        menuTextLabels.add(titleLabel); // Track for collapse animation
 
         item.getChildren().addAll(iconLabel, titleLabel);
 
@@ -141,6 +167,7 @@ public class MainShellView extends BorderPane {
 
             Label badge = new Label(page.badgeText());
             badge.getStyleClass().add("sidebar-badge");
+            menuTextLabels.add(badge); // Track badge too
 
             item.getChildren().addAll(spacer, badge);
         }
@@ -345,12 +372,60 @@ public class MainShellView extends BorderPane {
     }
 
     private void toggleSidebar() {
-        sidebarVisible = !sidebarVisible;
-        if (sidebarVisible) {
-            setLeft(sidebar);
-        } else {
-            setLeft(null);
+        if (isAnimating) return;
+        isAnimating = true;
+        
+        double targetWidth = sidebarExpanded ? SIDEBAR_COLLAPSED_WIDTH : SIDEBAR_EXPANDED_WIDTH;
+        double targetOpacity = sidebarExpanded ? 0.0 : 1.0;
+        
+        // Animate sidebar width
+        Timeline widthTimeline = new Timeline(
+            new KeyFrame(Duration.millis(200),
+                new KeyValue(sidebar.prefWidthProperty(), targetWidth)
+            )
+        );
+        
+        // Animate text opacity (fade out when collapsing, fade in when expanding)
+        FadeTransition brandingFade = new FadeTransition(Duration.millis(150), brandingBox);
+        brandingFade.setToValue(targetOpacity);
+        
+        // Animate collapsed branding (plane icon) - opposite of regular branding
+        FadeTransition collapsedBrandingFade = new FadeTransition(Duration.millis(150), collapsedBrandingLabel);
+        collapsedBrandingFade.setToValue(sidebarExpanded ? 1.0 : 0.0); // Show when collapsing, hide when expanding
+        
+        FadeTransition logoutFade = new FadeTransition(Duration.millis(150), logoutButton);
+        logoutFade.setToValue(targetOpacity);
+        
+        // Fade menu text labels
+        for (Label label : menuTextLabels) {
+            FadeTransition fade = new FadeTransition(Duration.millis(150), label);
+            fade.setToValue(targetOpacity);
+            fade.play();
         }
+        
+        // Update logout button text and branding visibility
+        if (sidebarExpanded) {
+            // Collapsing - change to icon only, show plane
+            collapsedBrandingLabel.setVisible(true);
+            brandingFade.setOnFinished(e -> brandingBox.setVisible(false));
+            logoutFade.setOnFinished(e -> logoutButton.setText("🚪"));
+        } else {
+            // Expanding - show full text, hide plane
+            brandingBox.setVisible(true);
+            collapsedBrandingFade.setOnFinished(e -> collapsedBrandingLabel.setVisible(false));
+            logoutButton.setText("🚪 Logout");
+        }
+        
+        brandingFade.play();
+        collapsedBrandingFade.play();
+        logoutFade.play();
+        
+        widthTimeline.setOnFinished(e -> {
+            sidebarExpanded = !sidebarExpanded;
+            isAnimating = false;
+        });
+        
+        widthTimeline.play();
     }
 
     private void showProfileMenu(Button avatar) {

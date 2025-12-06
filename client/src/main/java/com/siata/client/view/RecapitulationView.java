@@ -38,11 +38,48 @@ public class RecapitulationView extends VBox {
     // Daftar Jenis Aset Standar untuk Laporan
     private final List<String> JENIS_ASET_LIST = List.of("Mobil", "Motor", "Scanner", "PC", "Laptop", "Tablet", "Printer", "Speaker", "Parabot");
 
+    // === CACHED DATA - Load once, use everywhere ===
+    private List<Asset> cachedAssets;
+    private List<Asset> cachedAllAssetsIncludingDeleted;
+    private List<Employee> cachedEmployees;
+    
+    // === PRE-COMPUTED GROUPINGS for O(1) lookups ===
+    private Map<String, List<Asset>> assetsByJenis;
+    private Map<String, List<Asset>> assetsBySubdir;
+    private Map<String, List<Asset>> assetsByNip;
+    private Map<String, Long> employeesByUnit;
+
     public RecapitulationView() {
         this.dataService = DataService.getInstance();
         setSpacing(24);
         getStyleClass().add("dashboard-content");
+        loadAndCacheData();
         buildView();
+    }
+    
+    /**
+     * Load all data once and create lookup maps for O(1) access
+     */
+    private void loadAndCacheData() {
+        // Single API calls - cached for reuse
+        cachedAssets = dataService.getAssets();
+        cachedAllAssetsIncludingDeleted = dataService.getAllAssetsIncludingDeleted();
+        cachedEmployees = dataService.getEmployees();
+        
+        // Pre-compute groupings for fast lookup
+        assetsByJenis = cachedAssets.stream()
+                .collect(Collectors.groupingBy(a -> a.getJenisAset().toLowerCase()));
+        
+        assetsBySubdir = cachedAssets.stream()
+                .filter(a -> a.getSubdir() != null)
+                .collect(Collectors.groupingBy(a -> a.getSubdir().toLowerCase()));
+        
+        assetsByNip = cachedAssets.stream()
+                .filter(a -> a.getKeterangan() != null && isNumeric(a.getKeterangan()))
+                .collect(Collectors.groupingBy(Asset::getKeterangan));
+        
+        employeesByUnit = cachedEmployees.stream()
+                .collect(Collectors.groupingBy(Employee::getUnit, Collectors.counting()));
     }
     
     /**
@@ -50,32 +87,27 @@ public class RecapitulationView extends VBox {
      * Dipanggil ketika user kembali ke menu rekapitulasi atau setelah ada perubahan data
      */
     public void refreshData() {
+        // Reload cached data
+        loadAndCacheData();
         // Clear children dan rebuild view dengan data terbaru
         getChildren().clear();
         buildView();
     }
 
     private void buildView() {
-        VBox contentContainer = new VBox(24);
-        contentContainer.getChildren().add(buildHeader());
-        contentContainer.getChildren().add(buildStatsGrid());
+        // Add content directly without ScrollPane - parent container already handles scrolling
+        getChildren().add(buildHeader());
+        getChildren().add(buildStatsGrid());
 
-        // Menambahkan Tabel-Tabel dengan Logika
-        contentContainer.getChildren().add(createPencatatanBmnTable());
-        contentContainer.getChildren().add(createRencanaPenghapusanTable());
-        contentContainer.getChildren().add(createRekapPemakaianTable());
-        contentContainer.getChildren().add(createKeteranganKondisiTable());
-        contentContainer.getChildren().add(createRekapPemeganganTable());
-        contentContainer.getChildren().add(createJumlahPegawaiTable());
-        contentContainer.getChildren().add(createUsageBySubdirTable()); // Penggunaan per Subdir
-        contentContainer.getChildren().add(createEmployeeMatrixTable()); // Matriks Distribusi
-
-        // Bungkus dalam ScrollPane agar bisa discroll jika layar kecil
-        ScrollPane scrollPane = new ScrollPane(contentContainer);
-        scrollPane.setFitToWidth(true);
-        scrollPane.setStyle("-fx-background-color: transparent; -fx-background: transparent;");
-
-        getChildren().add(scrollPane);
+        // Menambahkan Tabel-Tabel dengan Logika (using cached data)
+        getChildren().add(createPencatatanBmnTable());
+        getChildren().add(createRencanaPenghapusanTable());
+        getChildren().add(createRekapPemakaianTable());
+        getChildren().add(createKeteranganKondisiTable());
+        getChildren().add(createRekapPemeganganTable());
+        getChildren().add(createJumlahPegawaiTable());
+        getChildren().add(createUsageBySubdirTable()); // Penggunaan per Subdir
+        getChildren().add(createEmployeeMatrixTable()); // Matriks Distribusi
     }
 
     private Node buildHeader() {
@@ -114,21 +146,20 @@ public class RecapitulationView extends VBox {
             statsGrid.getColumnConstraints().add(column);
         }
 
-        // Ambil semua aset TERMASUK yang "Tandai Dihapus" untuk perhitungan yang akurat
-        List<Asset> allAssets = dataService.getAllAssetsIncludingDeleted();
-        long totalAset = allAssets.size();
+        // Use cached data
+        long totalAset = cachedAllAssetsIncludingDeleted.size();
         
         // Hitung jumlah aset per kategori
-        long asetAktif = allAssets.stream()
+        long asetAktif = cachedAllAssetsIncludingDeleted.stream()
                 .filter(a -> "Aktif".equals(a.getStatus()))
                 .count();
         
-        long asetNonAktif = allAssets.stream()
+        long asetNonAktif = cachedAllAssetsIncludingDeleted.stream()
                 .filter(a -> "Non Aktif".equals(a.getStatus()))
                 .count();
         
         // Rusak = Rusak Ringan + Rusak Berat
-        long asetRusak = allAssets.stream()
+        long asetRusak = cachedAllAssetsIncludingDeleted.stream()
                 .filter(a -> "Rusak Ringan".equals(a.getKondisi()) || "Rusak Berat".equals(a.getKondisi()))
                 .count();
 
@@ -153,14 +184,15 @@ public class RecapitulationView extends VBox {
 
     // --- LOGIKA TABEL 1: PENCATATAN BMN ---
     private Node createPencatatanBmnTable() {
-        List<Asset> allAssets = dataService.getAssets();
         ObservableList<Map<String, String>> data = FXCollections.observableArrayList();
 
         for (String jenis : JENIS_ASET_LIST) {
-            long total = allAssets.stream().filter(a -> a.getJenisAset().equalsIgnoreCase(jenis)).count();
-            long dihapus = allAssets.stream().filter(a -> a.getJenisAset().equalsIgnoreCase(jenis) &&
-                    a.getStatus().equalsIgnoreCase("Non Aktif")).count();
-            long tercatatSakti = total - dihapus; // Tercatat Sakti = Jumlah - Non Aktif
+            List<Asset> jenisAssets = assetsByJenis.getOrDefault(jenis.toLowerCase(), Collections.emptyList());
+            long total = jenisAssets.size();
+            long dihapus = jenisAssets.stream()
+                    .filter(a -> "Non Aktif".equalsIgnoreCase(a.getStatus()))
+                    .count();
+            long tercatatSakti = total - dihapus;
 
             if (total > 0) {
                 Map<String, String> row = new HashMap<>();
@@ -179,33 +211,36 @@ public class RecapitulationView extends VBox {
 
     // --- LOGIKA TABEL 2: RENCANA PENGHAPUSAN ---
     private Node createRencanaPenghapusanTable() {
-        List<Asset> allAssets = dataService.getAssets();
         ObservableList<Map<String, String>> data = FXCollections.observableArrayList();
         LocalDate now = LocalDate.now();
 
         for (String jenis : JENIS_ASET_LIST) {
-            List<Asset> assetsByJenis = allAssets.stream()
-                    .filter(a -> a.getJenisAset().equalsIgnoreCase(jenis) && !a.isDeleted())
+            List<Asset> jenisAssets = assetsByJenis.getOrDefault(jenis.toLowerCase(), Collections.emptyList())
+                    .stream()
+                    .filter(a -> !a.isDeleted())
                     .toList();
 
-            if (assetsByJenis.isEmpty()) continue;
+            if (jenisAssets.isEmpty()) continue;
 
-            // Hitung Tercatat Sakti untuk jenis ini
-            long total = assetsByJenis.size();
-            long nonAktif = assetsByJenis.stream().filter(a -> a.getStatus().equalsIgnoreCase("Non Aktif")).count();
+            long total = jenisAssets.size();
+            long nonAktif = jenisAssets.stream()
+                    .filter(a -> "Non Aktif".equalsIgnoreCase(a.getStatus()))
+                    .count();
             long tercatatSakti = total - nonAktif;
 
-            long habisMasaPakai = assetsByJenis.stream().filter(a ->
-                    ChronoUnit.YEARS.between(a.getTanggalPerolehan(), now) >= 4).count();
+            long habisMasaPakai = jenisAssets.stream()
+                    .filter(a -> a.getTanggalPerolehan() != null && ChronoUnit.YEARS.between(a.getTanggalPerolehan(), now) >= 4)
+                    .count();
 
-            long akanHabis1Thn = assetsByJenis.stream().filter(a -> {
-                long years = ChronoUnit.YEARS.between(a.getTanggalPerolehan(), now);
-                return years >= 3 && years < 4;
-            }).count();
+            long akanHabis1Thn = jenisAssets.stream()
+                    .filter(a -> {
+                        if (a.getTanggalPerolehan() == null) return false;
+                        long years = ChronoUnit.YEARS.between(a.getTanggalPerolehan(), now);
+                        return years >= 3 && years < 4;
+                    })
+                    .count();
 
-            // Bersih = Tercatat Sakti - Habis Masa Pakai
             long bersih = tercatatSakti - habisMasaPakai;
-            // Total Bersih = Bersih - Akan Habis < 1 Tahun
             long totalBersih = bersih - akanHabis1Thn;
 
             Map<String, String> row = new HashMap<>();
@@ -224,25 +259,21 @@ public class RecapitulationView extends VBox {
 
     // --- LOGIKA TABEL 3: REKAP PEMAKAIAN ---
     private Node createRekapPemakaianTable() {
-        List<Asset> allAssets = dataService.getAssets();
         ObservableList<Map<String, String>> data = FXCollections.observableArrayList();
 
         for (String jenis : JENIS_ASET_LIST) {
-            List<Asset> assetsByJenis = allAssets.stream()
-                    .filter(a -> a.getJenisAset().equalsIgnoreCase(jenis) && a.getStatus().equalsIgnoreCase("Aktif"))
-                    .toList();
-
-            if (assetsByJenis.isEmpty()) continue;
-
-            // Sudah Hapus = aset yang statusnya Non Aktif (sudah dihapus dari pemakaian)
-            long sudahHapus = allAssets.stream()
-                    .filter(a -> a.getJenisAset().equalsIgnoreCase(jenis) && a.getStatus().equalsIgnoreCase("Non Aktif"))
+            List<Asset> jenisAssets = assetsByJenis.getOrDefault(jenis.toLowerCase(), Collections.emptyList());
+            
+            long belumHapus = jenisAssets.stream()
+                    .filter(a -> "Aktif".equalsIgnoreCase(a.getStatus()))
+                    .count();
+            
+            long sudahHapus = jenisAssets.stream()
+                    .filter(a -> "Non Aktif".equalsIgnoreCase(a.getStatus()))
                     .count();
 
-            // Belum Hapus = aset yang masih aktif dipakai
-            long belumHapus = assetsByJenis.size();
+            if (belumHapus == 0 && sudahHapus == 0) continue;
 
-            // Total Dipakai = Belum Hapus + Sudah Hapus
             long totalDipakai = belumHapus + sudahHapus;
 
             Map<String, String> row = new HashMap<>();
@@ -260,19 +291,16 @@ public class RecapitulationView extends VBox {
 
     // --- LOGIKA TABEL 4: KETERANGAN KONDISI ---
     private Node createKeteranganKondisiTable() {
-        List<Asset> allAssets = dataService.getAssets();
         ObservableList<Map<String, String>> data = FXCollections.observableArrayList();
 
         for (String jenis : JENIS_ASET_LIST) {
-            List<Asset> assetsByJenis = allAssets.stream()
-                    .filter(a -> a.getJenisAset().equalsIgnoreCase(jenis))
-                    .toList();
+            List<Asset> jenisAssets = assetsByJenis.getOrDefault(jenis.toLowerCase(), Collections.emptyList());
 
-            if (assetsByJenis.isEmpty()) continue;
+            if (jenisAssets.isEmpty()) continue;
 
-            long rusakBerat = assetsByJenis.stream().filter(a -> a.getKondisi().equalsIgnoreCase("Rusak Berat")).count();
-            long gudang = assetsByJenis.stream().filter(a -> a.getKondisi().equalsIgnoreCase("Gudang")).count();
-            long hilang = assetsByJenis.stream().filter(a -> a.getKondisi().equalsIgnoreCase("Hilang")).count();
+            long rusakBerat = jenisAssets.stream().filter(a -> "Rusak Berat".equalsIgnoreCase(a.getKondisi())).count();
+            long gudang = jenisAssets.stream().filter(a -> "Gudang".equalsIgnoreCase(a.getKondisi())).count();
+            long hilang = jenisAssets.stream().filter(a -> "Hilang".equalsIgnoreCase(a.getKondisi())).count();
 
             Map<String, String> row = new HashMap<>();
             row.put("Jenis Aset", jenis);
@@ -289,19 +317,17 @@ public class RecapitulationView extends VBox {
 
     // --- LOGIKA TABEL 5: REKAP PEMEGANG ---
     private Node createRekapPemeganganTable() {
-        List<Asset> allAssets = dataService.getAssets();
         ObservableList<Map<String, String>> data = FXCollections.observableArrayList();
 
         for (String jenis : JENIS_ASET_LIST) {
-            List<Asset> usedAssets = allAssets.stream()
-                    .filter(a -> a.getJenisAset().equalsIgnoreCase(jenis) &&
-                            a.getStatus().equalsIgnoreCase("Aktif") &&
-                            isNumeric(a.getKeterangan()))
+            List<Asset> jenisAssets = assetsByJenis.getOrDefault(jenis.toLowerCase(), Collections.emptyList())
+                    .stream()
+                    .filter(a -> "Aktif".equalsIgnoreCase(a.getStatus()) && isNumeric(a.getKeterangan()))
                     .toList();
 
-            if (usedAssets.isEmpty()) continue;
+            if (jenisAssets.isEmpty()) continue;
 
-            Map<String, Long> holderCounts = usedAssets.stream()
+            Map<String, Long> holderCounts = jenisAssets.stream()
                     .collect(Collectors.groupingBy(Asset::getKeterangan, Collectors.counting()));
 
             long ganda = holderCounts.values().stream().filter(count -> count > 1).count();
@@ -322,13 +348,10 @@ public class RecapitulationView extends VBox {
 
     // --- LOGIKA TABEL 6: JUMLAH PEGAWAI PER BAGIAN ---
     private Node createJumlahPegawaiTable() {
-        List<Employee> employees = dataService.getEmployees();
         ObservableList<Map<String, String>> data = FXCollections.observableArrayList();
 
-        Map<String, Long> unitCounts = employees.stream()
-                .collect(Collectors.groupingBy(Employee::getUnit, Collectors.counting()));
-
-        unitCounts.forEach((unit, count) -> {
+        // Use pre-computed grouping
+        employeesByUnit.forEach((unit, count) -> {
             Map<String, String> row = new HashMap<>();
             row.put("Bagian", unit);
             row.put("ASN", String.valueOf(count));
@@ -344,24 +367,25 @@ public class RecapitulationView extends VBox {
 
     // --- LOGIKA TABEL 7: Pemakaian BMN (MATRIKS) ---
     private Node createUsageBySubdirTable() {
-        List<Asset> allAssets = dataService.getAssets();
         List<String> subdirs = List.of("PPTAU", "AUNB", "AUNTB", "KAU", "SILAU", "Tata Usaha", "Direktur");
         ObservableList<Map<String, String>> data = FXCollections.observableArrayList();
 
         List<String> displayTypes = List.of("Mobil", "Motor", "Scanner", "PC", "Laptop", "Tablet", "Printer", "Speaker", "Parabot");
 
-        for (String Subdir : subdirs) {
+        for (String subdir : subdirs) {
+            List<Asset> subdirAssets = assetsBySubdir.getOrDefault(subdir.toLowerCase(), Collections.emptyList());
+            
             Map<String, String> row = new HashMap<>();
-            row.put("Subdirektorat", Subdir);
+            row.put("Subdirektorat", subdir);
 
             long totalSubdir = 0;
 
+            // Pre-group this subdir's assets by jenis for faster lookup
+            Map<String, Long> subdirJenisCounts = subdirAssets.stream()
+                    .collect(Collectors.groupingBy(a -> a.getJenisAset().toLowerCase(), Collectors.counting()));
+
             for (String jenis : displayTypes) {
-                long count = allAssets.stream()
-                        .filter(a -> a.getSubdir() != null &&
-                                a.getSubdir().equalsIgnoreCase(Subdir) &&
-                                a.getJenisAset().equalsIgnoreCase(jenis))
-                        .count();
+                long count = subdirJenisCounts.getOrDefault(jenis.toLowerCase(), 0L);
                 row.put(jenis, String.valueOf(count));
                 totalSubdir += count;
             }
@@ -384,26 +408,26 @@ public class RecapitulationView extends VBox {
 
     // --- LOGIKA TABEL 8: MATRIKS DISTRIBUSI PER PEGAWAI ---
     private Node createEmployeeMatrixTable() {
-        List<Employee> employees = dataService.getEmployees();
-        List<Asset> allAssets = dataService.getAssets();
         ObservableList<Map<String, String>> data = FXCollections.observableArrayList();
 
         List<String> displayTypes = List.of("Mobil", "Motor", "Scanner", "PC", "Laptop", "Tablet", "Printer", "Speaker", "Parabot");
 
-        for (Employee emp : employees) {
+        for (Employee emp : cachedEmployees) {
+            // Get all assets for this employee from pre-computed map (O(1) lookup!)
+            List<Asset> empAssets = assetsByNip.getOrDefault(emp.getNip(), Collections.emptyList());
+            
             Map<String, String> row = new HashMap<>();
             row.put("Nama Pegawai", emp.getNamaLengkap());
             row.put("Subdir", emp.getUnit());
 
             long totalEmp = 0;
 
-            for (String jenis : displayTypes) {
-                long count = allAssets.stream()
-                        .filter(a -> a.getKeterangan() != null &&
-                                a.getKeterangan().equals(emp.getNip()) &&
-                                a.getJenisAset().equalsIgnoreCase(jenis))
-                        .count();
+            // Pre-group employee's assets by jenis for faster counting
+            Map<String, Long> empJenisCounts = empAssets.stream()
+                    .collect(Collectors.groupingBy(a -> a.getJenisAset().toLowerCase(), Collectors.counting()));
 
+            for (String jenis : displayTypes) {
+                long count = empJenisCounts.getOrDefault(jenis.toLowerCase(), 0L);
                 row.put(jenis, count > 0 ? String.valueOf(count) : "-");
                 totalEmp += count;
             }
@@ -460,12 +484,12 @@ public class RecapitulationView extends VBox {
             table.getColumns().add(col);
         }
 
-        // PERBAIKAN ERROR: Gunakan Bindings.size(data)
-        table.setFixedCellSize(35);
-        table.prefHeightProperty().bind(
-                table.fixedCellSizeProperty().multiply(Bindings.size(data).add(1.5))
-        );
+        // Use fixed height calculation instead of binding
+        int rowCount = data.size();
+        double fixedHeight = Math.max(150, (rowCount + 1.5) * 35);
+        table.setPrefHeight(fixedHeight);
         table.setMinHeight(150);
+        table.setMaxHeight(600);
 
         section.getChildren().addAll(sectionTitle, table);
         return section;
@@ -478,7 +502,7 @@ public class RecapitulationView extends VBox {
 
         HBox heading = new HBox(8);
         heading.setAlignment(Pos.CENTER_LEFT);
-        HBox.setHgrow(heading, Priority.ALWAYS); // PERBAIKAN ERROR: Variabel 'heading', bukan 'headerBox'
+        HBox.setHgrow(heading, Priority.ALWAYS);
 
         Label titleLabel = new Label(data.title());
         titleLabel.getStyleClass().add("stat-card-title");
