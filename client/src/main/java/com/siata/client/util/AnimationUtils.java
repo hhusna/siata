@@ -356,4 +356,83 @@ public class AnimationUtils {
             pt.play();
         });
     }
+
+    /**
+     * Create a slow floating animation for decorative elements.
+     * The element will gently drift up and down.
+     * @param node The node to animate
+     * @param amplitude Maximum vertical movement in pixels
+     * @param durationSeconds Duration of one full cycle
+     */
+    public static Timeline createFloatingAnimation(Node node, double amplitude, double durationSeconds) {
+        Timeline timeline = new Timeline(
+            new KeyFrame(Duration.ZERO,
+                new KeyValue(node.translateYProperty(), -amplitude / 2, Interpolator.EASE_BOTH)),
+            new KeyFrame(Duration.seconds(durationSeconds / 2),
+                new KeyValue(node.translateYProperty(), amplitude / 2, Interpolator.EASE_BOTH)),
+            new KeyFrame(Duration.seconds(durationSeconds),
+                new KeyValue(node.translateYProperty(), -amplitude / 2, Interpolator.EASE_BOTH))
+        );
+        timeline.setCycleCount(Timeline.INDEFINITE);
+        return timeline;
+    }
+
+    /**
+     * Create a slow horizontal drifting animation.
+     * @param node The node to animate
+     * @param amplitude Maximum horizontal movement in pixels
+     * @param durationSeconds Duration of one full cycle
+     */
+    public static Timeline createDriftingAnimation(Node node, double amplitude, double durationSeconds) {
+        Timeline timeline = new Timeline(
+            new KeyFrame(Duration.ZERO,
+                new KeyValue(node.translateXProperty(), -amplitude / 2, Interpolator.EASE_BOTH)),
+            new KeyFrame(Duration.seconds(durationSeconds / 2),
+                new KeyValue(node.translateXProperty(), amplitude / 2, Interpolator.EASE_BOTH)),
+            new KeyFrame(Duration.seconds(durationSeconds),
+                new KeyValue(node.translateXProperty(), -amplitude / 2, Interpolator.EASE_BOTH))
+        );
+        timeline.setCycleCount(Timeline.INDEFINITE);
+        return timeline;
+    }
+
+    /**
+     * Create a slow rotation animation for decorative elements.
+     * @param node The node to animate
+     * @param degrees Rotation amount in degrees (can be negative for reverse)
+     * @param durationSeconds Duration of one full cycle
+     */
+    public static Timeline createRotatingAnimation(Node node, double degrees, double durationSeconds) {
+        double startRotation = node.getRotate();
+        Timeline timeline = new Timeline(
+            new KeyFrame(Duration.ZERO,
+                new KeyValue(node.rotateProperty(), startRotation, Interpolator.EASE_BOTH)),
+            new KeyFrame(Duration.seconds(durationSeconds / 2),
+                new KeyValue(node.rotateProperty(), startRotation + degrees, Interpolator.EASE_BOTH)),
+            new KeyFrame(Duration.seconds(durationSeconds),
+                new KeyValue(node.rotateProperty(), startRotation, Interpolator.EASE_BOTH))
+        );
+        timeline.setCycleCount(Timeline.INDEFINITE);
+        return timeline;
+    }
+
+    /**
+     * Create a gentle pulsing opacity animation.
+     * @param node The node to animate
+     * @param minOpacity Minimum opacity
+     * @param maxOpacity Maximum opacity
+     * @param durationSeconds Duration of one full cycle
+     */
+    public static Timeline createPulsingOpacityAnimation(Node node, double minOpacity, double maxOpacity, double durationSeconds) {
+        Timeline timeline = new Timeline(
+            new KeyFrame(Duration.ZERO,
+                new KeyValue(node.opacityProperty(), minOpacity, Interpolator.EASE_BOTH)),
+            new KeyFrame(Duration.seconds(durationSeconds / 2),
+                new KeyValue(node.opacityProperty(), maxOpacity, Interpolator.EASE_BOTH)),
+            new KeyFrame(Duration.seconds(durationSeconds),
+                new KeyValue(node.opacityProperty(), minOpacity, Interpolator.EASE_BOTH))
+        );
+        timeline.setCycleCount(Timeline.INDEFINITE);
+        return timeline;
+    }
 }

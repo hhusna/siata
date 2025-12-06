@@ -30,6 +30,9 @@ import java.util.EnumMap;
 import java.util.Map;
 import java.util.Optional;
 import java.util.prefs.Preferences;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
+import java.util.Locale;
 
 public class MainShellView extends BorderPane {
 
@@ -396,7 +399,9 @@ public class MainShellView extends BorderPane {
 
     private void updateHeader(MainPage page) {
         pageTitle.setText(page.title());
-        pageSubtitle.setText(page.dateLabel());
+        // Dynamic current date in Indonesian format
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("EEEE, d MMMM yyyy", new Locale("id", "ID"));
+        pageSubtitle.setText(LocalDate.now().format(formatter));
     }
 
     public void setOnLogout(Runnable onLogout) {

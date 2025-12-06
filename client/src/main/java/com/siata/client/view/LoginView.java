@@ -4,6 +4,7 @@ import com.siata.client.MainApplication;
 import com.siata.client.api.UserApi;
 import com.siata.client.session.LoginSession;
 import com.siata.client.util.AnimationUtils;
+import javafx.animation.Timeline;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.control.Button;
@@ -18,6 +19,8 @@ import javafx.scene.shape.Circle;
 import javafx.scene.shape.Rectangle;
 import javafx.application.Platform;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
 import java.util.Random;
 import java.util.prefs.Preferences;
@@ -25,6 +28,7 @@ import java.util.prefs.Preferences;
 public class LoginView extends HBox {
     private Optional<Runnable> onLogin = Optional.empty();
     UserApi userApi = new UserApi();
+    private final List<Timeline> animationTimelines = new ArrayList<>();
 
     public LoginView() {
         buildView();
@@ -41,19 +45,35 @@ public class LoginView extends HBox {
         rightPanel.setMaxWidth(480);
         
         getChildren().addAll(leftPanel, rightPanel);
-        setStyle("-fx-background-color: white;");
+        // Main background: gradient from bottom (dark) to top (light)
+        setStyle("-fx-background-color: linear-gradient(to top, #bcc4cc 0%, #d0d6dc 15%, #e4e8ec 45%, #f5f7f9 75%, #ffffff 100%);");
     }
     
     private StackPane createLeftPanel() {
         StackPane panel = new StackPane();
+        panel.setPadding(new Insets(16)); // Margin around the blue card
         
-        // Dark blue gradient background (matching SIADA logo colors)
+        // Dark blue gradient background (matching SIADA logo colors) with rounded corners
         Region gradient = new Region();
         gradient.setStyle(
-            "-fx-background-color: linear-gradient(to bottom right, #0a1628, #0f2847, #0a1628);"
+            "-fx-background-color: linear-gradient(to bottom right, #0a1628, #0f2847, #0a1628);" +
+            "-fx-background-radius: 20;"
         );
-        gradient.prefWidthProperty().bind(panel.widthProperty());
-        gradient.prefHeightProperty().bind(panel.heightProperty());
+        
+        // Container for gradient + decorations with clipping
+        StackPane blueCard = new StackPane();
+        blueCard.prefWidthProperty().bind(panel.widthProperty().subtract(32));
+        blueCard.prefHeightProperty().bind(panel.heightProperty().subtract(32));
+        blueCard.maxWidthProperty().bind(panel.widthProperty().subtract(32));
+        blueCard.maxHeightProperty().bind(panel.heightProperty().subtract(32));
+        
+        // Apply clipping with rounded corners to keep decorations inside
+        javafx.scene.shape.Rectangle clip = new javafx.scene.shape.Rectangle();
+        clip.widthProperty().bind(blueCard.widthProperty());
+        clip.heightProperty().bind(blueCard.heightProperty());
+        clip.setArcWidth(40);
+        clip.setArcHeight(40);
+        blueCard.setClip(clip);
         
         // Decorative shapes container
         Pane decorations = new Pane();
@@ -62,7 +82,7 @@ public class LoginView extends HBox {
         // Add geometric decorations with blue tones
         Random rand = new Random(42);
         
-        // Diagonal lines/rectangles (like building shapes)
+        // Diagonal lines/rectangles (like building shapes) - with floating animation
         for (int i = 0; i < 8; i++) {
             Rectangle rect = new Rectangle();
             rect.setWidth(rand.nextInt(120) + 60);
@@ -72,13 +92,26 @@ public class LoginView extends HBox {
             rect.setArcWidth(15);
             rect.setArcHeight(15);
             
-            rect.layoutXProperty().bind(panel.widthProperty().multiply(rand.nextDouble()));
-            rect.layoutYProperty().bind(panel.heightProperty().multiply(rand.nextDouble()));
+            rect.layoutXProperty().bind(blueCard.widthProperty().multiply(rand.nextDouble()));
+            rect.layoutYProperty().bind(blueCard.heightProperty().multiply(rand.nextDouble()));
             
             decorations.getChildren().add(rect);
+            
+            // Add floating and rotating animation
+            double floatAmp = 10 + rand.nextDouble() * 20;
+            double floatDuration = 4 + rand.nextDouble() * 4;
+            Timeline floatAnim = AnimationUtils.createFloatingAnimation(rect, floatAmp, floatDuration);
+            floatAnim.play();
+            animationTimelines.add(floatAnim);
+            
+            double rotateDeg = 5 + rand.nextDouble() * 10;
+            double rotateDuration = 6 + rand.nextDouble() * 6;
+            Timeline rotateAnim = AnimationUtils.createRotatingAnimation(rect, rotateDeg * (rand.nextBoolean() ? 1 : -1), rotateDuration);
+            rotateAnim.play();
+            animationTimelines.add(rotateAnim);
         }
         
-        // Add some cyan/teal accent rectangles
+        // Add some cyan/teal accent rectangles - with drifting animation
         for (int i = 0; i < 5; i++) {
             Rectangle rect = new Rectangle();
             rect.setWidth(rand.nextInt(80) + 40);
@@ -88,19 +121,47 @@ public class LoginView extends HBox {
             rect.setArcWidth(10);
             rect.setArcHeight(10);
             
-            rect.layoutXProperty().bind(panel.widthProperty().multiply(rand.nextDouble()));
-            rect.layoutYProperty().bind(panel.heightProperty().multiply(rand.nextDouble()));
+            rect.layoutXProperty().bind(blueCard.widthProperty().multiply(rand.nextDouble()));
+            rect.layoutYProperty().bind(blueCard.heightProperty().multiply(rand.nextDouble()));
             
             decorations.getChildren().add(rect);
+            
+            // Add drifting and opacity pulsing animation
+            double driftAmp = 15 + rand.nextDouble() * 25;
+            double driftDuration = 5 + rand.nextDouble() * 5;
+            Timeline driftAnim = AnimationUtils.createDriftingAnimation(rect, driftAmp, driftDuration);
+            driftAnim.play();
+            animationTimelines.add(driftAnim);
+            
+            double pulseMin = 0.08;
+            double pulseMax = 0.18;
+            double pulseDuration = 3 + rand.nextDouble() * 3;
+            Timeline pulseAnim = AnimationUtils.createPulsingOpacityAnimation(rect, pulseMin, pulseMax, pulseDuration);
+            pulseAnim.play();
+            animationTimelines.add(pulseAnim);
         }
         
-        // Add subtle circles
+        // Add subtle circles - with floating and pulsing animation
         for (int i = 0; i < 4; i++) {
             Circle circle = new Circle(rand.nextInt(40) + 20);
             circle.setFill(Color.rgb(59, 130, 246, 0.05 + rand.nextDouble() * 0.05));
-            circle.centerXProperty().bind(panel.widthProperty().multiply(rand.nextDouble()));
-            circle.centerYProperty().bind(panel.heightProperty().multiply(rand.nextDouble()));
+            circle.centerXProperty().bind(blueCard.widthProperty().multiply(rand.nextDouble()));
+            circle.centerYProperty().bind(blueCard.heightProperty().multiply(rand.nextDouble()));
             decorations.getChildren().add(circle);
+            
+            // Add floating animation
+            double floatAmp = 15 + rand.nextDouble() * 30;
+            double floatDuration = 5 + rand.nextDouble() * 5;
+            Timeline floatAnim = AnimationUtils.createFloatingAnimation(circle, floatAmp, floatDuration);
+            floatAnim.play();
+            animationTimelines.add(floatAnim);
+            
+            // Add gentle drifting
+            double driftAmp = 10 + rand.nextDouble() * 20;
+            double driftDuration = 6 + rand.nextDouble() * 6;
+            Timeline driftAnim = AnimationUtils.createDriftingAnimation(circle, driftAmp, driftDuration);
+            driftAnim.play();
+            animationTimelines.add(driftAnim);
         }
         
         // Content on left panel
@@ -136,7 +197,10 @@ public class LoginView extends HBox {
         content.getChildren().addAll(subtitle, department);
         StackPane.setAlignment(content, Pos.CENTER);
         
-        panel.getChildren().addAll(gradient, decorations, content);
+        // Assemble blue card: gradient (bottom), decorations (middle), content (top)
+        blueCard.getChildren().addAll(gradient, decorations, content);
+        
+        panel.getChildren().add(blueCard);
         return panel;
     }
     
@@ -144,7 +208,8 @@ public class LoginView extends HBox {
         VBox panel = new VBox(20);
         panel.setAlignment(Pos.CENTER);
         panel.setPadding(new Insets(60));
-        panel.setStyle("-fx-background-color: white;");
+        // Transparent - part of main background gradient (Layer 1)
+        panel.setStyle("-fx-background-color: transparent;");
         
         // Form container
         VBox formContainer = new VBox(24);
@@ -163,7 +228,7 @@ public class LoginView extends HBox {
         
         // Title
         Label formTitle = new Label("USER LOGIN");
-        formTitle.setStyle("-fx-font-size: 18px; -fx-font-weight: 600; -fx-text-fill: #1e3a5f; -fx-letter-spacing: 2px;");
+        formTitle.setStyle("-fx-font-size: 18px; -fx-font-weight: 700; -fx-text-fill: #1e3a5f; -fx-letter-spacing: 2px;");
         
         VBox headerSection = new VBox(16, iconContainer, formTitle);
         headerSection.setAlignment(Pos.CENTER);
@@ -181,6 +246,9 @@ public class LoginView extends HBox {
         PasswordField passwordField = new PasswordField();
         passwordField.setPromptText("Password");
         HBox passwordBox = createInputFieldWithNode("🔒", passwordField);
+        
+        // Enter key on username field moves to password field
+        usernameField.setOnAction(event -> passwordField.requestFocus());
         
         // Status label
         Label statusLabel = new Label();
@@ -218,7 +286,7 @@ public class LoginView extends HBox {
             return "-fx-background-color: linear-gradient(to right, #0f2847, #1e40af);" +
                    "-fx-text-fill: white;" +
                    "-fx-font-size: 14px;" +
-                   "-fx-font-weight: 600;" +
+                   "-fx-font-weight: 700;" +
                    "-fx-padding: 14 60;" +
                    "-fx-background-radius: 25;" +
                    "-fx-cursor: hand;" +
@@ -228,7 +296,7 @@ public class LoginView extends HBox {
         return "-fx-background-color: linear-gradient(to right, #1e3a5f, #2563eb);" +
                "-fx-text-fill: white;" +
                "-fx-font-size: 14px;" +
-               "-fx-font-weight: 600;" +
+               "-fx-font-weight: 700;" +
                "-fx-padding: 14 60;" +
                "-fx-background-radius: 25;" +
                "-fx-cursor: hand;" +

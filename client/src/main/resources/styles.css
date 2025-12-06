@@ -1175,3 +1175,103 @@
     -fx-background-color: #fef3c7;
     -fx-text-fill: #92400e;
 }
+
+/* ========================================
+   MODERN SCROLLBAR STYLES
+   ======================================== */
+
+/* Scrollbar track (background) */
+.scroll-bar {
+    -fx-background-color: transparent;
+    -fx-background-radius: 8;
+    -fx-padding: 2;
+}
+
+.scroll-bar .track {
+    -fx-background-color: transparent;
+    -fx-background-radius: 8;
+}
+
+.scroll-bar .track-background {
+    -fx-background-color: transparent;
+}
+
+/* Scrollbar thumb (the draggable part) */
+.scroll-bar .thumb {
+    -fx-background-color: #cbd5e1;
+    -fx-background-radius: 8;
+    -fx-background-insets: 2;
+}
+
+.scroll-bar .thumb:hover {
+    -fx-background-color: #94a3b8;
+}
+
+.scroll-bar .thumb:pressed {
+    -fx-background-color: #64748b;
+}
+
+/* Hide increment/decrement arrows for minimal look */
+.scroll-bar .increment-button,
+.scroll-bar .decrement-button {
+    -fx-background-color: transparent;
+    -fx-padding: 0;
+    -fx-pref-width: 0;
+    -fx-pref-height: 0;
+}
+
+.scroll-bar .increment-arrow,
+.scroll-bar .decrement-arrow {
+    -fx-shape: "";
+    -fx-padding: 0;
+}
+
+/* Vertical scrollbar specific */
+.scroll-bar:vertical {
+    -fx-pref-width: 10;
+}
+
+.scroll-bar:vertical .thumb {
+    -fx-pref-width: 6;
+}
+
+/* Horizontal scrollbar specific */
+.scroll-bar:horizontal {
+    -fx-pref-height: 10;
+}
+
+.scroll-bar:horizontal .thumb {
+    -fx-pref-height: 6;
+}
+
+/* ScrollPane styling */
+.scroll-pane {
+    -fx-background-color: transparent;
+    -fx-background-insets: 0;
+    -fx-padding: 0;
+}
+
+.scroll-pane>.viewport {
+    -fx-background-color: transparent;
+}
+
+.scroll-pane .corner {
+    -fx-background-color: transparent;
+}
+
+/* ========================================
+   DASHBOARD CONTENT AREA
+   ======================================== */
+
+/* Main content scroll area with gradient background */
+.dashboard-scroll {
+    -fx-background-color: transparent;
+}
+
+.dashboard-scroll>.viewport {
+    -fx-background-color: linear-gradient(to top, #e8eaed 0%, #f0f2f5 30%, #f5f7f9 60%, #fafbfc 100%);
+}
+
+.dashboard-content {
+    -fx-background-color: transparent;
+}
