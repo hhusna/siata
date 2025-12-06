@@ -22,6 +22,8 @@ import javafx.scene.layout.Priority;
 import javafx.scene.layout.Region;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
+import javafx.scene.image.Image;
+import javafx.scene.image.ImageView;
 import javafx.util.Duration;
 
 import java.util.EnumMap;
@@ -59,9 +61,14 @@ public class MainShellView extends BorderPane {
 
     private void buildView() {
         sidebar = (BorderPane) buildSidebar();
+        
+        // Create right side container with header on top and content below
+        VBox rightSide = new VBox();
+        rightSide.getChildren().addAll(buildHeader(), buildContentContainer());
+        VBox.setVgrow(rightSide.getChildren().get(1), Priority.ALWAYS);
+        
         setLeft(sidebar);
-        setTop(buildHeader());
-        setCenter(buildContentContainer());
+        setCenter(rightSide);
     }
 
     private Node buildSidebar() {
@@ -70,17 +77,30 @@ public class MainShellView extends BorderPane {
         sidebar.setPrefWidth(SIDEBAR_EXPANDED_WIDTH);
         sidebar.setMinWidth(SIDEBAR_COLLAPSED_WIDTH);
 
-        Label title = new Label("SIAD - Direktorat Angkutan Udara");
-        title.getStyleClass().add("sidebar-title");
-        Label subtitle = new Label("Kementerian Perhubungan");
-        subtitle.getStyleClass().add("sidebar-subtitle");
-
-        brandingBox = new VBox(4, title, subtitle);
-        brandingBox.setPadding(new Insets(20, 16, 10, 16));
+        // Logo icon using PNG image in white rounded container
+        StackPane logoContainer = createLogoContainer();
         
-        // Collapsed branding - show plane icon when collapsed
-        collapsedBrandingLabel = new Label("✈️");
-        collapsedBrandingLabel.setStyle("-fx-font-size: 28px; -fx-text-fill: white;");
+        // Title and subtitle on the right
+        Label title = new Label("SIAD - Direktorat Ar");
+        title.getStyleClass().add("sidebar-title");
+        Label subtitle = new Label("Kementerian");
+        subtitle.getStyleClass().add("sidebar-subtitle");
+        
+        VBox textBox = new VBox(2, title, subtitle);
+        textBox.setAlignment(Pos.CENTER_LEFT);
+        
+        // HBox with logo and text
+        HBox brandingContent = new HBox(12, logoContainer, textBox);
+        brandingContent.setAlignment(Pos.CENTER_LEFT);
+        
+        brandingBox = new VBox(brandingContent);
+        brandingBox.setPadding(new Insets(16, 16, 10, 16));
+        
+        // Collapsed branding - show only logo when collapsed
+        StackPane collapsedLogoContainer = createLogoContainer();
+        
+        collapsedBrandingLabel = new Label();
+        collapsedBrandingLabel.setGraphic(collapsedLogoContainer);
         collapsedBrandingLabel.setPadding(new Insets(16, 16, 10, 16));
         collapsedBrandingLabel.setVisible(false);
         collapsedBrandingLabel.setOpacity(0);
@@ -190,11 +210,6 @@ public class MainShellView extends BorderPane {
         menuButton.getStyleClass().add("ghost-button");
         menuButton.setOnAction(e -> toggleSidebar());
 
-        VBox titleBox = new VBox(4);
-        pageTitle.getStyleClass().add("dashboard-title");
-        pageSubtitle.getStyleClass().add("dashboard-subtitle");
-        titleBox.getChildren().addAll(pageTitle, pageSubtitle);
-
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
 
@@ -215,7 +230,8 @@ public class MainShellView extends BorderPane {
         avatar.getStyleClass().add("header-avatar");
         avatar.setOnAction(e -> showProfileMenu(avatar));
 
-        header.getChildren().addAll(menuButton, titleBox, spacer, userBox, avatar);
+        // Order: menuButton on left near sidebar, spacer pushes rest to right
+        header.getChildren().addAll(menuButton, spacer, userBox, avatar);
         return header;
     }
 
@@ -574,5 +590,29 @@ public class MainShellView extends BorderPane {
         alert.setHeaderText("Pengaturan Aplikasi");
         alert.setContentText("Fitur pengaturan akan segera tersedia.\n\nAnda dapat mengatur:\n• Preferensi tampilan\n• Keamanan akun\n• Dan lainnya");
         alert.showAndWait();
+    }
+    
+    private StackPane createLogoContainer() {
+        StackPane container = new StackPane();
+        container.setStyle("-fx-background-color: white; -fx-background-radius: 10;");
+        container.setMinSize(40, 40);
+        container.setMaxSize(40, 40);
+        container.setAlignment(Pos.CENTER);
+        
+        try {
+            Image planeImage = new Image(getClass().getResourceAsStream("/plane_icon.png"));
+            ImageView imageView = new ImageView(planeImage);
+            imageView.setFitWidth(24);
+            imageView.setFitHeight(24);
+            imageView.setPreserveRatio(true);
+            container.getChildren().add(imageView);
+        } catch (Exception e) {
+            // Fallback to text if image fails
+            Label fallback = new Label("✈");
+            fallback.setStyle("-fx-font-size: 18px; -fx-text-fill: #1e3a5f;");
+            container.getChildren().add(fallback);
+        }
+        
+        return container;
     }
 }

@@ -60,7 +60,8 @@
     -fx-font-weight: 500;
 }
 
-.text-field, .password-field {
+.text-field,
+.password-field {
     -fx-background-radius: 6;
     -fx-background-color: #f8fafc;
     -fx-border-color: #e2e8f0;
@@ -69,7 +70,8 @@
     -fx-font-size: 13px;
 }
 
-.text-field:focused, .password-field:focused {
+.text-field:focused,
+.password-field:focused {
     -fx-border-color: #3b82f6;
     -fx-background-color: white;
     -fx-effect: dropshadow(gaussian, rgba(59, 130, 246, 0.15), 4, 0.5, 0, 0);
@@ -164,11 +166,11 @@
 }
 
 /* ========================================
-   SIDEBAR
+   SIDEBAR - Dark Navy Blue Theme
    ======================================== */
 
 .sidebar {
-    -fx-background-color: linear-gradient(to bottom, #1e293b, #0f172a);
+    -fx-background-color: linear-gradient(to bottom, #1e3a5f, #0f2847);
     -fx-background-radius: 0;
     -fx-text-fill: white;
     -fx-padding: 0;
@@ -252,7 +254,7 @@
 }
 
 /* ========================================
-   HEADER
+   HEADER - Light Theme
    ======================================== */
 
 .dashboard-header {
@@ -275,6 +277,7 @@
 .header-icon {
     -fx-font-size: 16px;
     -fx-padding: 4 8;
+    -fx-text-fill: #475569;
 }
 
 .header-username {
@@ -296,6 +299,10 @@
     -fx-padding: 8;
     -fx-background-radius: 999;
     -fx-cursor: hand;
+}
+
+.header-avatar:hover {
+    -fx-background-color: #2563eb;
 }
 
 /* ========================================
@@ -358,7 +365,7 @@
 }
 
 /* ========================================
-   STAT CARDS
+   STAT CARDS - Light with Colored Borders
    ======================================== */
 
 .stats-grid {
@@ -367,43 +374,37 @@
 
 .stat-card {
     -fx-background-color: linear-gradient(to bottom right, #ffffff, #f8fafc);
-    -fx-background-radius: 10;
-    -fx-padding: 18;
-    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.06), 10, 0.1, 0, 3);
-    -fx-border-color: #e2e8f0;
-    -fx-border-radius: 10;
-    -fx-border-width: 1;
+    -fx-background-radius: 12;
+    -fx-padding: 20;
+    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.08), 10, 0.1, 0, 3);
+    -fx-border-color: #1e3a5f;
+    -fx-border-radius: 12;
+    -fx-border-width: 2;
 }
 
-/* Colored stat card variants */
+/* Colored stat card variants - Border colors only */
 .stat-card-blue {
-    -fx-background-color: linear-gradient(to bottom right, #eff6ff, #dbeafe);
-    -fx-border-color: #bfdbfe;
+    -fx-border-color: #1e3a5f;
 }
 
 .stat-card-green {
-    -fx-background-color: linear-gradient(to bottom right, #f0fdf4, #dcfce7);
-    -fx-border-color: #bbf7d0;
+    -fx-border-color: #22c55e;
 }
 
 .stat-card-amber {
-    -fx-background-color: linear-gradient(to bottom right, #fffbeb, #fef3c7);
-    -fx-border-color: #fde68a;
+    -fx-border-color: #f59e0b;
 }
 
 .stat-card-purple {
-    -fx-background-color: linear-gradient(to bottom right, #faf5ff, #f3e8ff);
-    -fx-border-color: #e9d5ff;
+    -fx-border-color: #8b5cf6;
 }
 
 .stat-card-rose {
-    -fx-background-color: linear-gradient(to bottom right, #fff1f2, #ffe4e6);
-    -fx-border-color: #fecdd3;
+    -fx-border-color: #f43f5e;
 }
 
 .stat-card-cyan {
-    -fx-background-color: linear-gradient(to bottom right, #ecfeff, #cffafe);
-    -fx-border-color: #a5f3fc;
+    -fx-border-color: #06b6d4;
 }
 
 .stat-card-title {
@@ -413,15 +414,15 @@
 }
 
 .stat-card-icon {
-    -fx-font-size: 20px;
+    -fx-font-size: 22px;
     -fx-text-fill: #3b82f6;
 }
 
 .stat-card-value {
-    -fx-font-size: 28px;
+    -fx-font-size: 30px;
     -fx-font-weight: 700;
     -fx-text-fill: #0f172a;
-    -fx-padding: 4 0 0 0;
+    -fx-padding: 6 0 0 0;
 }
 
 .stat-card-description {
@@ -506,7 +507,8 @@
     -fx-text-fill: #0f172a;
 }
 
-.dashboard-bar-chart, .dashboard-pie-chart {
+.dashboard-bar-chart,
+.dashboard-pie-chart {
     -fx-padding: 8 0 0 0;
 }
 
@@ -841,7 +843,7 @@
     -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.12), 12, 0, 0, 4);
 }
 
-.dialog-pane.delete-confirmation-dialog > .header-panel {
+.dialog-pane.delete-confirmation-dialog>.header-panel {
     -fx-background-color: transparent;
     -fx-padding: 0;
 }
