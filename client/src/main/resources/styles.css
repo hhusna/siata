@@ -113,6 +113,53 @@
 }
 
 /* ========================================
+   FILTER CONTROLS - Modern Clean Design
+   ======================================== */
+
+.filter-combo-box {
+    -fx-background-color: white;
+    -fx-border-color: #e5e7eb;
+    -fx-border-radius: 6;
+    -fx-background-radius: 6;
+    -fx-padding: 6 12;
+    -fx-font-size: 13px;
+}
+
+.filter-combo-box:hover {
+    -fx-border-color: #d1d5db;
+}
+
+.filter-combo-box:focused {
+    -fx-border-color: #3b82f6;
+    -fx-effect: dropshadow(gaussian, rgba(59, 130, 246, 0.15), 4, 0.5, 0, 0);
+}
+
+.filter-combo-box .list-cell {
+    -fx-background-color: transparent;
+    -fx-text-fill: #374151;
+    -fx-font-size: 13px;
+}
+
+.filter-search-field {
+    -fx-background-color: white;
+    -fx-border-color: #e5e7eb;
+    -fx-border-radius: 6;
+    -fx-background-radius: 6;
+    -fx-padding: 8 12;
+    -fx-font-size: 13px;
+}
+
+.filter-search-field:hover {
+    -fx-border-color: #d1d5db;
+}
+
+.filter-search-field:focused {
+    -fx-border-color: #3b82f6;
+    -fx-background-color: white;
+    -fx-effect: dropshadow(gaussian, rgba(59, 130, 246, 0.15), 4, 0.5, 0, 0);
+}
+
+/* ========================================
    BUTTONS
    ======================================== */
 
@@ -577,7 +624,10 @@
 .modal-content {
     -fx-background-color: white;
     -fx-background-radius: 8;
-    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.12), 16, 0.1, 0, 4);
+    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.15), 20, 0.1, 0, 6);
+    -fx-border-color: #1e3a5f;
+    -fx-border-radius: 8;
+    -fx-border-width: 1;
 }
 
 .modal-title {
@@ -899,4 +949,229 @@
 
 .dialog-pane .button.delete-button:hover {
     -fx-background-color: #dc2626;
+}
+
+/* ========================================
+   MODERN TABLE STYLES - Clean Minimalist
+   ======================================== */
+
+/* Table container */
+.table-view {
+    -fx-background-color: white;
+    -fx-border-color: transparent;
+    -fx-padding: 0;
+}
+
+.table-view .scroll-pane {
+    -fx-background-color: white;
+}
+
+.table-view .scroll-pane .viewport {
+    -fx-background-color: white;
+}
+
+.table-view .virtual-flow {
+    -fx-background-color: white;
+    -fx-border-color: transparent;
+}
+
+.table-view .clipped-container {
+    -fx-background-color: white;
+}
+
+/* Column headers - Clean uppercase style */
+.table-view .column-header-background {
+    -fx-background-color: white;
+    -fx-border-color: transparent transparent #e5e7eb transparent;
+    -fx-border-width: 0 0 1 0;
+}
+
+.table-view .column-header {
+    -fx-background-color: transparent;
+    -fx-border-color: transparent;
+    -fx-padding: 12 16;
+    -fx-alignment: CENTER-LEFT;
+}
+
+.table-view .column-header .label {
+    -fx-font-size: 11px;
+    -fx-font-weight: 700;
+    -fx-text-fill: #9ca3af;
+}
+
+.table-view .column-header:hover {
+    -fx-background-color: transparent;
+}
+
+/* Filler (empty space in header) */
+.table-view .filler {
+    -fx-background-color: white;
+    -fx-border-color: transparent;
+}
+
+/* Table rows - Pure white with border separator */
+.table-row-cell {
+    -fx-background-color: white;
+    -fx-border-color: transparent transparent #f3f4f6 transparent;
+    -fx-border-width: 0 0 1 0;
+    -fx-padding: 0;
+    -fx-cell-size: 44;
+}
+
+/* No alternating colors - all white */
+.table-row-cell:odd {
+    -fx-background-color: white;
+}
+
+.table-row-cell:even {
+    -fx-background-color: white;
+}
+
+/* Row hover effect - very subtle */
+.table-row-cell:hover {
+    -fx-background-color: #fafafa;
+}
+
+/* Selected row */
+.table-row-cell:selected {
+    -fx-background-color: #dbeafe;
+}
+
+.table-row-cell:selected:hover {
+    -fx-background-color: #bfdbfe;
+}
+
+/* Table cells */
+.table-cell {
+    -fx-padding: 8 16;
+    -fx-alignment: CENTER-LEFT;
+    -fx-font-size: 13px;
+    -fx-text-fill: #374151;
+}
+
+.table-row-cell:selected .table-cell {
+    -fx-text-fill: #1e3a5f;
+}
+
+/* Empty table placeholder */
+.table-view .placeholder {
+    -fx-background-color: white;
+}
+
+.table-view .placeholder .label {
+    -fx-text-fill: #94a3b8;
+    -fx-font-size: 14px;
+    -fx-font-style: italic;
+}
+
+/* Scrollbars - Modern minimal style */
+.table-view .scroll-bar:vertical,
+.table-view .scroll-bar:horizontal {
+    -fx-background-color: transparent;
+    -fx-padding: 2;
+}
+
+.table-view .scroll-bar:vertical .track,
+.table-view .scroll-bar:horizontal .track {
+    -fx-background-color: transparent;
+    -fx-border-color: transparent;
+    -fx-background-radius: 8;
+}
+
+.table-view .scroll-bar:vertical .thumb,
+.table-view .scroll-bar:horizontal .thumb {
+    -fx-background-color: #cbd5e1;
+    -fx-background-radius: 8;
+}
+
+.table-view .scroll-bar:vertical .thumb:hover,
+.table-view .scroll-bar:horizontal .thumb:hover {
+    -fx-background-color: #94a3b8;
+}
+
+.table-view .scroll-bar .increment-button,
+.table-view .scroll-bar .decrement-button {
+    -fx-background-color: transparent;
+    -fx-padding: 0;
+}
+
+.table-view .scroll-bar .increment-arrow,
+.table-view .scroll-bar .decrement-arrow {
+    -fx-shape: "";
+    -fx-padding: 0;
+}
+
+/* Corner for when both scrollbars are visible */
+.table-view .corner {
+    -fx-background-color: transparent;
+}
+
+/* CheckBox in table */
+.table-row-cell .check-box {
+    -fx-padding: 0;
+}
+
+.table-row-cell .check-box .box {
+    -fx-background-color: white;
+    -fx-border-color: #cbd5e1;
+    -fx-border-radius: 4;
+    -fx-background-radius: 4;
+    -fx-padding: 3;
+}
+
+.table-row-cell .check-box:selected .box {
+    -fx-background-color: #1e3a5f;
+    -fx-border-color: #1e3a5f;
+}
+
+.table-row-cell .check-box:selected .mark {
+    -fx-background-color: white;
+}
+
+/* Action buttons in table cells */
+.table-action-button {
+    -fx-background-color: transparent;
+    -fx-text-fill: #64748b;
+    -fx-font-size: 14px;
+    -fx-padding: 6 8;
+    -fx-cursor: hand;
+    -fx-background-radius: 6;
+}
+
+.table-action-button:hover {
+    -fx-background-color: #f1f5f9;
+    -fx-text-fill: #1e3a5f;
+}
+
+.table-action-button.edit:hover {
+    -fx-background-color: #dbeafe;
+    -fx-text-fill: #2563eb;
+}
+
+.table-action-button.delete:hover {
+    -fx-background-color: #fee2e2;
+    -fx-text-fill: #dc2626;
+}
+
+/* Status badges in table */
+.table-status-badge {
+    -fx-padding: 4 10;
+    -fx-background-radius: 12;
+    -fx-font-size: 11px;
+    -fx-font-weight: 600;
+}
+
+.table-status-badge.active {
+    -fx-background-color: #dcfce7;
+    -fx-text-fill: #166534;
+}
+
+.table-status-badge.inactive {
+    -fx-background-color: #f1f5f9;
+    -fx-text-fill: #64748b;
+}
+
+.table-status-badge.pending {
+    -fx-background-color: #fef3c7;
+    -fx-text-fill: #92400e;
 }

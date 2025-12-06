@@ -281,19 +281,9 @@ public class AssetManagementView extends VBox {
 
     private Node buildPageHeader(HBox actionButtons) {
         HBox header = new HBox(16);
-        header.setAlignment(Pos.CENTER_LEFT);
+        header.setAlignment(Pos.CENTER_RIGHT);
 
-        VBox textGroup = new VBox(4);
-        Label title = new Label("Manajemen Aset");
-        title.getStyleClass().add("page-intro-title");
-        Label description = new Label("Kelola data aset pegawai");
-        description.getStyleClass().add("page-intro-description");
-        textGroup.getChildren().addAll(title, description);
-
-        Region spacer = new Region();
-        HBox.setHgrow(spacer, Priority.ALWAYS);
-
-        header.getChildren().addAll(textGroup, spacer, actionButtons);
+        header.getChildren().add(actionButtons);
         return header;
     }
 
@@ -411,8 +401,15 @@ public class AssetManagementView extends VBox {
                     Label nameLabel = new Label(emp.getNamaLengkap());
                     nameLabel.setStyle("-fx-font-size: 14px; -fx-font-weight: 600; -fx-text-fill: #1e293b;");
                     
-                    Label nipLabel = new Label(emp.getNip());
-                    nipLabel.setStyle("-fx-font-size: 11px; -fx-text-fill: #94a3b8;");
+                    String nipText = emp.getNip();
+                    Label nipLabel;
+                    if (nipText != null && nipText.length() != 18) {
+                        nipLabel = new Label("No NIP");
+                        nipLabel.setStyle("-fx-font-size: 11px; -fx-text-fill: #94a3b8; -fx-font-style: italic;");
+                    } else {
+                        nipLabel = new Label(nipText);
+                        nipLabel.setStyle("-fx-font-size: 11px; -fx-text-fill: #94a3b8;");
+                    }
                     
                     container.getChildren().addAll(nameLabel, nipLabel);
                     setGraphic(container);
@@ -442,7 +439,8 @@ public class AssetManagementView extends VBox {
         employeeListView.getSelectionModel().selectedItemProperty().addListener((obs, oldVal, newVal) -> {
             if (newVal != null) {
                 selectedEmployee[0] = newVal;
-                selectedLabel.setText("✓ " + newVal.getNamaLengkap() + " (" + newVal.getNip() + ")");
+                String displayNip = (newVal.getNip() != null && newVal.getNip().length() == 18) ? newVal.getNip() : "No NIP";
+                selectedLabel.setText("✓ " + newVal.getNamaLengkap() + " (" + displayNip + ")");
                 selectedLabel.setStyle("-fx-font-size: 13px; -fx-text-fill: #16a34a; -fx-font-weight: 600; -fx-padding: 8 0 0 0;");
             }
         });
@@ -498,7 +496,8 @@ public class AssetManagementView extends VBox {
         employeeListView.getSelectionModel().selectedItemProperty().addListener((obs, oldVal, newVal) -> {
             if (newVal != null) {
                 selectedEmployee[0] = newVal;
-                selectedLabel.setText("✓ " + newVal.getNamaLengkap() + " (" + newVal.getNip() + ")");
+                String displayNip = (newVal.getNip() != null && newVal.getNip().length() == 18) ? newVal.getNip() : "No NIP";
+                selectedLabel.setText("✓ " + newVal.getNamaLengkap() + " (" + displayNip + ")");
                 selectedLabel.setStyle("-fx-font-size: 13px; -fx-text-fill: #16a34a; -fx-font-weight: 600; -fx-padding: 8 0 0 0;");
                 
                 // Auto-fill subdirektorat from employee and hide the field
@@ -530,7 +529,8 @@ public class AssetManagementView extends VBox {
                 .ifPresent(emp -> {
                     selectedEmployee[0] = emp;
                     employeeListView.getSelectionModel().select(emp);
-                    selectedLabel.setText("✓ " + emp.getNamaLengkap() + " (" + emp.getNip() + ")");
+                    String displayNip = (emp.getNip() != null && emp.getNip().length() == 18) ? emp.getNip() : "No NIP";
+                    selectedLabel.setText("✓ " + emp.getNamaLengkap() + " (" + displayNip + ")");
                     selectedLabel.setStyle("-fx-font-size: 13px; -fx-text-fill: #16a34a; -fx-font-weight: 600; -fx-padding: 8 0 0 0;");
                     
                     // Hide subdir since employee is selected
@@ -611,8 +611,8 @@ public class AssetManagementView extends VBox {
         modalScene.getStylesheets().add(getClass().getResource("/styles.css").toExternalForm());
         modalStage.setScene(modalScene);
         
-        // Animate modal open
-        Platform.runLater(() -> AnimationUtils.modalOpen(modalContent));
+        // Setup smooth modal animation
+        AnimationUtils.setupModalAnimation(modalStage, modalContent);
         
         modalStage.showAndWait();
     }
@@ -1112,6 +1112,10 @@ public class AssetManagementView extends VBox {
         Scene scene = new Scene(modalContent);
         scene.getStylesheets().add(getClass().getResource("/styles.css").toExternalForm());
         modalStage.setScene(scene);
+        
+        // Setup smooth modal animation
+        AnimationUtils.setupModalAnimation(modalStage, modalContent);
+        
         modalStage.showAndWait();
     }
 

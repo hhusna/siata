@@ -316,4 +316,44 @@ public class AnimationUtils {
         ParallelTransition pt = new ParallelTransition(ft, st);
         pt.play();
     }
+
+    /**
+     * Prepare modal for animation - call this BEFORE stage.show() or stage.showAndWait()
+     * This sets up the initial invisible/scaled state so animation happens smoothly.
+     */
+    public static void prepareModalForAnimation(Node modal) {
+        modal.setOpacity(0);
+        modal.setScaleX(0.9);
+        modal.setScaleY(0.9);
+    }
+
+    /**
+     * Show modal with smooth animation using the Stage's onShown event.
+     * Call this instead of modalOpen() for proper timing.
+     * @param stage The modal Stage
+     * @param modalContent The modal content node to animate
+     */
+    public static void setupModalAnimation(javafx.stage.Stage stage, Node modalContent) {
+        // Set initial state - invisible and slightly scaled down
+        modalContent.setOpacity(0);
+        modalContent.setScaleX(0.9);
+        modalContent.setScaleY(0.9);
+        
+        // When stage is shown, play the animation
+        stage.setOnShown(event -> {
+            FadeTransition ft = new FadeTransition(Duration.millis(180), modalContent);
+            ft.setFromValue(0);
+            ft.setToValue(1);
+            
+            ScaleTransition st = new ScaleTransition(Duration.millis(180), modalContent);
+            st.setFromX(0.9);
+            st.setFromY(0.9);
+            st.setToX(1);
+            st.setToY(1);
+            st.setInterpolator(Interpolator.EASE_OUT);
+            
+            ParallelTransition pt = new ParallelTransition(ft, st);
+            pt.play();
+        });
+    }
 }

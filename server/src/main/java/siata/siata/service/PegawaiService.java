@@ -35,7 +35,24 @@ public class PegawaiService {
     }
 
     public Pegawai savePegawai(Pegawai pegawai, Pegawai userPegawai) {
-        boolean isNew = pegawai.getNip() == null || !pegawaiRepository.existsById(pegawai.getNip());
+        // If NIP is null (PPNPN), generate a unique ID based on timestamp
+        if (pegawai.getNip() == null) {
+            // Validation: Check if Name + Subdir already exists for new PPNPN
+            if (pegawaiRepository.existsByNamaIgnoreCaseAndNamaSubdirIgnoreCase(pegawai.getNama(), pegawai.getNamaSubdir())) {
+                throw new IllegalArgumentException("Pegawai dengan nama '" + pegawai.getNama() + "' di unit '" + pegawai.getNamaSubdir() + "' sudah terdaftar.");
+            }
+            pegawai.setNip(System.currentTimeMillis());
+            pegawai.setIsPpnpn(true);
+        } else {
+             // Validation for new ASN (if NIP is provided but record doesn't exist yet)
+             if (!pegawaiRepository.existsById(pegawai.getNip())) {
+                 if (pegawaiRepository.existsByNamaIgnoreCaseAndNamaSubdirIgnoreCase(pegawai.getNama(), pegawai.getNamaSubdir())) {
+                     throw new IllegalArgumentException("Pegawai dengan nama '" + pegawai.getNama() + "' di unit '" + pegawai.getNamaSubdir() + "' sudah terdaftar.");
+                 }
+             }
+        }
+
+        boolean isNew = !pegawaiRepository.existsById(pegawai.getNip());
         Pegawai savedPegawai = pegawaiRepository.save(pegawai);
 
         String jenisLog = isNew ? "CREATE_PEGAWAI" : "UPDATE_PEGAWAI";
@@ -61,6 +78,25 @@ public class PegawaiService {
         
         for (Pegawai pegawai : pegawaiList) {
             boolean isNew = pegawai.getNip() == null || !pegawaiRepository.existsById(pegawai.getNip());
+            
+            // Check for duplicate Name + Subdir for new records
+            if (isNew) {
+                if (pegawaiRepository.existsByNamaIgnoreCaseAndNamaSubdirIgnoreCase(pegawai.getNama(), pegawai.getNamaSubdir())) {
+                    // Skip duplicate
+                    System.out.println("Batch import: Skipping duplicate pegawai " + pegawai.getNama() + " in " + pegawai.getNamaSubdir());
+                    continue;
+                }
+            }
+            
+            // Handle PPNPN ID generation if needed (logic similar to savePegawai)
+            if (pegawai.getNip() == null) {
+                pegawai.setNip(System.currentTimeMillis());
+                pegawai.setIsPpnpn(true);
+                // Validation: ensure generated ID doesn't collision (very unlikely but good practice to sleep 1ms or use Atomic in a real concurrent env, but for batch serial loop likely ok)
+                // For safety in batch loop:
+                try { Thread.sleep(1); } catch (InterruptedException e) {}
+            }
+
             Pegawai saved = pegawaiRepository.save(pegawai);
             savedList.add(saved);
             

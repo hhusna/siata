@@ -91,12 +91,20 @@ public class PegawaiApi {
 
 
     public boolean addPegawai(long nip, String nama, String namaSubdir, String status) {
+        PegawaiDto dto = new PegawaiDto();
+        dto.setNip(nip);
+        dto.setNama(nama);
+        dto.setNamaSubdir(namaSubdir);
+        dto.setStatus(status);
+        return addPegawai(dto);
+    }
+
+    public boolean addPegawai(PegawaiDto payload) {
         try {
-            PegawaiDto payload = new PegawaiDto();
-            payload.setNip(nip);
-            payload.setNama(nama);
-            payload.setNamaSubdir(namaSubdir);
-            payload.setStatus(status != null ? status : "AKTIF");
+            // Default status if null
+            if (payload.getStatus() == null) {
+                payload.setStatus("AKTIF");
+            }
 
             ObjectMapper mapper = new ObjectMapper();
 
@@ -164,12 +172,29 @@ public class PegawaiApi {
     }
 
     public boolean updatePegawai(long nip, String nama, String namaSubdir, String status) {
+        PegawaiDto dto = new PegawaiDto();
+        dto.setNip(nip);
+        dto.setNama(nama);
+        dto.setNamaSubdir(namaSubdir);
+        dto.setStatus(status);
+        return updatePegawai(nip, dto); // Use String for existing signature if needed, or long
+    }
+
+    public boolean updatePegawai(String nip, PegawaiDto payload) {
+        // Redirect to long version if possible or handle here
         try {
-            PegawaiDto payload = new PegawaiDto();
+            return updatePegawai(Long.parseLong(nip), payload);
+        } catch (NumberFormatException e) {
+            e.printStackTrace();
+            return false;
+        }
+    }
+
+    public boolean updatePegawai(long nip, PegawaiDto payload) {
+        try {
+            // Ensure payload has NIP set
             payload.setNip(nip);
-            payload.setNama(nama);
-            payload.setNamaSubdir(namaSubdir);
-            payload.setStatus(status != null ? status : "AKTIF");
+            if (payload.getStatus() == null) payload.setStatus("AKTIF");
 
             ObjectMapper mapper = new ObjectMapper();
             String requestBodyJson = mapper.writeValueAsString(payload);

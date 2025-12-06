@@ -47,11 +47,13 @@ public class LogbookView extends VBox {
         TextField searchField = new TextField();
         searchField.setPromptText("Cari aktivitas...");
         searchField.setPrefWidth(300);
+        searchField.getStyleClass().add("filter-search-field");
         
         ComboBox<String> userCombo = new ComboBox<>();
         userCombo.getItems().addAll("Semua User", "admin", "Admin PPBJ");
         userCombo.setValue("Semua User");
         userCombo.setPrefWidth(150);
+        userCombo.getStyleClass().add("filter-combo-box");
         
         ComboBox<String> jenisCombo = new ComboBox<>();
         jenisCombo.getItems().addAll("Semua Jenis", "CREATE_ASET", "UPDATE_ASET", "DELETE_ASET", 
@@ -61,6 +63,7 @@ public class LogbookView extends VBox {
                                       "AUTO_LELANG", "HARD_DELETE_ASET");
         jenisCombo.setValue("Semua Jenis");
         jenisCombo.setPrefWidth(180);
+        jenisCombo.getStyleClass().add("filter-combo-box");
         jenisCombo.setOnAction(e -> filterActivities(searchField.getText(), jenisCombo.getValue(), userCombo.getValue()));
         
         searchField.textProperty().addListener((obs, oldVal, newVal) -> filterActivities(newVal, jenisCombo.getValue(), userCombo.getValue()));
@@ -83,18 +86,8 @@ public class LogbookView extends VBox {
     }
 
     private Node buildPageHeader() {
-        HBox header = new HBox(16);
-        header.setAlignment(Pos.CENTER_LEFT);
-
-        VBox textGroup = new VBox(4);
-        Label title = new Label("Logbook");
-        title.getStyleClass().add("page-intro-title");
-        Label description = new Label("Riwayat semua aktivitas dalam sistem");
-        description.getStyleClass().add("page-intro-description");
-        textGroup.getChildren().addAll(title, description);
-
-        header.getChildren().add(textGroup);
-        return header;
+        // Title and description now shown in main header
+        return new HBox();
     }
 
     private void filterActivities(String searchText, String jenisFilter, String userFilter) {

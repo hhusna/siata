@@ -5,6 +5,7 @@ import com.siata.client.component.PaginatedTableView;
 import com.siata.client.dto.PegawaiDto;
 import com.siata.client.model.Employee;
 import com.siata.client.service.DataService;
+import com.siata.client.util.AnimationUtils;
 import com.siata.client.util.ExcelHelper;
 import javafx.beans.property.SimpleBooleanProperty;
 import javafx.beans.property.SimpleStringProperty;
@@ -68,15 +69,18 @@ public class EmployeeManagementView extends VBox {
         unitCombo.getItems().addAll("Semua Subdir", "PPTAU", "AUNB", "AUNTB", "KAU", "SILAU", "Tata Usaha", "Direktur", "PINDAH");
         unitCombo.setValue("Semua Subdir");
         unitCombo.setPrefWidth(150);
+        unitCombo.getStyleClass().add("filter-combo-box");
         
         ComboBox<String> statusCombo = new ComboBox<>();
         statusCombo.getItems().addAll("Semua Status", "AKTIF", "NONAKTIF");
         statusCombo.setValue("Semua Status");
         statusCombo.setPrefWidth(130);
+        statusCombo.getStyleClass().add("filter-combo-box");
         
         TextField searchField = new TextField();
         searchField.setPromptText("Cari berdasarkan nama atau NIP...");
         searchField.setPrefWidth(300);
+        searchField.getStyleClass().add("filter-search-field");
         searchField.textProperty().addListener((obs, oldVal, newVal) -> filterTable(newVal, unitCombo.getValue(), statusCombo.getValue()));
         
         unitCombo.setOnAction(e -> filterTable(searchField.getText(), unitCombo.getValue(), statusCombo.getValue()));
@@ -91,6 +95,25 @@ public class EmployeeManagementView extends VBox {
 
         TableColumn<Employee, String> nipCol = new TableColumn<>("NIP");
         nipCol.setCellValueFactory(new PropertyValueFactory<>("nip"));
+        nipCol.setCellFactory(column -> new TableCell<Employee, String>() {
+            @Override
+            protected void updateItem(String item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || item == null) {
+                    setText(null);
+                    setStyle("");
+                } else {
+                    // Jika panjang NIP tidak 18 digit (berarti PPNPN/Generated ID), tampilkan "No NIP"
+                    if (item.length() != 18) {
+                        setText("No NIP");
+                        setStyle("-fx-text-fill: #9ca3af; -fx-font-style: italic;");
+                    } else {
+                        setText(item);
+                        setStyle("");
+                    }
+                }
+            }
+        });
         
         TableColumn<Employee, String> namaCol = new TableColumn<>("Nama");
         namaCol.setCellValueFactory(new PropertyValueFactory<>("namaLengkap"));
@@ -212,23 +235,13 @@ public class EmployeeManagementView extends VBox {
 
     private Node buildPageHeader(Button... actionButtons) {
         HBox header = new HBox(12);
-        header.setAlignment(Pos.CENTER_LEFT);
-
-        VBox textGroup = new VBox(4);
-        Label title = new Label("Manajemen Pegawai");
-        title.getStyleClass().add("page-intro-title");
-        Label description = new Label("Kelola data pegawai dan aset yang dimiliki");
-        description.getStyleClass().add("page-intro-description");
-        textGroup.getChildren().addAll(title, description);
-
-        Region spacer = new Region();
-        HBox.setHgrow(spacer, Priority.ALWAYS);
+        header.setAlignment(Pos.CENTER_RIGHT);
 
         HBox buttonGroup = new HBox(8);
         buttonGroup.setAlignment(Pos.CENTER_RIGHT);
         buttonGroup.getChildren().addAll(actionButtons);
 
-        header.getChildren().addAll(textGroup, spacer, buttonGroup);
+        header.getChildren().add(buttonGroup);
         return header;
     }
 
@@ -501,7 +514,9 @@ public class EmployeeManagementView extends VBox {
                 return;
             }
             
-            // Convert to PegawaiDto list
+            // Convert to PegawaiDto list (use AtomicLong to ensure unique IDs for PPNPN in batch)
+            java.util.concurrent.atomic.AtomicLong ppnpnIdCounter = new java.util.concurrent.atomic.AtomicLong(System.currentTimeMillis());
+            
             List<PegawaiDto> dtoList = resultData.stream()
                 .map(r -> {
                     PegawaiDto dto = new PegawaiDto();
@@ -509,8 +524,8 @@ public class EmployeeManagementView extends VBox {
                     
                     // Check if PPNPN (empty NIP)
                     if (nipStr == null || nipStr.trim().isEmpty()) {
-                        // Generate unique ID for PPNPN (timestamp-based)
-                        long generatedNip = System.currentTimeMillis();
+                        // Generate unique ID for PPNPN (unique timestamp + sequence)
+                        long generatedNip = ppnpnIdCounter.getAndIncrement();
                         dto.setNip(generatedNip);
                         dto.setIsPpnpn(true);
                     } else {
@@ -542,6 +557,10 @@ public class EmployeeManagementView extends VBox {
         Scene modalScene = new Scene(modalContent);
         modalScene.getStylesheets().add(getClass().getResource("/styles.css").toExternalForm());
         modalStage.setScene(modalScene);
+        
+        // Setup smooth modal animation
+        AnimationUtils.setupModalAnimation(modalStage, modalContent);
+        
         modalStage.showAndWait();
     }
 
@@ -691,8 +710,8 @@ public class EmployeeManagementView extends VBox {
         headerBox.getChildren().addAll(titleBox, spacer, closeButton);
 
         TextField nipField = new TextField();
-        nipField.setPromptText("Contoh: 199001152015011001");
-        Label nipLabel = new Label("NIP");
+        nipField.setPromptText("Contoh: 199001152015011001 (Kosongkan jika PPNPN)");
+        Label nipLabel = new Label("NIP (Opsional)");
         nipLabel.getStyleClass().add("form-label");
         if (editableEmployee != null) {
             nipField.setText(editableEmployee.getNip());
@@ -742,11 +761,21 @@ public class EmployeeManagementView extends VBox {
             String unit = unitCombo.getValue();
             String status = statusCombo.getValue();
 
-            // Validasi input dasar
-            if (nipInput == null || nipInput.trim().isEmpty()) {
-                showAlert("NIP tidak boleh kosong");
-                return;
+            // Validasi input
+            boolean isPpnpn = (nipInput == null || nipInput.trim().isEmpty());
+
+            if (!isPpnpn) {
+                // Formatting Nip (ensure numeric)
+                if (!nipInput.matches("\\d+")) {
+                    showAlert("NIP harus berupa angka");
+                    return;
+                }
+                if (nipInput.length() != 18) {
+                    showAlert("NIP harus 18 digit");
+                    return;
+                }
             }
+
             if (nama == null || nama.trim().isEmpty()) {
                 showAlert("Nama tidak boleh kosong");
                 return;
@@ -760,75 +789,84 @@ public class EmployeeManagementView extends VBox {
                 return;
             }
 
-            // Validasi format NIP (harus angka dan 18 digit)
-            if (!nipInput.matches("\\d+")) {
-                showAlert("NIP harus berupa angka");
-                return;
-            }
-            if (nipInput.length() != 18) {
-                showAlert("NIP harus 18 digit");
-                return;
-            }
-
-            // Validasi nama minimal 3 karakter dan hanya huruf dan spasi
+            // Validasi nama minimal 3 karakter
             if (nama.length() < 3) {
                 showAlert("Nama minimal 3 karakter");
                 return;
             }
-            if (!nama.matches("[a-zA-Z\\s]+")) {
-                showAlert("Nama hanya boleh berisi huruf dan spasi");
-                return;
-            }
 
-            long nip = Long.parseLong(nipInput);
             boolean success;
-
             if (editableEmployee == null) {
-                // Mode Tambah - cek apakah NIP sudah ada
-                if (dataService.isNipExists(nipInput)) {
-                    showAlert("NIP sudah terdaftar di sistem");
-                    return;
+                // Add new
+                PegawaiDto dto = new PegawaiDto();
+                if (isPpnpn) {
+                    // Generate unique ID for PPNPN
+                    dto.setNip(System.currentTimeMillis());
+                    dto.setIsPpnpn(true);
+                } else {
+                    dto.setNip(Long.parseLong(nipInput));
+                    dto.setIsPpnpn(false);
+                }
+                dto.setNama(nama);
+                dto.setNamaSubdir(unit);
+                dto.setStatus(status);
+                success = pegawaiApi.addPegawai(dto);
+            } else {
+                // For edit, we assume NIP (ID) cannot be changed or is already PPNPN
+                // Just update other fields
+                PegawaiDto dto = new PegawaiDto();
+                String existingNip = editableEmployee.getNip();
+                
+                // If the employee was already PPNPN (no valid NIP string), we keep key as is
+                // But editableEmployee.getNip() returns a String. 
+                // We need to parse what's there. Note: The existing NIP for PPNPN might be the generated Long.
+                // We should parse it back.
+                try {
+                    dto.setNip(Long.parseLong(existingNip));
+                } catch (NumberFormatException ex) {
+                    // Fallback if something weird, but existingNip is from DB so it's a Long string
+                    dto.setNip(0L); 
                 }
                 
-                // Mode Tambah (POST) - include status
-                success = pegawaiApi.addPegawai(nip, nama, unit, status);
-            } else {
-                // Mode Edit (PUT) - include status
-                success = pegawaiApi.updatePegawai(nip, nama, unit, status);
+                dto.setNama(nama);
+                dto.setNamaSubdir(unit);
+                dto.setStatus(status);
+                // Preserve isPpnpn status or derive it? The backend doesn't change ID on update.
+                // We just send the DTO.
+                
+                success = pegawaiApi.updatePegawai(editableEmployee.getNip(), dto);
             }
 
             if (success) {
+                showSuccessAlert(editableEmployee == null ? "Pegawai berhasil ditambahkan" : "Data pegawai berhasil diperbarui");
                 modalStage.close();
                 refreshTable();
             } else {
                 showAlert("Gagal menyimpan data pegawai");
             }
         });
-
+        
         buttonBox.getChildren().addAll(cancelButton, saveButton);
-
-        VBox formContent = new VBox(16);
-        formContent.setPadding(new Insets(0, 24, 0, 24));
-        formContent.getChildren().addAll(
+        
+        // Add content to form container
+        VBox formContainer = new VBox(16);
+        formContainer.setPadding(new Insets(0, 24, 0, 24));
+        formContainer.getChildren().addAll(
             nipLabel, nipField,
             namaLabel, namaField,
             unitLabel, unitCombo,
             statusLabel, statusCombo
         );
-
-        ScrollPane scrollPane = new ScrollPane(formContent);
-        scrollPane.setFitToWidth(true);
-        scrollPane.setVbarPolicy(ScrollPane.ScrollBarPolicy.AS_NEEDED);
-        scrollPane.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
-        scrollPane.setPrefViewportHeight(400);
-        scrollPane.setMaxHeight(400);
-        scrollPane.getStyleClass().add("modal-scroll-pane");
         
-        modalContent.getChildren().addAll(headerBox, scrollPane, buttonBox);
+        modalContent.getChildren().addAll(headerBox, formContainer, buttonBox);
 
         Scene modalScene = new Scene(modalContent);
         modalScene.getStylesheets().add(getClass().getResource("/styles.css").toExternalForm());
         modalStage.setScene(modalScene);
+        
+        // Setup smooth modal animation
+        AnimationUtils.setupModalAnimation(modalStage, modalContent);
+        
         modalStage.showAndWait();
     }
 
@@ -886,6 +924,10 @@ public class EmployeeManagementView extends VBox {
         Scene scene = new Scene(modalContent);
         scene.getStylesheets().add(getClass().getResource("/styles.css").toExternalForm());
         modalStage.setScene(scene);
+        
+        // Setup smooth modal animation
+        AnimationUtils.setupModalAnimation(modalStage, modalContent);
+        
         modalStage.showAndWait();
     }
 

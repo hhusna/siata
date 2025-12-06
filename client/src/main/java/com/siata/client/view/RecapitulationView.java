@@ -99,30 +99,32 @@ public class RecapitulationView extends VBox {
         getChildren().add(buildHeader());
         getChildren().add(buildStatsGrid());
 
-        // Menambahkan Tabel-Tabel dengan Logika (using cached data)
-        getChildren().add(createPencatatanBmnTable());
-        getChildren().add(createRencanaPenghapusanTable());
-        getChildren().add(createRekapPemakaianTable());
-        getChildren().add(createKeteranganKondisiTable());
-        getChildren().add(createRekapPemeganganTable());
-        getChildren().add(createJumlahPegawaiTable());
+        // Regular tables - 2 per row
+        HBox row1 = new HBox(16);
+        row1.getChildren().addAll(createPencatatanBmnTable(), createRencanaPenghapusanTable());
+        HBox.setHgrow(row1.getChildren().get(0), Priority.ALWAYS);
+        HBox.setHgrow(row1.getChildren().get(1), Priority.ALWAYS);
+        
+        HBox row2 = new HBox(16);
+        row2.getChildren().addAll(createRekapPemakaianTable(), createKeteranganKondisiTable());
+        HBox.setHgrow(row2.getChildren().get(0), Priority.ALWAYS);
+        HBox.setHgrow(row2.getChildren().get(1), Priority.ALWAYS);
+        
+        HBox row3 = new HBox(16);
+        row3.getChildren().addAll(createRekapPemeganganTable(), createJumlahPegawaiTable());
+        HBox.setHgrow(row3.getChildren().get(0), Priority.ALWAYS);
+        HBox.setHgrow(row3.getChildren().get(1), Priority.ALWAYS);
+        
+        getChildren().addAll(row1, row2, row3);
+        
+        // Matrix tables - full width (1 per row)
         getChildren().add(createUsageBySubdirTable()); // Penggunaan per Subdir
         getChildren().add(createEmployeeMatrixTable()); // Matriks Distribusi
     }
 
     private Node buildHeader() {
         HBox header = new HBox(16);
-        header.setAlignment(Pos.CENTER_LEFT);
-
-        VBox textGroup = new VBox(4);
-        Label title = new Label("Rekapitulasi & Matriks");
-        title.getStyleClass().add("section-heading");
-        Label description = new Label("Ringkasan matriks distribusi aset dan pegawai");
-        description.getStyleClass().add("section-description");
-        textGroup.getChildren().addAll(title, description);
-
-        Region spacer = new Region();
-        HBox.setHgrow(spacer, Priority.ALWAYS);
+        header.setAlignment(Pos.CENTER_RIGHT);
 
         Button exportButton = new Button("Export PDF");
         exportButton.getStyleClass().add("primary-button");
@@ -131,7 +133,7 @@ public class RecapitulationView extends VBox {
             exportApi.handle(stage);
         });
 
-        header.getChildren().addAll(textGroup, spacer, exportButton);
+        header.getChildren().add(exportButton);
         return header;
     }
 
@@ -350,13 +352,30 @@ public class RecapitulationView extends VBox {
     private Node createJumlahPegawaiTable() {
         ObservableList<Map<String, String>> data = FXCollections.observableArrayList();
 
-        // Use pre-computed grouping
-        employeesByUnit.forEach((unit, count) -> {
+        // Group employees by unit and count ASN vs PPNPN
+        // ASN = isPpnpn is false, PPNPN = isPpnpn is true
+        Map<String, Long> asnByUnit = cachedEmployees.stream()
+            .filter(emp -> !emp.isPpnpn())
+            .collect(Collectors.groupingBy(Employee::getUnit, Collectors.counting()));
+        
+        Map<String, Long> ppnpnByUnit = cachedEmployees.stream()
+            .filter(emp -> emp.isPpnpn())
+            .collect(Collectors.groupingBy(Employee::getUnit, Collectors.counting()));
+        
+        // Get all unique units
+        Set<String> allUnits = new HashSet<>();
+        allUnits.addAll(asnByUnit.keySet());
+        allUnits.addAll(ppnpnByUnit.keySet());
+        
+        allUnits.forEach(unit -> {
+            long asn = asnByUnit.getOrDefault(unit, 0L);
+            long ppnpn = ppnpnByUnit.getOrDefault(unit, 0L);
+            
             Map<String, String> row = new HashMap<>();
             row.put("Bagian", unit);
-            row.put("ASN", String.valueOf(count));
-            row.put("PPNPN", "0");
-            row.put("Total", String.valueOf(count));
+            row.put("ASN", String.valueOf(asn));
+            row.put("PPNPN", String.valueOf(ppnpn));
+            row.put("Total", String.valueOf(asn + ppnpn));
             data.add(row);
         });
 

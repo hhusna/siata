@@ -2,6 +2,7 @@ package com.siata.client.view;
 
 import com.siata.client.model.AssetRequest;
 import com.siata.client.service.DataService;
+import com.siata.client.util.AnimationUtils;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.geometry.Insets;
@@ -61,22 +62,12 @@ public class AssetRequestView extends VBox {
 
     private Node buildPageHeader(Button addPengajuanButton, Button addPermohonanButton) {
         HBox header = new HBox(16);
-        header.setAlignment(Pos.CENTER_LEFT);
-
-        VBox textGroup = new VBox(4);
-        Label title = new Label("Pengajuan Aset");
-        title.getStyleClass().add("page-intro-title");
-        Label description = new Label("Catat dan kelola pengajuan & permohonan aset pegawai");
-        description.getStyleClass().add("page-intro-description");
-        textGroup.getChildren().addAll(title, description);
-
-        Region spacer = new Region();
-        HBox.setHgrow(spacer, Priority.ALWAYS);
+        header.setAlignment(Pos.CENTER_RIGHT);
 
         HBox actions = new HBox(10, addPengajuanButton, addPermohonanButton);
         actions.setAlignment(Pos.CENTER_RIGHT);
 
-        header.getChildren().addAll(textGroup, spacer, actions);
+        header.getChildren().add(actions);
         return header;
     }
 
@@ -97,10 +88,12 @@ public class AssetRequestView extends VBox {
         prioritasCombo.getItems().addAll("Semua Prioritas", "Tinggi", "Sedang", "Rendah");
         prioritasCombo.setValue("Semua Prioritas");
         prioritasCombo.setPrefWidth(150);
+        prioritasCombo.getStyleClass().add("filter-combo-box");
 
         TextField searchField = new TextField();
         searchField.setPromptText("Cari berdasarkan nomor, pemohon, atau jenis aset...");
         searchField.setPrefWidth(400);
+        searchField.getStyleClass().add("filter-search-field");
         searchField.textProperty().addListener((obs, oldVal, newVal) -> filterTable(newVal, list, isPermohonan, prioritasCombo.getValue()));
 
         prioritasCombo.setOnAction(e -> filterTable(searchField.getText(), list, isPermohonan, prioritasCombo.getValue()));
@@ -335,6 +328,10 @@ public class AssetRequestView extends VBox {
         Scene modalScene = new Scene(modalContent);
         modalScene.getStylesheets().add(getClass().getResource("/styles.css").toExternalForm());
         modalStage.setScene(modalScene);
+        
+        // Setup smooth modal animation
+        AnimationUtils.setupModalAnimation(modalStage, modalContent);
+        
         modalStage.showAndWait();
     }
 
@@ -576,6 +573,10 @@ public class AssetRequestView extends VBox {
         Scene scene = new Scene(modalContent);
         scene.getStylesheets().add(getClass().getResource("/styles.css").toExternalForm());
         modalStage.setScene(scene);
+        
+        // Setup smooth modal animation
+        AnimationUtils.setupModalAnimation(modalStage, modalContent);
+        
         modalStage.showAndWait();
     }
 

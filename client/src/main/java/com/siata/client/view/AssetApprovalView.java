@@ -5,6 +5,7 @@ import com.siata.client.service.DataService;
 import com.siata.client.session.LoginSession;
 import com.siata.client.api.LogRiwayatApi;
 import com.siata.client.dto.ApprovalLogDto;
+import com.siata.client.util.AnimationUtils;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.concurrent.Task;
@@ -92,18 +93,8 @@ public class AssetApprovalView extends VBox {
     }
 
     private Node buildPageHeader() {
-        HBox header = new HBox(16);
-        header.setAlignment(Pos.CENTER_LEFT);
-
-        VBox textGroup = new VBox(4);
-        Label title = new Label("Persetujuan Aset");
-        title.getStyleClass().add("page-intro-title");
-        Label description = new Label("Kelola permohonan dan pengajuan aset dari pegawai");
-        description.getStyleClass().add("page-intro-description");
-        textGroup.getChildren().addAll(title, description);
-
-        header.getChildren().add(textGroup);
-        return header;
+        // Title and description now shown in main header
+        return new HBox();
     }
 
     private VBox createApprovalSection(String title, TableView<AssetRequest> tableView,
@@ -372,6 +363,10 @@ public class AssetApprovalView extends VBox {
         Scene scene = new Scene(modalContent);
         scene.getStylesheets().add(getClass().getResource("/styles.css").toExternalForm());
         modalStage.setScene(scene);
+        
+        // Setup smooth modal animation
+        AnimationUtils.setupModalAnimation(modalStage, modalContent);
+        
         modalStage.showAndWait();
     }
 
@@ -568,6 +563,10 @@ public class AssetApprovalView extends VBox {
         Scene scene = new Scene(modalContent);
         scene.getStylesheets().add(getClass().getResource("/styles.css").toExternalForm());
         modalStage.setScene(scene);
+        
+        // Setup smooth modal animation
+        AnimationUtils.setupModalAnimation(modalStage, modalContent);
+        
         modalStage.showAndWait();
     }
 

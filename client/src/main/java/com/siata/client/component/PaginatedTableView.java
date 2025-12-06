@@ -54,6 +54,7 @@ public class PaginatedTableView<T> extends VBox {
         pageSizeCombo = new ComboBox<>();
         pageSizeCombo.getItems().addAll(10, 25, 50, 100);
         pageSizeCombo.setValue(10);
+        pageSizeCombo.getStyleClass().add("filter-combo-box");
         pageSizeCombo.setOnAction(e -> {
             itemsPerPage = pageSizeCombo.getValue();
             currentPage = 0;

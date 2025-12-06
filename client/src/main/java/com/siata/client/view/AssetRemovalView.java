@@ -115,18 +115,8 @@ public class AssetRemovalView extends VBox {
     }
 
     private Node buildPageHeader() {
-        HBox header = new HBox();
-        header.setAlignment(Pos.CENTER_LEFT);
-
-        VBox textGroup = new VBox(4);
-        Label title = new Label("Penghapusan Aset");
-        title.getStyleClass().add("page-intro-title");
-        Label description = new Label("Kelola aset yang akan dihapus dari sistem");
-        description.getStyleClass().add("page-intro-description");
-        textGroup.getChildren().addAll(title, description);
-
-        header.getChildren().add(textGroup);
-        return header;
+        // Title and description now shown in main header
+        return new HBox();
     }
 
     private void refreshTable() {

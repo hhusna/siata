@@ -101,12 +101,6 @@ public class DashboardContentView extends VBox {
     }
 
     private Node buildSummaryGrid() {
-        Label title = new Label("Dashboard");
-        title.getStyleClass().add("section-heading");
-    
-        Label sectionTitle = new Label("Ringkasan sistem distribusi aset pegawai");
-        sectionTitle.getStyleClass().add("section-subtitle");
-
         GridPane statsGrid = new GridPane();
         statsGrid.setHgap(16);
         statsGrid.setVgap(16);
@@ -135,7 +129,7 @@ public class DashboardContentView extends VBox {
             statsGrid.add(card, i % 2, i / 2);
         }
 
-        VBox container = new VBox(16, title, sectionTitle, statsGrid);
+        VBox container = new VBox(16, statsGrid);
         
         // Animate stat cards with stagger effect
         Platform.runLater(() -> {

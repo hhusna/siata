@@ -81,9 +81,9 @@ public class MainShellView extends BorderPane {
         StackPane logoContainer = createLogoContainer();
         
         // Title and subtitle on the right
-        Label title = new Label("SIAD - Direktorat Ar");
+        Label title = new Label("SIADA");
         title.getStyleClass().add("sidebar-title");
-        Label subtitle = new Label("Kementerian");
+        Label subtitle = new Label("Direktorat Angud");
         subtitle.getStyleClass().add("sidebar-subtitle");
         
         VBox textBox = new VBox(2, title, subtitle);
@@ -109,6 +109,19 @@ public class MainShellView extends BorderPane {
         StackPane brandingStack = new StackPane(brandingBox, collapsedBrandingLabel);
         brandingStack.setAlignment(Pos.TOP_LEFT);
 
+        // Separator line between branding and menu (centered, low opacity white)
+        Region separatorLine = new Region();
+        separatorLine.setStyle("-fx-background-color: rgba(255, 255, 255, 0.4);");
+        separatorLine.setMinHeight(1);
+        separatorLine.setPrefHeight(1);
+        separatorLine.setMaxHeight(1);
+        separatorLine.setPrefWidth(180);
+        separatorLine.setMinWidth(180);
+        
+        HBox separatorContainer = new HBox(separatorLine);
+        separatorContainer.setAlignment(Pos.CENTER);
+        separatorContainer.setPadding(new Insets(12, 16, 12, 16));
+
         VBox menu = new VBox(10);
 
         // --- LOGIKA ROLE BASE DI SINI ---
@@ -122,8 +135,8 @@ public class MainShellView extends BorderPane {
         if (role.equals("TIM_MANAJEMEN_ASET")) {
             // Admin Aset: Akses Penuh Pengelolaan
             addMenuToSidebar(menu, MainPage.RECAPITULATION);
-            addMenuToSidebar(menu, MainPage.ASSET_MANAGEMENT);
             addMenuToSidebar(menu, MainPage.EMPLOYEE_MANAGEMENT);
+            addMenuToSidebar(menu, MainPage.ASSET_MANAGEMENT);
             addMenuToSidebar(menu, MainPage.ASSET_REQUEST);
             addMenuToSidebar(menu, MainPage.ASSET_APPROVAL);
             addMenuToSidebar(menu, MainPage.ASSET_REMOVAL);
@@ -152,7 +165,11 @@ public class MainShellView extends BorderPane {
         logoutButton.setOnAction(event -> onLogout.ifPresent(Runnable::run));
         BorderPane.setMargin(logoutButton, new Insets(12, 16, 16, 16));
 
-        sidebar.setTop(brandingStack);
+        // Combine branding and separator in a VBox for top section
+        VBox topSection = new VBox();
+        topSection.getChildren().addAll(brandingStack, separatorContainer);
+        
+        sidebar.setTop(topSection);
         sidebar.setCenter(menuScroll);
         sidebar.setBottom(logoutButton);
         return sidebar;
@@ -210,6 +227,12 @@ public class MainShellView extends BorderPane {
         menuButton.getStyleClass().add("ghost-button");
         menuButton.setOnAction(e -> toggleSidebar());
 
+        // Page title and subtitle next to hamburger menu
+        VBox titleBox = new VBox(2);
+        pageTitle.getStyleClass().add("dashboard-title");
+        pageSubtitle.getStyleClass().add("dashboard-subtitle");
+        titleBox.getChildren().addAll(pageTitle, pageSubtitle);
+
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
 
@@ -230,8 +253,8 @@ public class MainShellView extends BorderPane {
         avatar.getStyleClass().add("header-avatar");
         avatar.setOnAction(e -> showProfileMenu(avatar));
 
-        // Order: menuButton on left near sidebar, spacer pushes rest to right
-        header.getChildren().addAll(menuButton, spacer, userBox, avatar);
+        // Order: menuButton, titleBox on left, spacer pushes rest to right
+        header.getChildren().addAll(menuButton, titleBox, spacer, userBox, avatar);
         return header;
     }
 
@@ -572,6 +595,10 @@ public class MainShellView extends BorderPane {
         javafx.scene.Scene scene = new javafx.scene.Scene(modalContent);
         scene.getStylesheets().add(getClass().getResource("/styles.css").toExternalForm());
         modalStage.setScene(scene);
+        
+        // Setup smooth modal animation
+        AnimationUtils.setupModalAnimation(modalStage, modalContent);
+        
         modalStage.showAndWait();
     }
 

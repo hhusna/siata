@@ -8,4 +8,6 @@ import java.util.List; // Tambahkan import
 public interface PegawaiRepository extends JpaRepository<Pegawai, Long> {
     @Query("SELECT p FROM Pegawai p LEFT JOIN FETCH p.asetList")
     List<Pegawai> findAllWithAset();
+
+    boolean existsByNamaIgnoreCaseAndNamaSubdirIgnoreCase(String nama, String namaSubdir);
 }

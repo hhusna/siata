@@ -332,6 +332,7 @@ public class DataService {
             // Constructor dengan status: Employee(nip, nama, unit, status)
             String status = dto.getStatus() != null ? dto.getStatus() : "AKTIF";
             Employee emp = new Employee(Long.toString(dto.getNip()), dto.getNama(), dto.getNamaSubdir(), status);
+            emp.setPpnpn(dto.getIsPpnpn() != null && dto.getIsPpnpn());
             employeeList.add(emp);
         }
         return employeeList;

@@ -8,6 +8,7 @@ public class Employee {
     private String namaLengkap;
     private String unit;
     private String status = "AKTIF"; // AKTIF atau NONAKTIF
+    private boolean isPpnpn = false;
     private List<String> asetDimiliki; // Deprecated - akan diambil dari manajemen aset
 
     public Employee() {
@@ -60,6 +61,14 @@ public class Employee {
 
     public void setStatus(String status) {
         this.status = status;
+    }
+
+    public boolean isPpnpn() {
+        return isPpnpn;
+    }
+
+    public void setPpnpn(boolean ppnpn) {
+        isPpnpn = ppnpn;
     }
 
     /**
