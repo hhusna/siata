@@ -81,6 +81,7 @@ public class UserApi {
 
                 LoginSession.setJwt(loginResponse.getAccessToken());
                 LoginSession.setRole(loginResponse.getRole());
+                LoginSession.setOriginalRole(loginResponse.getRole()); // Store original role from backend
                 LoginSession.setUsername(loginResponse.getUsername());
 
             }

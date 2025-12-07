@@ -221,21 +221,47 @@ public class AssetRequestView extends VBox {
 
         headerBox.getChildren().addAll(titleBox, spacer, closeButton);
 
+        // Get logged-in user data
+        com.siata.client.dto.PegawaiDto loggedInUser = com.siata.client.session.LoginSession.getPegawaiDto();
+        String loggedInNama = loggedInUser != null ? loggedInUser.getNama() : "";
+        String loggedInUnit = loggedInUser != null ? loggedInUser.getNamaSubdir() : "";
+        
+        // For Pengajuan: auto-fill from logged-in user (display only)
+        // For Permohonan: allow manual input (TIM_MANAJEMEN_ASET records for others)
+        boolean isPengajuan = "Pengajuan".equals(tipe);
+        
         TextField namaField = new TextField();
-        namaField.setPromptText("Permohonan".equals(tipe) ? "Nama lengkap pemohon" : "Nama lengkap pengaju");
         Label namaLabelObj = new Label("Permohonan".equals(tipe) ? "Nama Pemohon" : "Nama Pengaju");
         namaLabelObj.getStyleClass().add("form-label");
-        if (editableRequest != null) {
-            namaField.setText(editableRequest.getPemohon());
-        }
-
+        
         ComboBox<String> unitCombo = new ComboBox<>();
         unitCombo.getItems().addAll("PPTAU", "AUNB", "AUNTB", "KAU", "SILAU", "Tata Usaha", "Direktur");
-        unitCombo.setPromptText("Pilih subdirektorat");
         Label unitLabel = new Label("Subdirektorat");
         unitLabel.getStyleClass().add("form-label");
-        if (editableRequest != null) {
-            unitCombo.setValue(editableRequest.getUnit());
+        
+        // Info display for Pengajuan (auto-filled from login)
+        Label infoNamaLabel = new Label("Nama Pengaju");
+        infoNamaLabel.getStyleClass().add("form-label");
+        Label infoNamaValue = new Label(loggedInNama);
+        infoNamaValue.setStyle("-fx-font-weight: 600; -fx-font-size: 14px; -fx-text-fill: #1e293b; -fx-padding: 8 12; -fx-background-color: #f1f5f9; -fx-background-radius: 6;");
+        
+        Label infoUnitLabel = new Label("Subdirektorat");
+        infoUnitLabel.getStyleClass().add("form-label");
+        Label infoUnitValue = new Label(loggedInUnit);
+        infoUnitValue.setStyle("-fx-font-weight: 600; -fx-font-size: 14px; -fx-text-fill: #1e293b; -fx-padding: 8 12; -fx-background-color: #f1f5f9; -fx-background-radius: 6;");
+        
+        if (isPengajuan) {
+            // Auto-fill from login session for Pengajuan
+            namaField.setText(loggedInNama);
+            unitCombo.setValue(loggedInUnit);
+        } else {
+            // Permohonan - manual input
+            namaField.setPromptText("Nama lengkap pemohon");
+            unitCombo.setPromptText("Pilih subdirektorat");
+            if (editableRequest != null) {
+                namaField.setText(editableRequest.getPemohon());
+                unitCombo.setValue(editableRequest.getUnit());
+            }
         }
 
         ComboBox<String> jenisCombo = new ComboBox<>();
@@ -290,10 +316,13 @@ public class AssetRequestView extends VBox {
         cancelButton.getStyleClass().add("secondary-button");
         cancelButton.setOnAction(e -> modalStage.close());
 
+        // For Pengajuan, use login session data; for Permohonan, use form input
         Button saveButton = new Button(editableRequest == null ? "Simpan" : "Simpan Perubahan");
         saveButton.getStyleClass().add("primary-button");
         saveButton.setOnAction(e -> {
-            if (saveAssetRequest(editableRequest, tipe, namaField.getText(), unitCombo.getValue(), jenisCombo.getValue(),
+            String nama = isPengajuan ? loggedInNama : namaField.getText();
+            String unit = isPengajuan ? loggedInUnit : unitCombo.getValue();
+            if (saveAssetRequest(editableRequest, tipe, nama, unit, jenisCombo.getValue(),
                     jumlahField.getText(), deskripsiArea.getText(), tujuanArea.getText(),
                     prioritasCombo.getValue(), tanggalPicker.getValue())) {
                 modalStage.close();
@@ -304,16 +333,33 @@ public class AssetRequestView extends VBox {
 
         VBox formContent = new VBox(16);
         formContent.setPadding(new Insets(0, 24, 0, 24));
-        formContent.getChildren().addAll(
-                namaLabelObj, namaField,
-                unitLabel, unitCombo,
-                jenisLabel, jenisCombo,
-                jumlahLabel, jumlahField,
-                deskripsiLabel, deskripsiArea,
-                tujuanLabel, tujuanArea,
-                prioritasLabel, prioritasCombo,
-                tanggalLabel, tanggalPicker
-        );
+        
+        // Add different fields based on mode
+        if (isPengajuan) {
+            // Pengajuan: show info labels (non-editable) from login session
+            formContent.getChildren().addAll(
+                    infoNamaLabel, infoNamaValue,
+                    infoUnitLabel, infoUnitValue,
+                    jenisLabel, jenisCombo,
+                    jumlahLabel, jumlahField,
+                    deskripsiLabel, deskripsiArea,
+                    tujuanLabel, tujuanArea,
+                    prioritasLabel, prioritasCombo,
+                    tanggalLabel, tanggalPicker
+            );
+        } else {
+            // Permohonan: show editable fields
+            formContent.getChildren().addAll(
+                    namaLabelObj, namaField,
+                    unitLabel, unitCombo,
+                    jenisLabel, jenisCombo,
+                    jumlahLabel, jumlahField,
+                    deskripsiLabel, deskripsiArea,
+                    tujuanLabel, tujuanArea,
+                    prioritasLabel, prioritasCombo,
+                    tanggalLabel, tanggalPicker
+            );
+        }
 
         ScrollPane scrollPane = new ScrollPane(formContent);
         scrollPane.setFitToWidth(true);
@@ -337,33 +383,38 @@ public class AssetRequestView extends VBox {
 
     private boolean saveAssetRequest(AssetRequest editableRequest, String tipe, String nama, String unit, String jenis, String jumlahStr,
                                      String deskripsi, String tujuan, String prioritas, LocalDate tanggal) {
-        if (nama == null || nama.trim().isEmpty()) {
-            showAlert("Masukkan nama " + ("Permohonan".equals(tipe) ? "pemohon" : "pengaju"));
-            return false;
-        }
-        if (nama.trim().length() < 3) {
-            showAlert("Nama " + ("Permohonan".equals(tipe) ? "pemohon" : "pengaju") + " minimal 3 karakter");
-            return false;
-        }
-        if (!nama.trim().matches("[a-zA-Z\\s]+")) {
-            showAlert("Nama " + ("Permohonan".equals(tipe) ? "pemohon" : "pengaju") + " hanya boleh berisi huruf dan spasi");
-            return false;
-        }
-        if (unit == null || unit.trim().isEmpty()) {
-            showAlert("Pilih subdirektorat");
-            return false;
-        }
+        boolean isPengajuan = "Pengajuan".equals(tipe);
         
-        // Validasi: cek apakah nama pegawai terdaftar di subdirektorat yang dipilih
-        boolean namaDitemukan = dataService.getEmployees().stream()
-            .anyMatch(emp -> emp.getNamaLengkap().equalsIgnoreCase(nama.trim()) && 
-                           emp.getUnit().equals(unit));
-        
-        if (!namaDitemukan) {
-            showAlert("Nama " + ("Permohonan".equals(tipe) ? "pemohon" : "pengaju") + 
-                     " '" + nama.trim() + "' tidak terdaftar di subdirektorat " + unit + ".\n" +
-                     "Pastikan nama dan subdirektorat sesuai dengan data pegawai.");
-            return false;
+        // For Permohonan, validate nama and unit (manual input)
+        // For Pengajuan, skip validation as data comes from LoginSession
+        if (!isPengajuan) {
+            if (nama == null || nama.trim().isEmpty()) {
+                showAlert("Masukkan nama pemohon");
+                return false;
+            }
+            if (nama.trim().length() < 3) {
+                showAlert("Nama pemohon minimal 3 karakter");
+                return false;
+            }
+            if (!nama.trim().matches("[a-zA-Z\\s]+")) {
+                showAlert("Nama pemohon hanya boleh berisi huruf dan spasi");
+                return false;
+            }
+            if (unit == null || unit.trim().isEmpty()) {
+                showAlert("Pilih subdirektorat");
+                return false;
+            }
+            
+            // Validasi: cek apakah nama pegawai terdaftar di subdirektorat yang dipilih
+            boolean namaDitemukan = dataService.getEmployees().stream()
+                .anyMatch(emp -> emp.getNamaLengkap().equalsIgnoreCase(nama.trim()) && 
+                               emp.getUnit().equals(unit));
+            
+            if (!namaDitemukan) {
+                showAlert("Nama pemohon '" + nama.trim() + "' tidak terdaftar di subdirektorat " + unit + ".\n" +
+                         "Pastikan nama dan subdirektorat sesuai dengan data pegawai.");
+                return false;
+            }
         }
         if (jenis == null || jenis.trim().isEmpty()) {
             showAlert("Pilih jenis aset");

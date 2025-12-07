@@ -213,4 +213,41 @@ public class PaginatedTableView<T> extends VBox {
         currentPage = 0;
         updatePage();
     }
+    
+    /**
+     * Navigate to the page containing the specified item and select it.
+     * @param item The item to navigate to and select
+     * @return true if item was found and selected, false otherwise
+     */
+    public boolean goToItem(T item) {
+        if (item == null) {
+            return false;
+        }
+        
+        // Find index of item in allItems
+        int index = -1;
+        for (int i = 0; i < allItems.size(); i++) {
+            if (allItems.get(i).equals(item)) {
+                index = i;
+                break;
+            }
+        }
+        
+        if (index < 0) {
+            return false;
+        }
+        
+        // Calculate which page this item is on
+        int targetPage = index / itemsPerPage;
+        
+        // Navigate to that page
+        currentPage = targetPage;
+        updatePage();
+        
+        // Select the item in the table
+        table.getSelectionModel().select(item);
+        table.scrollTo(item);
+        
+        return true;
+    }
 }

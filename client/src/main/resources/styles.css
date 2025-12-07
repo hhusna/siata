@@ -1,8 +1,8 @@
 .root {
     -fx-font-family: "Segoe UI", "Inter", "Poppins", system-ui, sans-serif;
-    -fx-font-weight: 400;
+    -fx-font-weight: 500;
     -fx-font-style: normal;
-    -fx-font-size: 13px;
+    -fx-font-size: 14px;
     -fx-text-fill: #1e293b;
     -fx-background-color: #f8fafc;
 }
@@ -455,8 +455,8 @@
 }
 
 .stat-card-title {
-    -fx-font-size: 13px;
-    -fx-font-weight: 500;
+    -fx-font-size: 15px;
+    -fx-font-weight: 700;
     -fx-text-fill: #475569;
 }
 
@@ -493,7 +493,7 @@
 
 .table-title {
     -fx-font-size: 14px;
-    -fx-font-weight: 600;
+    -fx-font-weight: 700;
     -fx-text-fill: #0f172a;
 }
 
@@ -550,7 +550,7 @@
 
 .chart-title {
     -fx-font-size: 14px;
-    -fx-font-weight: 600;
+    -fx-font-weight: 700;
     -fx-text-fill: #0f172a;
 }
 

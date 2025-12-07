@@ -138,21 +138,32 @@ public class EmployeeManagementView extends VBox {
             }
         });
         
+        // Pre-compute asset count per employee NIP for performance
+        java.util.Map<String, Long> assetCountByNip = new java.util.HashMap<>();
+        for (var asset : dataService.getAssets()) {
+            String nip = asset.getKeterangan();
+            if (nip != null && !nip.isBlank()) {
+                assetCountByNip.merge(nip, 1L, Long::sum);
+            }
+        }
+        
         TableColumn<Employee, String> asetCol = new TableColumn<>("Aset yang Dimiliki");
         asetCol.setCellValueFactory(cellData -> {
             Employee emp = cellData.getValue();
-            // Ambil jumlah aset dari manajemen aset berdasarkan NIP
-            long jumlahAset = dataService.getAssets().stream()
-                .filter(asset -> emp.getNip().equals(asset.getKeterangan()))
-                .count();
+            // Use pre-computed count instead of streaming all assets
+            long jumlahAset = assetCountByNip.getOrDefault(emp.getNip(), 0L);
             return new javafx.beans.property.SimpleStringProperty(jumlahAset + " aset");
         });
         asetCol.setCellFactory(column -> new TableCell<>() {
             private final Hyperlink detailLink = new Hyperlink();
             {
+                // Keep consistent blue color without underline
+                detailLink.setStyle("-fx-text-fill: #2563eb; -fx-underline: false;");
                 detailLink.setOnAction(e -> {
                     Employee employee = getTableView().getItems().get(getIndex());
                     showEmployeeAssets(employee);
+                    // Reset visited state to keep original color
+                    detailLink.setVisited(false);
                 });
             }
 
@@ -163,6 +174,7 @@ public class EmployeeManagementView extends VBox {
                     setGraphic(null);
                 } else {
                     detailLink.setText(item);
+                    detailLink.setVisited(false); // Ensure consistent color
                     setGraphic(detailLink);
                 }
             }
@@ -874,7 +886,7 @@ public class EmployeeManagementView extends VBox {
     private void showEmployeeAssets(Employee employee) {
         Stage modalStage = new Stage();
         modalStage.initModality(Modality.APPLICATION_MODAL);
-        modalStage.initStyle(StageStyle.UTILITY);
+        modalStage.initStyle(StageStyle.UNDECORATED);
         modalStage.setTitle("Aset yang Dimiliki");
 
         VBox modalContent = new VBox(0);
@@ -1045,19 +1057,20 @@ public class EmployeeManagementView extends VBox {
      * Called from MainShellView when navigating from Asset Management.
      */
     public void searchAndHighlight(String nipOrName) {
-        // Filter table by NIP
         List<Employee> allEmployees = dataService.getEmployees();
-        List<Employee> filtered = allEmployees.stream()
-            .filter(emp -> emp.getNip().contains(nipOrName) || 
-                          (emp.getNamaLengkap() != null && emp.getNamaLengkap().toLowerCase().contains(nipOrName.toLowerCase())))
-            .toList();
         
-        paginatedTable.setItems(filtered);
-        
-        // Select and scroll to the first match
-        if (!filtered.isEmpty()) {
-            paginatedTable.getTable().getSelectionModel().select(filtered.get(0));
-            paginatedTable.getTable().scrollTo(filtered.get(0));
+        // Find matching employee by exact NIP without filtering
+        Employee match = allEmployees.stream()
+            .filter(emp -> emp.getNip().equals(nipOrName))
+            .findFirst()
+            .orElse(null);
+            
+        if (match != null) {
+            // Ensure table shows all employees (no filter)
+            paginatedTable.setItems(allEmployees);
+            
+            // Navigate to the page containing the employee and select it
+            paginatedTable.goToItem(match);
         }
     }
 }

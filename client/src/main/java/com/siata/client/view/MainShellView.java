@@ -135,8 +135,8 @@ public class MainShellView extends BorderPane {
         addMenuToSidebar(menu, MainPage.DASHBOARD);
 
         // 2. Cek Role menggunakan If-Else
-        if (role.equals("TIM_MANAJEMEN_ASET")) {
-            // Admin Aset: Akses Penuh Pengelolaan
+        if (role.equals("TIM_MANAJEMEN_ASET") || role.equals("DEV")) {
+            // Admin Aset / DEV: Akses Penuh Pengelolaan
             addMenuToSidebar(menu, MainPage.RECAPITULATION);
             addMenuToSidebar(menu, MainPage.EMPLOYEE_MANAGEMENT);
             addMenuToSidebar(menu, MainPage.ASSET_MANAGEMENT);
@@ -238,6 +238,16 @@ public class MainShellView extends BorderPane {
 
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
+        
+        // Switch Role button (only for users whose original role from backend is DEV)
+        Button switchRoleBtn = null;
+        if (LoginSession.isOriginallyDev()) {
+            switchRoleBtn = new Button("🔄 Switch Role");
+            switchRoleBtn.getStyleClass().add("ghost-button");
+            switchRoleBtn.setStyle("-fx-font-size: 12px; -fx-text-fill: #6366f1;");
+            Button finalSwitchRoleBtn = switchRoleBtn;
+            switchRoleBtn.setOnAction(e -> showSwitchRolePopup(finalSwitchRoleBtn));
+        }
 
         VBox userBox = new VBox(2);
         userBox.setAlignment(Pos.CENTER_RIGHT);
@@ -257,8 +267,90 @@ public class MainShellView extends BorderPane {
         avatar.setOnAction(e -> showProfileMenu(avatar));
 
         // Order: menuButton, titleBox on left, spacer pushes rest to right
-        header.getChildren().addAll(menuButton, titleBox, spacer, userBox, avatar);
+        if (switchRoleBtn != null) {
+            header.getChildren().addAll(menuButton, titleBox, spacer, switchRoleBtn, userBox, avatar);
+        } else {
+            header.getChildren().addAll(menuButton, titleBox, spacer, userBox, avatar);
+        }
         return header;
+    }
+    
+    private void showSwitchRolePopup(Button anchorButton) {
+        javafx.stage.Stage popupStage = new javafx.stage.Stage();
+        popupStage.initStyle(javafx.stage.StageStyle.UNDECORATED);
+        popupStage.initModality(javafx.stage.Modality.NONE);
+        
+        VBox popup = new VBox(4);
+        popup.setPadding(new Insets(12));
+        popup.setStyle("-fx-background-color: white; -fx-background-radius: 8; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.15), 12, 0, 0, 3); -fx-border-color: #e2e8f0; -fx-border-radius: 8;");
+        popup.setMinWidth(200);
+        
+        Label title = new Label("Switch Role (DEV Only)");
+        title.setStyle("-fx-font-size: 12px; -fx-font-weight: 700; -fx-text-fill: #6366f1;");
+        popup.getChildren().add(title);
+        
+        Region separator = new Region();
+        separator.setStyle("-fx-background-color: #e2e8f0;");
+        separator.setMinHeight(1);
+        separator.setMaxHeight(1);
+        VBox.setMargin(separator, new Insets(4, 0, 4, 0));
+        popup.getChildren().add(separator);
+        
+        // All available roles
+        String[] roles = {"DEV", "TIM_MANAJEMEN_ASET", "PPBJ", "PPK", "DIREKTUR", "PEGAWAI"};
+        String currentRole = LoginSession.getRole();
+        
+        for (String roleName : roles) {
+            Button roleBtn = new Button(roleName.replace("_", " "));
+            roleBtn.setMaxWidth(Double.MAX_VALUE);
+            roleBtn.setAlignment(Pos.CENTER_LEFT);
+            
+            if (roleName.equals(currentRole)) {
+                roleBtn.setStyle("-fx-background-color: #eff6ff; -fx-text-fill: #2563eb; -fx-font-weight: bold; -fx-padding: 8; -fx-cursor: hand; -fx-background-radius: 4;");
+            } else {
+                roleBtn.setStyle("-fx-background-color: transparent; -fx-padding: 8; -fx-cursor: hand;");
+                roleBtn.setOnMouseEntered(ev -> roleBtn.setStyle("-fx-background-color: #f3f4f6; -fx-padding: 8; -fx-cursor: hand; -fx-background-radius: 4;"));
+                roleBtn.setOnMouseExited(ev -> roleBtn.setStyle("-fx-background-color: transparent; -fx-padding: 8; -fx-cursor: hand;"));
+            }
+            
+            roleBtn.setOnAction(ev -> {
+                popupStage.close();
+                if (!roleName.equals(currentRole)) {
+                    // Switch role
+                    LoginSession.setRole(roleName);
+                    
+                    // Clear page cache and rebuild view
+                    pageContent.clear();
+                    menuItems.clear();
+                    menuTextLabels.clear();
+                    
+                    // Rebuild the entire view
+                    getChildren().clear();
+                    buildView();
+                    switchPage(MainPage.DASHBOARD);
+                }
+            });
+            
+            popup.getChildren().add(roleBtn);
+        }
+        
+        // Position popup below the anchor button
+        javafx.geometry.Bounds bounds = anchorButton.localToScreen(anchorButton.getBoundsInLocal());
+        popupStage.setX(bounds.getMinX());
+        popupStage.setY(bounds.getMaxY() + 8);
+        
+        javafx.scene.Scene scene = new javafx.scene.Scene(popup);
+        scene.setFill(javafx.scene.paint.Color.TRANSPARENT);
+        popupStage.setScene(scene);
+        
+        // Close popup when clicking outside
+        popupStage.focusedProperty().addListener((obs, wasFocused, isNowFocused) -> {
+            if (!isNowFocused) {
+                popupStage.close();
+            }
+        });
+        
+        popupStage.show();
     }
 
     private Node buildContentContainer() {
@@ -378,12 +470,16 @@ public class MainShellView extends BorderPane {
         // Navigate to the page
         switchPage(page);
         
-        // After navigation, find the search field and set the query
-        Node content = pageContent.get(page);
-        if (content instanceof EmployeeManagementView empView) {
-            // Trigger search in EmployeeManagementView
-            empView.searchAndHighlight(searchQuery);
-        }
+        // After navigation completes, trigger search with delay to ensure page is loaded
+        // Use a Timeline to delay the search call until after async loading completes
+        Timeline delayedSearch = new Timeline(new KeyFrame(Duration.millis(600), event -> {
+            Node content = pageContent.get(page);
+            if (content instanceof EmployeeManagementView empView) {
+                // Trigger search in EmployeeManagementView
+                empView.searchAndHighlight(searchQuery);
+            }
+        }));
+        delayedSearch.play();
     }
 
     private void updateActiveMenu(MainPage page) {

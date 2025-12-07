@@ -29,6 +29,8 @@ import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.stream.Collectors;
+import javafx.application.Platform;
+import javafx.util.Duration;
 
 public class RecapitulationView extends VBox {
 
@@ -94,32 +96,136 @@ public class RecapitulationView extends VBox {
         buildView();
     }
 
+    // Carousel state
+    private int currentCarouselIndex = 0;
+    private List<Node> carouselTables;
+    private StackPane carouselContainer;
+    private HBox carouselIndicators;
+    private Label carouselTitle;
+
     private void buildView() {
         // Add content directly without ScrollPane - parent container already handles scrolling
         getChildren().add(buildHeader());
         getChildren().add(buildStatsGrid());
+        
+        // Carousel for 5 main tables
+        getChildren().add(buildTableCarousel());
+        
+        // Merged subdirectory table (Pegawai + Pemakaian BMN)
+        getChildren().add(createMergedSubdirTable());
+        
+        // Paginated & searchable employee matrix
+        getChildren().add(createEmployeeMatrixTable());
+    }
 
-        // Regular tables - 2 per row
-        HBox row1 = new HBox(16);
-        row1.getChildren().addAll(createPencatatanBmnTable(), createRencanaPenghapusanTable());
-        HBox.setHgrow(row1.getChildren().get(0), Priority.ALWAYS);
-        HBox.setHgrow(row1.getChildren().get(1), Priority.ALWAYS);
+    // === CAROUSEL FOR 5 MAIN TABLES ===
+    private Node buildTableCarousel() {
+        VBox carouselWrapper = new VBox(16);
+        carouselWrapper.getStyleClass().add("table-container");
+        carouselWrapper.setPadding(new Insets(20));
         
-        HBox row2 = new HBox(16);
-        row2.getChildren().addAll(createRekapPemakaianTable(), createKeteranganKondisiTable());
-        HBox.setHgrow(row2.getChildren().get(0), Priority.ALWAYS);
-        HBox.setHgrow(row2.getChildren().get(1), Priority.ALWAYS);
+        // Initialize carousel tables
+        carouselTables = List.of(
+            createPencatatanBmnTableContent(),
+            createRencanaPenghapusanTableContent(),
+            createRekapPemakaianTableContent(),
+            createKeteranganKondisiTableContent(),
+            createRekapPemeganganTableContent()
+        );
         
-        HBox row3 = new HBox(16);
-        row3.getChildren().addAll(createRekapPemeganganTable(), createJumlahPegawaiTable());
-        HBox.setHgrow(row3.getChildren().get(0), Priority.ALWAYS);
-        HBox.setHgrow(row3.getChildren().get(1), Priority.ALWAYS);
+        List<String> tableTitles = List.of(
+            "Pencatatan BMN",
+            "Rencana Penghapusan", 
+            "Rekap Pemakaian",
+            "Keterangan Kondisi",
+            "Rekap Pemegangan"
+        );
         
-        getChildren().addAll(row1, row2, row3);
+        // Header with title and navigation
+        HBox header = new HBox(16);
+        header.setAlignment(Pos.CENTER_LEFT);
         
-        // Matrix tables - full width (1 per row)
-        getChildren().add(createUsageBySubdirTable()); // Penggunaan per Subdir
-        getChildren().add(createEmployeeMatrixTable()); // Matriks Distribusi
+        carouselTitle = new Label(tableTitles.get(0));
+        carouselTitle.getStyleClass().add("table-title");
+        
+        Region spacer = new Region();
+        HBox.setHgrow(spacer, Priority.ALWAYS);
+        
+        // Navigation buttons
+        Button prevBtn = new Button("◀");
+        prevBtn.getStyleClass().addAll("ghost-button");
+        prevBtn.setStyle("-fx-font-size: 16px; -fx-padding: 8 12;");
+        
+        Button nextBtn = new Button("▶");
+        nextBtn.getStyleClass().addAll("ghost-button");
+        nextBtn.setStyle("-fx-font-size: 16px; -fx-padding: 8 12;");
+        
+        // Indicators (dots)
+        carouselIndicators = new HBox(8);
+        carouselIndicators.setAlignment(Pos.CENTER);
+        for (int i = 0; i < carouselTables.size(); i++) {
+            Label dot = new Label("●");
+            dot.setStyle(i == 0 ? "-fx-text-fill: #2563eb; -fx-font-size: 10px;" : "-fx-text-fill: #cbd5e1; -fx-font-size: 10px;");
+            carouselIndicators.getChildren().add(dot);
+        }
+        
+        header.getChildren().addAll(carouselTitle, spacer, prevBtn, carouselIndicators, nextBtn);
+        
+        // Container for table content
+        carouselContainer = new StackPane();
+        carouselContainer.setMinHeight(300);
+        carouselContainer.getChildren().add(carouselTables.get(0));
+        
+        // Navigation actions
+        prevBtn.setOnAction(e -> {
+            if (currentCarouselIndex > 0) {
+                currentCarouselIndex--;
+                updateCarousel(tableTitles);
+            }
+        });
+        
+        nextBtn.setOnAction(e -> {
+            if (currentCarouselIndex < carouselTables.size() - 1) {
+                currentCarouselIndex++;
+                updateCarousel(tableTitles);
+            }
+        });
+        
+        carouselWrapper.getChildren().addAll(header, carouselContainer);
+        
+        // Add hover effect
+        AnimationUtils.addHoverLiftEffect(carouselWrapper);
+        
+        return carouselWrapper;
+    }
+    
+    private void updateCarousel(List<String> titles) {
+        // Update title
+        carouselTitle.setText(titles.get(currentCarouselIndex));
+        
+        // Update indicators
+        for (int i = 0; i < carouselIndicators.getChildren().size(); i++) {
+            Label dot = (Label) carouselIndicators.getChildren().get(i);
+            dot.setStyle(i == currentCarouselIndex ? "-fx-text-fill: #2563eb; -fx-font-size: 10px;" : "-fx-text-fill: #cbd5e1; -fx-font-size: 10px;");
+        }
+        
+        // Animate transition
+        Node oldTable = carouselContainer.getChildren().get(0);
+        Node newTable = carouselTables.get(currentCarouselIndex);
+        
+        // Fade out old, fade in new
+        javafx.animation.FadeTransition fadeOut = new javafx.animation.FadeTransition(Duration.millis(150), oldTable);
+        fadeOut.setFromValue(1);
+        fadeOut.setToValue(0);
+        fadeOut.setOnFinished(e -> {
+            carouselContainer.getChildren().setAll(newTable);
+            newTable.setOpacity(0);
+            javafx.animation.FadeTransition fadeIn = new javafx.animation.FadeTransition(Duration.millis(150), newTable);
+            fadeIn.setFromValue(0);
+            fadeIn.setToValue(1);
+            fadeIn.play();
+        });
+        fadeOut.play();
     }
 
     private Node buildHeader() {
@@ -181,11 +287,23 @@ public class RecapitulationView extends VBox {
             statsGrid.add(createStatCard(cards.get(i)), i, 0);
         }
 
-        return statsGrid;
+        VBox container = new VBox(16, statsGrid);
+        
+        // Animate stat cards with stagger effect (same as Dashboard)
+        Platform.runLater(() -> {
+            List<Node> cardNodes = new ArrayList<>(statsGrid.getChildren());
+            for (Node card : cardNodes) {
+                AnimationUtils.addHoverLiftEffect(card);
+            }
+            AnimationUtils.staggerSlideInFromBottom(cardNodes, Duration.millis(80));
+        });
+
+        return container;
     }
 
-    // --- LOGIKA TABEL 1: PENCATATAN BMN ---
-    private Node createPencatatanBmnTable() {
+    // --- CAROUSEL TABLE CONTENT METHODS (return TableView only for carousel) ---
+    
+    private Node createPencatatanBmnTableContent() {
         ObservableList<Map<String, String>> data = FXCollections.observableArrayList();
 
         for (String jenis : JENIS_ASET_LIST) {
@@ -206,13 +324,13 @@ public class RecapitulationView extends VBox {
             }
         }
 
-        return createDynamicTable("Pencatatan BMN", data,
+        return createCarouselTable(data,
                 new String[]{"Jenis Aset", "Jumlah", "Sudah Dihapus", "Tercatat Sakti"},
-                new int[]{200, 150, 150, 150});
+                new int[]{200, 120, 140, 140});
     }
 
     // --- LOGIKA TABEL 2: RENCANA PENGHAPUSAN ---
-    private Node createRencanaPenghapusanTable() {
+    private Node createRencanaPenghapusanTableContent() {
         ObservableList<Map<String, String>> data = FXCollections.observableArrayList();
         LocalDate now = LocalDate.now();
 
@@ -247,20 +365,20 @@ public class RecapitulationView extends VBox {
 
             Map<String, String> row = new HashMap<>();
             row.put("Jenis Aset", jenis);
-            row.put("Habis Masa Pakai", String.valueOf(habisMasaPakai));
+            row.put("Habis Pakai", String.valueOf(habisMasaPakai));
             row.put("Bersih", String.valueOf(bersih));
-            row.put("Akan Habis 1 Tahun", String.valueOf(akanHabis1Thn));
+            row.put("Akan Habis", String.valueOf(akanHabis1Thn));
             row.put("Total Bersih", String.valueOf(totalBersih));
             data.add(row);
         }
 
-        return createDynamicTable("Rencana Penghapusan", data,
-                new String[]{"Jenis Aset", "Habis Masa Pakai", "Bersih", "Akan Habis 1 Tahun", "Total Bersih"},
-                new int[]{200, 150, 100, 180, 120});
+        return createCarouselTable(data,
+                new String[]{"Jenis Aset", "Habis Pakai", "Bersih", "Akan Habis", "Total Bersih"},
+                new int[]{150, 100, 80, 100, 100});
     }
 
     // --- LOGIKA TABEL 3: REKAP PEMAKAIAN ---
-    private Node createRekapPemakaianTable() {
+    private Node createRekapPemakaianTableContent() {
         ObservableList<Map<String, String>> data = FXCollections.observableArrayList();
 
         for (String jenis : JENIS_ASET_LIST) {
@@ -276,23 +394,21 @@ public class RecapitulationView extends VBox {
 
             if (belumHapus == 0 && sudahHapus == 0) continue;
 
-            long totalDipakai = belumHapus + sudahHapus;
-
             Map<String, String> row = new HashMap<>();
             row.put("Jenis Aset", jenis);
-            row.put("Dipakai Belum Hapus", String.valueOf(belumHapus));
-            row.put("Dipakai Sudah Hapus", String.valueOf(sudahHapus));
-            row.put("Total Dipakai", String.valueOf(totalDipakai));
+            row.put("Belum Hapus", String.valueOf(belumHapus));
+            row.put("Sudah Hapus", String.valueOf(sudahHapus));
+            row.put("Total", String.valueOf(belumHapus + sudahHapus));
             data.add(row);
         }
 
-        return createDynamicTable("Rekap Pemakaian", data,
-                new String[]{"Jenis Aset", "Dipakai Belum Hapus", "Dipakai Sudah Hapus", "Total Dipakai"},
-                new int[]{200, 180, 180, 150});
+        return createCarouselTable(data,
+                new String[]{"Jenis Aset", "Belum Hapus", "Sudah Hapus", "Total"},
+                new int[]{200, 120, 120, 100});
     }
 
     // --- LOGIKA TABEL 4: KETERANGAN KONDISI ---
-    private Node createKeteranganKondisiTable() {
+    private Node createKeteranganKondisiTableContent() {
         ObservableList<Map<String, String>> data = FXCollections.observableArrayList();
 
         for (String jenis : JENIS_ASET_LIST) {
@@ -312,13 +428,13 @@ public class RecapitulationView extends VBox {
             data.add(row);
         }
 
-        return createDynamicTable("Keterangan Kondisi", data,
+        return createCarouselTable(data,
                 new String[]{"Jenis Aset", "Rusak Berat", "Hilang", "Gudang"},
-                new int[]{200, 150, 150, 150});
+                new int[]{200, 120, 120, 120});
     }
 
     // --- LOGIKA TABEL 5: REKAP PEMEGANG ---
-    private Node createRekapPemeganganTable() {
+    private Node createRekapPemeganganTableContent() {
         ObservableList<Map<String, String>> data = FXCollections.observableArrayList();
 
         for (String jenis : JENIS_ASET_LIST) {
@@ -339,21 +455,57 @@ public class RecapitulationView extends VBox {
             row.put("Jenis Aset", jenis);
             row.put("Tidak Ganda", String.valueOf(tidakGanda));
             row.put("Ganda", String.valueOf(ganda));
-            row.put("Total Pemegangan", String.valueOf(holderCounts.size()));
+            row.put("Total", String.valueOf(holderCounts.size()));
             data.add(row);
         }
 
-        return createDynamicTable("Rekap Pemakaian", data,
-                new String[]{"Jenis Aset", "Tidak Ganda", "Ganda", "Total Pemegangan"},
-                new int[]{200, 150, 150, 180});
+        return createCarouselTable(data,
+                new String[]{"Jenis Aset", "Tidak Ganda", "Ganda", "Total"},
+                new int[]{200, 120, 120, 100});
     }
 
-    // --- LOGIKA TABEL 6: JUMLAH PEGAWAI PER BAGIAN ---
-    private Node createJumlahPegawaiTable() {
+    // Helper for carousel tables (no title wrapper)
+    private Node createCarouselTable(ObservableList<Map<String, String>> data, String[] columns, int[] widths) {
+        TableView<Map<String, String>> table = new TableView<>();
+        table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
+        table.getStyleClass().add("data-table");
+        table.setItems(data);
+
+        for (int idx = 0; idx < columns.length; idx++) {
+            final String colName = columns[idx];
+            TableColumn<Map<String, String>, String> col = new TableColumn<>(colName);
+
+            if (idx < widths.length) {
+                col.setPrefWidth(widths[idx]);
+            }
+
+            col.setCellValueFactory(cellData ->
+                    new SimpleStringProperty(cellData.getValue().getOrDefault(colName, "0"))
+            );
+
+            if (idx > 0) {
+                col.setStyle("-fx-alignment: CENTER-RIGHT;");
+            }
+
+            table.getColumns().add(col);
+        }
+
+        int rowCount = data.size();
+        double fixedHeight = Math.max(150, (rowCount + 1.5) * 35);
+        table.setPrefHeight(fixedHeight);
+        table.setMinHeight(150);
+        table.setMaxHeight(350);
+
+        return table;
+    }
+
+    // === MERGED SUBDIRECTORY TABLE (Pegawai + Pemakaian BMN) ===
+    private Node createMergedSubdirTable() {
+        List<String> subdirs = List.of("PPTAU", "AUNB", "AUNTB", "KAU", "SILAU", "Tata Usaha", "Direktur");
+        List<String> displayTypes = List.of("Mobil", "Motor", "Scanner", "PC", "Laptop", "Tablet", "Printer", "Speaker", "Parabot");
+        
         ObservableList<Map<String, String>> data = FXCollections.observableArrayList();
 
-        // Group employees by unit and count ASN vs PPNPN
-        // ASN = isPpnpn is false, PPNPN = isPpnpn is true
         Map<String, Long> asnByUnit = cachedEmployees.stream()
             .filter(emp -> !emp.isPpnpn())
             .collect(Collectors.groupingBy(Employee::getUnit, Collectors.counting()));
@@ -361,87 +513,73 @@ public class RecapitulationView extends VBox {
         Map<String, Long> ppnpnByUnit = cachedEmployees.stream()
             .filter(emp -> emp.isPpnpn())
             .collect(Collectors.groupingBy(Employee::getUnit, Collectors.counting()));
-        
-        // Get all unique units
-        Set<String> allUnits = new HashSet<>();
-        allUnits.addAll(asnByUnit.keySet());
-        allUnits.addAll(ppnpnByUnit.keySet());
-        
-        allUnits.forEach(unit -> {
-            long asn = asnByUnit.getOrDefault(unit, 0L);
-            long ppnpn = ppnpnByUnit.getOrDefault(unit, 0L);
-            
-            Map<String, String> row = new HashMap<>();
-            row.put("Bagian", unit);
-            row.put("ASN", String.valueOf(asn));
-            row.put("PPNPN", String.valueOf(ppnpn));
-            row.put("Total", String.valueOf(asn + ppnpn));
-            data.add(row);
-        });
-
-        return createDynamicTable("Jumlah Pegawai per Bagian", data,
-                new String[]{"Bagian", "ASN", "PPNPN", "Total"},
-                new int[]{250, 150, 150, 150});
-    }
-
-    // --- LOGIKA TABEL 7: Pemakaian BMN (MATRIKS) ---
-    private Node createUsageBySubdirTable() {
-        List<String> subdirs = List.of("PPTAU", "AUNB", "AUNTB", "KAU", "SILAU", "Tata Usaha", "Direktur");
-        ObservableList<Map<String, String>> data = FXCollections.observableArrayList();
-
-        List<String> displayTypes = List.of("Mobil", "Motor", "Scanner", "PC", "Laptop", "Tablet", "Printer", "Speaker", "Parabot");
 
         for (String subdir : subdirs) {
             List<Asset> subdirAssets = assetsBySubdir.getOrDefault(subdir.toLowerCase(), Collections.emptyList());
             
             Map<String, String> row = new HashMap<>();
             row.put("Subdirektorat", subdir);
+            
+            long asn = asnByUnit.getOrDefault(subdir, 0L);
+            long ppnpn = ppnpnByUnit.getOrDefault(subdir, 0L);
+            row.put("ASN", String.valueOf(asn));
+            row.put("PPNPN", String.valueOf(ppnpn));
+            row.put("Total Pegawai", String.valueOf(asn + ppnpn));
 
-            long totalSubdir = 0;
-
-            // Pre-group this subdir's assets by jenis for faster lookup
             Map<String, Long> subdirJenisCounts = subdirAssets.stream()
                     .collect(Collectors.groupingBy(a -> a.getJenisAset().toLowerCase(), Collectors.counting()));
 
+            long totalAset = 0;
             for (String jenis : displayTypes) {
                 long count = subdirJenisCounts.getOrDefault(jenis.toLowerCase(), 0L);
-                row.put(jenis, String.valueOf(count));
-                totalSubdir += count;
+                row.put(jenis, count > 0 ? String.valueOf(count) : "-");
+                totalAset += count;
             }
-            row.put("Total", String.valueOf(totalSubdir));
+            row.put("Total Aset", String.valueOf(totalAset));
             data.add(row);
         }
 
         List<String> colList = new ArrayList<>();
         colList.add("Subdirektorat");
+        colList.addAll(List.of("ASN", "PPNPN", "Total Pegawai"));
         colList.addAll(displayTypes);
-        colList.add("Total");
+        colList.add("Total Aset");
 
         int[] widths = new int[colList.size()];
-        widths[0] = 200;
-        for(int i=1; i<widths.length; i++) widths[i] = 80;
+        widths[0] = 100;
+        widths[1] = 45; widths[2] = 55; widths[3] = 85;
+        for (int i = 4; i < widths.length; i++) widths[i] = 55;
 
-        return createDynamicTable("Pemakaian BMN", data,
+        return createDynamicTable("Rekapitulasi per Subdirektorat", data,
                 colList.toArray(new String[0]), widths);
     }
 
-    // --- LOGIKA TABEL 8: MATRIKS DISTRIBUSI PER PEGAWAI ---
+    // === EMPLOYEE MATRIX TABLE (with search & styled name/NIP) ===
     private Node createEmployeeMatrixTable() {
-        ObservableList<Map<String, String>> data = FXCollections.observableArrayList();
+        VBox section = new VBox(12);
+        section.getStyleClass().add("table-container");
+        section.setPadding(new Insets(20));
+
+        Label sectionTitle = new Label("Matriks Distribusi Aset per Pegawai");
+        sectionTitle.getStyleClass().add("table-title");
+
+        javafx.scene.control.TextField searchField = new javafx.scene.control.TextField();
+        searchField.setPromptText("🔍 Cari nama atau NIP...");
+        searchField.getStyleClass().add("filter-search-field");
+        searchField.setMaxWidth(280);
 
         List<String> displayTypes = List.of("Mobil", "Motor", "Scanner", "PC", "Laptop", "Tablet", "Printer", "Speaker", "Parabot");
 
+        ObservableList<Map<String, String>> allData = FXCollections.observableArrayList();
         for (Employee emp : cachedEmployees) {
-            // Get all assets for this employee from pre-computed map (O(1) lookup!)
             List<Asset> empAssets = assetsByNip.getOrDefault(emp.getNip(), Collections.emptyList());
             
             Map<String, String> row = new HashMap<>();
-            row.put("Nama Pegawai", emp.getNamaLengkap());
+            row.put("Nama", emp.getNamaLengkap());
+            row.put("NIP", emp.getNip() != null ? emp.getNip() : "-");
             row.put("Subdir", emp.getUnit());
 
             long totalEmp = 0;
-
-            // Pre-group employee's assets by jenis for faster counting
             Map<String, Long> empJenisCounts = empAssets.stream()
                     .collect(Collectors.groupingBy(a -> a.getJenisAset().toLowerCase(), Collectors.counting()));
 
@@ -452,22 +590,87 @@ public class RecapitulationView extends VBox {
             }
 
             row.put("Total", String.valueOf(totalEmp));
-            data.add(row);
+            allData.add(row);
         }
 
-        List<String> colList = new ArrayList<>();
-        colList.add("Nama Pegawai");
-        colList.add("Subdir");
-        colList.addAll(displayTypes);
-        colList.add("Total");
+        javafx.collections.transformation.FilteredList<Map<String, String>> filteredData = 
+            new javafx.collections.transformation.FilteredList<>(allData, p -> true);
 
-        int[] widths = new int[colList.size()];
-        widths[0] = 200;
-        widths[1] = 150;
-        for(int i=2; i<widths.length; i++) widths[i] = 70;
+        searchField.textProperty().addListener((obs, oldVal, newVal) -> {
+            filteredData.setPredicate(row -> {
+                if (newVal == null || newVal.isEmpty()) return true;
+                String lower = newVal.toLowerCase();
+                return row.getOrDefault("Nama", "").toLowerCase().contains(lower) ||
+                       row.getOrDefault("NIP", "").toLowerCase().contains(lower);
+            });
+        });
 
-        return createDynamicTable("Matriks Distribusi Aset per Pegawai", data,
-                colList.toArray(new String[0]), widths);
+        TableView<Map<String, String>> table = new TableView<>();
+        table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
+        table.getStyleClass().add("data-table");
+        table.setItems(filteredData);
+
+        // Name + NIP column with custom cell
+        TableColumn<Map<String, String>, String> nameCol = new TableColumn<>("Pegawai");
+        nameCol.setPrefWidth(180);
+        nameCol.setCellValueFactory(cellData -> new SimpleStringProperty(cellData.getValue().get("Nama")));
+        nameCol.setCellFactory(col -> new javafx.scene.control.TableCell<>() {
+            @Override
+            protected void updateItem(String name, boolean empty) {
+                super.updateItem(name, empty);
+                if (empty || name == null) {
+                    setGraphic(null);
+                } else {
+                    Map<String, String> row = getTableView().getItems().get(getIndex());
+                    String nip = row.getOrDefault("NIP", "-");
+                    
+                    VBox container = new VBox(1);
+                    Label nameLabel = new Label(name);
+                    nameLabel.setStyle("-fx-font-weight: 700; -fx-font-size: 12px;");
+                    
+                    Label nipLabel = new Label(nip.length() == 18 ? nip : "No NIP");
+                    nipLabel.setStyle("-fx-font-size: 10px; -fx-opacity: 0.5;");
+                    
+                    container.getChildren().addAll(nameLabel, nipLabel);
+                    setGraphic(container);
+                }
+            }
+        });
+        table.getColumns().add(nameCol);
+
+        TableColumn<Map<String, String>, String> subdirCol = new TableColumn<>("Subdir");
+        subdirCol.setPrefWidth(70);
+        subdirCol.setCellValueFactory(cellData -> new SimpleStringProperty(cellData.getValue().getOrDefault("Subdir", "-")));
+        table.getColumns().add(subdirCol);
+
+        for (String jenis : displayTypes) {
+            TableColumn<Map<String, String>, String> col = new TableColumn<>(jenis);
+            col.setPrefWidth(55);
+            col.setCellValueFactory(cellData -> new SimpleStringProperty(cellData.getValue().getOrDefault(jenis, "-")));
+            col.setStyle("-fx-alignment: CENTER;");
+            table.getColumns().add(col);
+        }
+
+        TableColumn<Map<String, String>, String> totalCol = new TableColumn<>("Total");
+        totalCol.setPrefWidth(50);
+        totalCol.setCellValueFactory(cellData -> new SimpleStringProperty(cellData.getValue().getOrDefault("Total", "0")));
+        totalCol.setStyle("-fx-alignment: CENTER-RIGHT; -fx-font-weight: bold;");
+        table.getColumns().add(totalCol);
+
+        table.setPrefHeight(420);
+        table.setMinHeight(200);
+        table.setMaxHeight(500);
+
+        HBox headerRow = new HBox(16);
+        headerRow.setAlignment(Pos.CENTER_LEFT);
+        Region spacer = new Region();
+        HBox.setHgrow(spacer, Priority.ALWAYS);
+        headerRow.getChildren().addAll(sectionTitle, spacer, searchField);
+
+        section.getChildren().addAll(headerRow, table);
+        AnimationUtils.addHoverLiftEffect(section);
+        
+        return section;
     }
 
     // --- HELPER: METHOD GENERIK UNTUK MEMBUAT TABEL ---

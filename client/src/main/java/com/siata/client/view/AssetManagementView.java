@@ -43,6 +43,10 @@ public class AssetManagementView extends VBox {
     private final DataService dataService;
     private final AssetApi assetApi = new AssetApi();
     private final NumberFormat currencyFormat = NumberFormat.getCurrencyInstance(Locale.forLanguageTag("id-ID"));
+    
+    // Column references for visibility toggle
+    private final java.util.Map<String, TableColumn<Asset, ?>> columnMap = new java.util.LinkedHashMap<>();
+    private final java.util.Map<String, CheckBox> columnCheckBoxes = new java.util.LinkedHashMap<>();
 
     public AssetManagementView() {
         setSpacing(20);
@@ -151,17 +155,24 @@ public class AssetManagementView extends VBox {
                     // Lookup employee name from NIP
                     String employeeName = nipToNameMap.getOrDefault(nip, nip);
                     
-                    // Create clickable hyperlink-style label
-                    Label nameLabel = new Label(employeeName);
-                    nameLabel.setStyle("-fx-text-fill: #2563eb; -fx-cursor: hand; -fx-underline: true;");
-                    nameLabel.setOnMouseEntered(e -> nameLabel.setStyle("-fx-text-fill: #1d4ed8; -fx-cursor: hand; -fx-underline: true;"));
-                    nameLabel.setOnMouseExited(e -> nameLabel.setStyle("-fx-text-fill: #2563eb; -fx-cursor: hand; -fx-underline: true;"));
-                    nameLabel.setOnMouseClicked(e -> {
-                        // Navigate to EmployeeManagementView and search for this employee
-                        navigateToEmployee(nip);
-                    });
+                    // Create VBox with name (bold) and NIP (small, low opacity)
+                    VBox container = new VBox(2);
+                    container.setStyle("-fx-cursor: hand; -fx-padding: 4 0;");
                     
-                    setGraphic(nameLabel);
+                    Label nameLabel = new Label(employeeName);
+                    nameLabel.setStyle("-fx-font-weight: 700; -fx-text-fill: #1e293b; -fx-font-size: 13px;");
+                    
+                    Label nipLabel = new Label(nip);
+                    nipLabel.setStyle("-fx-font-size: 11px; -fx-text-fill: #94a3b8;");
+                    
+                    container.getChildren().addAll(nameLabel, nipLabel);
+                    
+                    // Hover effect - subtle background
+                    container.setOnMouseEntered(e -> container.setStyle("-fx-cursor: hand; -fx-padding: 4 0; -fx-background-color: #f1f5f9; -fx-background-radius: 4;"));
+                    container.setOnMouseExited(e -> container.setStyle("-fx-cursor: hand; -fx-padding: 4 0;"));
+                    container.setOnMouseClicked(e -> navigateToEmployee(nip));
+                    
+                    setGraphic(container);
                     setText(null);
                 }
             }
@@ -269,6 +280,30 @@ public class AssetManagementView extends VBox {
             table.getColumns().setAll(List.of(kodeCol, jenisCol, merkCol, keteranganCol, SubdirCol, tanggalCol,
                     rupiahCol, kondisiCol, statusCol, aksiCol));
         }
+        
+        // Register columns in columnMap for visibility toggle (exclude Aksi column)
+        columnMap.put("Kode Aset", kodeCol);
+        columnMap.put("Jenis", jenisCol);
+        columnMap.put("Merk Barang", merkCol);
+        columnMap.put("Pemegang", keteranganCol);
+        columnMap.put("Subdir", SubdirCol);
+        columnMap.put("Tanggal Perolehan", tanggalCol);
+        columnMap.put("Rupiah Aset", rupiahCol);
+        columnMap.put("Kondisi", kondisiCol);
+        columnMap.put("Status", statusCol);
+        if ("TIM_MANAJEMEN_ASET".equals(com.siata.client.session.LoginSession.getRole())) {
+            columnMap.put("Kesiapan Lelang", kesiapanLelangCol);
+        }
+        
+        // Add spacer and column configuration button to filter bar
+        Region filterSpacer = new Region();
+        HBox.setHgrow(filterSpacer, Priority.ALWAYS);
+        
+        Button columnConfigBtn = new Button("⚙ Kolom");
+        columnConfigBtn.getStyleClass().add("secondary-button");
+        columnConfigBtn.setOnAction(e -> showColumnConfigPopup(columnConfigBtn));
+        
+        filterBar.getChildren().addAll(filterSpacer, columnConfigBtn);
 
         VBox tableContainer = new VBox(16);
         tableContainer.setPadding(new Insets(20));
@@ -292,6 +327,156 @@ public class AssetManagementView extends VBox {
         button.getStyleClass().add("ghost-button");
         button.setStyle("-fx-font-size: 14px; -fx-padding: 6 10;");
         return button;
+    }
+    
+    private void showColumnConfigPopup(Button anchorButton) {
+        Stage popupStage = new Stage();
+        popupStage.initStyle(StageStyle.UNDECORATED);
+        popupStage.initModality(Modality.NONE);
+        
+        VBox popup = new VBox(8);
+        popup.setPadding(new Insets(16));
+        popup.setStyle("-fx-background-color: white; -fx-background-radius: 8; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.15), 12, 0, 0, 3); -fx-border-color: #e2e8f0; -fx-border-radius: 8;");
+        popup.setMinWidth(200);
+        
+        // Title
+        Label title = new Label("Tampilkan Kolom");
+        title.setStyle("-fx-font-size: 14px; -fx-font-weight: 700; -fx-text-fill: #0f172a;");
+        popup.getChildren().add(title);
+        
+        // Separator
+        Region separator = new Region();
+        separator.setStyle("-fx-background-color: #e2e8f0;");
+        separator.setMinHeight(1);
+        separator.setMaxHeight(1);
+        VBox.setMargin(separator, new Insets(4, 0, 4, 0));
+        popup.getChildren().add(separator);
+        
+        // Checkboxes for each column
+        columnCheckBoxes.clear();
+        TableView<Asset> tableRef = paginatedTable.getTable();
+        for (java.util.Map.Entry<String, TableColumn<Asset, ?>> entry : columnMap.entrySet()) {
+            String colName = entry.getKey();
+            TableColumn<Asset, ?> col = entry.getValue();
+            
+            CheckBox checkBox = new CheckBox(colName);
+            checkBox.setSelected(col.isVisible());
+            checkBox.setStyle("-fx-font-size: 13px; -fx-text-fill: #334155;");
+            
+            // Toggle column visibility when checkbox changes
+            checkBox.selectedProperty().addListener((obs, oldVal, newVal) -> {
+                col.setVisible(newVal);
+                
+                // Auto-resize column when it becomes visible
+                if (newVal) {
+                    Platform.runLater(() -> {
+                        // Trigger column resize to fit content
+                        col.setPrefWidth(col.getPrefWidth());
+                        tableRef.refresh();
+                        
+                        // Use reflection to call private resizeColumnToFitContent method
+                        try {
+                            javafx.scene.control.skin.TableViewSkin<?> skin = 
+                                (javafx.scene.control.skin.TableViewSkin<?>) tableRef.getSkin();
+                            if (skin != null) {
+                                java.lang.reflect.Method method = 
+                                    javafx.scene.control.skin.TableViewSkin.class.getDeclaredMethod(
+                                        "resizeColumnToFitContent", TableColumn.class, int.class);
+                                method.setAccessible(true);
+                                method.invoke(skin, col, -1);
+                            }
+                        } catch (Exception ex) {
+                            // Fallback: just refresh
+                            tableRef.refresh();
+                        }
+                    });
+                }
+            });
+            
+            columnCheckBoxes.put(colName, checkBox);
+            popup.getChildren().add(checkBox);
+        }
+        
+        // Show All / Hide All buttons
+        HBox buttonRow = new HBox(8);
+        buttonRow.setAlignment(Pos.CENTER);
+        VBox.setMargin(buttonRow, new Insets(8, 0, 0, 0));
+        
+        Button showAllBtn = new Button("Tampil Semua");
+        showAllBtn.setStyle("-fx-background-color: #2563eb; -fx-text-fill: white; -fx-font-size: 11px; -fx-padding: 6 12; -fx-background-radius: 4; -fx-cursor: hand;");
+        showAllBtn.setOnAction(e -> {
+            for (java.util.Map.Entry<String, CheckBox> cbEntry : columnCheckBoxes.entrySet()) {
+                cbEntry.getValue().setSelected(true);
+            }
+            // Trigger resize for all columns after a short delay
+            Platform.runLater(() -> {
+                Platform.runLater(() -> {
+                    resizeAllColumns(tableRef);
+                });
+            });
+        });
+        
+        Button hideAllBtn = new Button("Sembunyikan Semua");
+        hideAllBtn.setStyle("-fx-background-color: #f1f5f9; -fx-text-fill: #475569; -fx-font-size: 11px; -fx-padding: 6 12; -fx-background-radius: 4; -fx-cursor: hand;");
+        hideAllBtn.setOnAction(e -> {
+            for (java.util.Map.Entry<String, CheckBox> cbEntry : columnCheckBoxes.entrySet()) {
+                cbEntry.getValue().setSelected(false);
+            }
+        });
+        
+        buttonRow.getChildren().addAll(showAllBtn, hideAllBtn);
+        popup.getChildren().add(buttonRow);
+        
+        // Position popup below the anchor button
+        javafx.geometry.Bounds bounds = anchorButton.localToScreen(anchorButton.getBoundsInLocal());
+        popupStage.setX(bounds.getMinX() - 100);
+        popupStage.setY(bounds.getMaxY() + 8);
+        
+        Scene scene = new Scene(popup);
+        scene.setFill(javafx.scene.paint.Color.TRANSPARENT);
+        popupStage.setScene(scene);
+        
+        // Close popup when clicking outside
+        popupStage.focusedProperty().addListener((obs, wasFocused, isNowFocused) -> {
+            if (!isNowFocused) {
+                popupStage.close();
+            }
+        });
+        
+        popupStage.show();
+    }
+    
+    @SuppressWarnings("unchecked")
+    private void resizeAllColumns(TableView<Asset> table) {
+        // Force table refresh first
+        table.refresh();
+        
+        // Try to resize each column to fit content
+        for (TableColumn<Asset, ?> column : table.getColumns()) {
+            if (column.isVisible()) {
+                try {
+                    // Use reflection to call resizeColumnToFitContent
+                    javafx.scene.control.skin.TableViewSkin<?> skin = 
+                        (javafx.scene.control.skin.TableViewSkin<?>) table.getSkin();
+                    if (skin != null) {
+                        java.lang.reflect.Method method = 
+                            javafx.scene.control.skin.TableViewSkin.class.getDeclaredMethod(
+                                "resizeColumnToFitContent", TableColumn.class, int.class);
+                        method.setAccessible(true);
+                        method.invoke(skin, column, -1);
+                    }
+                } catch (Exception ex) {
+                    // Fallback: set a reasonable width based on column header
+                    String header = column.getText();
+                    double minWidth = Math.max(80, header.length() * 10);
+                    column.setMinWidth(minWidth);
+                    column.setPrefWidth(minWidth + 20);
+                }
+            }
+        }
+        
+        // Final refresh
+        table.refresh();
     }
 
     private void showAssetForm(Asset editableAsset) {
