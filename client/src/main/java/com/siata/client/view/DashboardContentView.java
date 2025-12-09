@@ -42,46 +42,96 @@ public class DashboardContentView extends VBox {
     private final DataService dataService = DataService.getInstance();
     private final AssetApi assetApi = new AssetApi();
     
-    // Cache dashboard data untuk menghindari multiple API calls
+    // Smart caching dengan TTL
     private com.siata.client.dto.DashboardDto cachedDashboardData = null;
+    private long cacheTimestamp = 0;
+    private static final long CACHE_TTL_MILLIS = 30_000; // 30 seconds
+    private boolean isInitialized = false;
+    private boolean isCurrentlyLoading = false;
 
     public DashboardContentView() {
         setSpacing(20);
-        loadDashboardData();
+        // Lazy initialization - load saat pertama kali visible
     }
     
     /**
-     * Public method untuk refresh dashboard data
-     * Dipanggil ketika user kembali ke dashboard atau setelah ada perubahan data
+     * Initialize dashboard - dipanggil pertama kali view visible
      */
-    public void refreshDashboard() {
-        // Clear cached data dan reload
-        cachedDashboardData = null;
-        loadDashboardData();
+    public void initialize() {
+        if (!isInitialized) {
+            isInitialized = true;
+            loadDashboardData(false);
+        }
     }
     
-    private void loadDashboardData() {
-        // Load data di background thread
-        Label loadingLabel = new Label("Loading dashboard...");
-        loadingLabel.getStyleClass().add("section-heading");
-        getChildren().clear();
-        getChildren().add(loadingLabel);
+    /**
+     * Refresh dashboard hanya jika cache expired atau force refresh
+     */
+    public void refreshDashboard() {
+        refreshDashboard(false);
+    }
+    
+    /**
+     * Refresh dashboard dengan opsi force
+     * @param force - true untuk force refresh, false untuk check cache dulu
+     */
+    public void refreshDashboard(boolean force) {
+        long now = System.currentTimeMillis();
+        boolean cacheExpired = (now - cacheTimestamp) > CACHE_TTL_MILLIS;
+        
+        if (force || cacheExpired || cachedDashboardData == null) {
+            loadDashboardData(force);
+        } else if (isInitialized && !getChildren().isEmpty()) {
+            // Cache masih valid, tidak perlu reload
+            // Just fade in untuk smooth transition
+            AnimationUtils.fadeIn(this, AnimationUtils.FAST, Duration.ZERO);
+        } else if (cachedDashboardData != null) {
+            // Ada cached data tapi UI belum dibangun
+            buildContentFromCache();
+        }
+    }
+    
+    /**
+     * Mark cache as stale - dipanggil setelah ada perubahan data
+     */
+    public void markAsStale() {
+        cacheTimestamp = 0; // Force cache expired
+    }
+    
+    private void loadDashboardData(boolean force) {
+        // Prevent multiple simultaneous loads
+        if (isCurrentlyLoading) {
+            return;
+        }
+        
+        isCurrentlyLoading = true;
+        
+        // Show loading indicator hanya jika belum ada content
+        if (getChildren().isEmpty()) {
+            Label loadingLabel = new Label("Loading dashboard...");
+            loadingLabel.getStyleClass().add("section-heading");
+            getChildren().clear();
+            getChildren().add(loadingLabel);
+        }
         
         javafx.concurrent.Task<Void> loadTask = new javafx.concurrent.Task<>() {
             @Override
             protected Void call() throws Exception {
                 // Fetch dashboard data dari API
                 cachedDashboardData = assetApi.getDashboard();
+                cacheTimestamp = System.currentTimeMillis();
                 return null;
             }
         };
         
         loadTask.setOnSucceeded(e -> {
+            isCurrentlyLoading = false;
             getChildren().clear();
             buildContent();
         });
         
         loadTask.setOnFailed(e -> {
+            isCurrentlyLoading = false;
             getChildren().clear();
             Label errorLabel = new Label("Gagal memuat dashboard. Silakan refresh.");
             errorLabel.getStyleClass().add("section-heading");
@@ -90,6 +140,19 @@ public class DashboardContentView extends VBox {
         });
         
         new Thread(loadTask).start();
+    }
+    
+    /**
+     * Build UI dari cached data (tanpa API call)
+     */
+    private void buildContentFromCache() {
+        if (cachedDashboardData == null) {
+            loadDashboardData(false);
+            return;
+        }
+        
+        getChildren().clear();
+        buildContent();
     }
 
     private void buildContent() {

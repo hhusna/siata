@@ -448,7 +448,11 @@ public class MainShellView extends BorderPane {
         }
 
         Node content = switch (page) {
-            case DASHBOARD -> new DashboardContentView();
+            case DASHBOARD -> {
+                DashboardContentView dashboard = new DashboardContentView();
+                dashboard.initialize(); // Initialize saat pertama kali dibuat
+                yield dashboard;
+            }
             case RECAPITULATION -> new RecapitulationView();
             case ASSET_MANAGEMENT -> new AssetManagementView();
             case EMPLOYEE_MANAGEMENT -> new EmployeeManagementView();
@@ -493,9 +497,9 @@ public class MainShellView extends BorderPane {
             loadTask.setOnSucceeded(event -> {
                 Node newContent = loadTask.getValue();
                 
-                // Refresh data on FX thread
+                // Smart refresh - hanya refresh jika perlu
                 if (page == MainPage.DASHBOARD && newContent instanceof DashboardContentView) {
-                    ((DashboardContentView) newContent).refreshDashboard();
+                    ((DashboardContentView) newContent).refreshDashboard(false); // Check cache dulu
                 } else if (page == MainPage.RECAPITULATION && newContent instanceof RecapitulationView) {
                     ((RecapitulationView) newContent).refreshData();
                 }
@@ -525,7 +529,7 @@ public class MainShellView extends BorderPane {
             Node content = resolveContent(page);
             
             if (page == MainPage.DASHBOARD && content instanceof DashboardContentView) {
-                ((DashboardContentView) content).refreshDashboard();
+                ((DashboardContentView) content).refreshDashboard(false); // Check cache dulu
             } else if (page == MainPage.RECAPITULATION && content instanceof RecapitulationView) {
                 ((RecapitulationView) content).refreshData();
             }
@@ -533,6 +537,18 @@ public class MainShellView extends BorderPane {
             contentContainer.getChildren().setAll(content);
             AnimationUtils.pageTransitionIn(content);
             activePage = page;
+        }
+    }
+    
+    /**
+     * Mark dashboard cache as stale - call this after data changes
+     */
+    public void markDashboardStale() {
+        if (pageContent.containsKey(MainPage.DASHBOARD)) {
+            Node content = pageContent.get(MainPage.DASHBOARD);
+            if (content instanceof DashboardContentView) {
+                ((DashboardContentView) content).markAsStale();
+            }
         }
     }
 
