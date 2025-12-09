@@ -49,15 +49,20 @@ public class PengajuanApi {
         return false;
     }
 
-    public boolean patchStatus(Long idPengajuan, String status) {
+    public boolean patchStatus(Long idPengajuan, String status, String catatan, String lampiran) {
         try {
             ObjectMapper mapper = new ObjectMapper();
             mapper.registerModule(new JavaTimeModule());
             mapper.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
 
-            Map<String, String> data = Map.of(
-                    "status", status
-            );
+            java.util.Map<String, String> data = new java.util.HashMap<>();
+            data.put("status", status);
+            if (catatan != null && !catatan.isEmpty()) {
+                data.put("catatan", catatan);
+            }
+            if (lampiran != null && !lampiran.isEmpty()) {
+                data.put("lampiran", lampiran);
+            }
 
             String requestBody = mapper.writeValueAsString(data);
 

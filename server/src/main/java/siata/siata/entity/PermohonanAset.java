@@ -3,6 +3,7 @@ package siata.siata.entity;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.*;
 import lombok.Data;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
@@ -27,14 +28,14 @@ public class PermohonanAset {
     @JoinColumn(name = "nip", referencedColumnName = "nip")
     private Pegawai pegawai;
 
-    @Column(name = "nama_pemohon", length = 100)
-    @NotBlank(message = "Nama pemohon tidak boleh kosong")
-    @Size(min = 3, max = 100, message = "Nama harus 3-100 karakter")
-    @Pattern(regexp = "[a-zA-Z\\s]+", message = "Nama hanya boleh berisi huruf dan spasi")
-    private String namaPemohon;
+    @Column(name = "nip_pengguna", length = 100)
+    @NotBlank(message = "NIP pengguna tidak boleh kosong")
+    @JsonProperty("nip_pengguna")
+    private String nipPengguna;
 
-    @Column(name = "unit", length = 100)
-    private String unit;
+    @Column(name = "subdirektorat_pengguna", length = 100)
+    @JsonProperty("subdirektorat_pengguna")
+    private String subdirektoratPengguna;
 
     @Column(name = "jenis_aset", length = 100)
     @NotBlank(message = "Jenis aset tidak boleh kosong")
@@ -53,10 +54,6 @@ public class PermohonanAset {
     @Column(name = "tujuan_penggunaan", columnDefinition = "TEXT")
     @Size(max = 500, message = "Tujuan maksimal 500 karakter")
     private String tujuanPenggunaan;
-
-    @Column(name = "prioritas", length = 50)
-    @NotBlank(message = "Prioritas tidak boleh kosong")
-    private String prioritas;
 
     @Column(name = "status_persetujuan", length = 50)
     private String statusPersetujuan;

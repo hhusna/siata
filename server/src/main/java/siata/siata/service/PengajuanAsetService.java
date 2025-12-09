@@ -52,6 +52,38 @@ public class PengajuanAsetService {
         return repository.findAllWithPegawai();
     }
 
+    public List<PengajuanAset> getAllByRole(String role) {
+        List<PengajuanAset> all = repository.findAllWithPegawai();
+        
+        if ("TIM_MANAJEMEN_ASET".equals(role) || "DEV".equals(role) || "ADMIN".equals(role)) {
+            return all;
+        }
+
+        return all.stream()
+            .filter(p -> {
+                String status = p.getStatusPersetujuan();
+                if (status == null) return false;
+                
+                if ("PPBJ".equals(role)) {
+                    return "Pending".equalsIgnoreCase(status) || 
+                           status.toUpperCase().contains("PPBJ");
+                }
+                
+                if ("PPK".equals(role)) {
+                    return "Disetujui PPBJ".equalsIgnoreCase(status) || 
+                           status.toUpperCase().contains("PPK");
+                }
+                
+                if ("DIREKTUR".equals(role)) {
+                    return "Disetujui PPK".equalsIgnoreCase(status) || 
+                           status.toUpperCase().contains("DIREKTUR");
+                }
+                
+                return false;
+            })
+            .toList();
+    }
+
     public Optional<PengajuanAset> getById(Long id) {
         return repository.findById(id);
     }
@@ -79,13 +111,16 @@ public class PengajuanAsetService {
     }
 
     @CacheEvict(value = {"pengajuanList", "approvalLogs"}, allEntries = true)
-    public PengajuanAset updateStatus(Long id, String status, Pegawai userPegawai) {
+    public PengajuanAset updateStatus(Long id, String status, String catatan, String lampiran, Pegawai userPegawai) {
         PengajuanAset data = repository.findById(id).orElseThrow(() -> new RuntimeException("Pengajuan not found"));
         data.setStatusPersetujuan(status);
         PengajuanAset savedData = repository.save(data);
 
         String isiLog = "Memperbarui status pengajuan (ID: " + id + ") menjadi: " + status;
-        logRiwayatService.saveLog(new LogRiwayat(userPegawai, savedData, "UPDATE_STATUS_PENGAJUAN", isiLog));
+        LogRiwayat log = new LogRiwayat(userPegawai, savedData, "UPDATE_STATUS_PENGAJUAN", isiLog);
+        log.setCatatan(catatan);
+        log.setLampiran(lampiran);
+        logRiwayatService.saveLog(log);
 
         return savedData;
     }

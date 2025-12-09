@@ -91,4 +91,35 @@ public class UserApi {
         }
     }
 
+    public boolean simulateRole(String newRole) {
+        try {
+            ObjectMapper mapper = new ObjectMapper();
+            java.util.Map<String, String> payload = new java.util.HashMap<>();
+            payload.put("role", newRole);
+            
+            String requestBody = mapper.writeValueAsString(payload);
+            
+            HttpClient client = HttpClient.newBuilder()
+                    .connectTimeout(Duration.ofSeconds(5))
+                    .build();
+
+            // Note: DevController mapped to /api/dev
+            String targetUrl = ApiConfig.getBaseUrl() + "/api/dev/simulate-role";
+
+            HttpRequest request = HttpRequest.newBuilder()
+                    .uri(URI.create(targetUrl))
+                    .header("Content-Type", "application/json")
+                    .header("Authorization", "Bearer " + LoginSession.getJwt())
+                    .POST(HttpRequest.BodyPublishers.ofString(requestBody))
+                    .build();
+
+            HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+            
+            return response.statusCode() == 200;
+        } catch (Exception e) {
+            e.printStackTrace();
+            return false;
+        }
+    }
+
 }

@@ -14,4 +14,6 @@ public class ApprovalLogDTO {
     private String role;
     private String status; // "Disetujui" or "Ditolak"
     private LocalDateTime timestamp;
+    private String catatan; // Approver's message
+    private String lampiran; // File path to attachment
 }

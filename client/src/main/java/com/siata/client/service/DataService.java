@@ -50,7 +50,21 @@ public class DataService {
         return "PGJ-" + dateStr + "-" + String.format("%03d", pengajuanCounter.getAndIncrement());
     }
 
+    // Cache for Assets
+    private List<Asset> cachedAssets = null;
+    private long assetsCacheTimestamp = 0;
+    private static final long ASSETS_CACHE_TTL = 30000; // 30 seconds
+
     public List<Asset> getAssets() {
+        return getAssets(false);
+    }
+
+    public List<Asset> getAssets(boolean forceRefresh) {
+        long now = System.currentTimeMillis();
+        if (!forceRefresh && cachedAssets != null && (now - assetsCacheTimestamp < ASSETS_CACHE_TTL)) {
+            return new ArrayList<>(cachedAssets);
+        }
+
         List<Asset> listAsset = new ArrayList<>();
         for (AssetDto assetDto : assetApi.getAsset()) {
             Asset assetValue = new Asset();
@@ -75,10 +89,17 @@ public class DataService {
             if (!(assetValue.getStatus().equals("Tandai Dihapus"))) {
                 listAsset.add(assetValue);
             }
-
         }
 
-        return listAsset;
+        cachedAssets = listAsset;
+        assetsCacheTimestamp = now;
+
+        return new ArrayList<>(listAsset);
+    }
+
+    public void clearAssetCache() {
+        cachedAssets = null;
+        assetsCacheTimestamp = 0;
     }
 
     /**
@@ -148,7 +169,7 @@ public class DataService {
 
         // 2. Cek validasi NIP (Keterangan)
         String nipInput = asset.getKeterangan();
-        if (nipInput != null && !nipInput.trim().isEmpty() && isNumeric(nipInput)) {
+        if (nipInput != null && !nipInput.trim().isEmpty() && !"0".equals(nipInput.trim()) && isNumeric(nipInput)) {
             // Jika ada input NIP valid, ambil data pegawai
             try {
                 PegawaiDto pegawaiDto = pegawaiApi.getPegawaiByNip(Long.parseLong(nipInput));
@@ -187,10 +208,64 @@ public class DataService {
         long newId = assetApi.tambahAsset(assetToDto);
         if (newId != 0) {
             asset.setIdAset(newId); // Update ID local asset
+            clearAssetCache(); // Invalidate cache
             logActivity("admin", "Create", "Menambahkan aset baru", "Aset #" + asset.getKodeAset(), asset.getNamaAset());
             return true;
         }
         return false;
+    }
+
+    public int batchAddAssets(List<Asset> assets) {
+        if (assets == null || assets.isEmpty()) return 0;
+        
+        // Pre-fetch all employees to avoid N+1 API calls logic
+        PegawaiDto[] allPegawaiDtos = pegawaiApi.getPegawai();
+        java.util.Map<String, PegawaiDto> nipToPegawaiMap = new java.util.HashMap<>();
+        if (allPegawaiDtos != null) {
+            for (PegawaiDto p : allPegawaiDtos) {
+                nipToPegawaiMap.put(String.valueOf(p.getNip()), p);
+            }
+        }
+
+        List<AssetDtoForRequest> batchPayload = new ArrayList<>();
+
+        for (Asset asset : assets) {
+             AssetDtoForRequest assetToDto = new AssetDtoForRequest();
+             
+             // Mapping logic
+             assetToDto.setSubdirektorat(asset.getSubdir());
+             
+             String nipInput = asset.getKeterangan();
+             if (nipInput != null && !nipInput.trim().isEmpty() && !"0".equals(nipInput.trim()) && isNumeric(nipInput)) {
+                 PegawaiDto p = nipToPegawaiMap.get(nipInput.trim());
+                 if (p != null) {
+                     assetToDto.setPegawaiDto(p);
+                 } else {
+                     assetToDto.setPegawaiDto(null);
+                 }
+             } else {
+                 assetToDto.setPegawaiDto(null);
+             }
+
+             assetToDto.setKodeAset(asset.getKodeAset());
+             assetToDto.setJenisAset(asset.getJenisAset());
+             assetToDto.setMerkAset(asset.getMerkBarang());
+             assetToDto.setTanggalPerolehan(asset.getTanggalPerolehan());
+             assetToDto.setHargaAset(asset.getNilaiRupiah());
+             assetToDto.setKondisi(asset.getKondisi());
+             assetToDto.setStatusPemakaian(asset.getStatus());
+             assetToDto.setDipakai(asset.getDipakai());
+             assetToDto.setNoAset(asset.getNoAset());
+             
+             batchPayload.add(assetToDto);
+        }
+
+        int count = assetApi.batchAddAsset(batchPayload);
+        if (count > 0) {
+            clearAssetCache();
+            logActivity("admin", "Create", "Import Batch " + count + " aset", "-", "Import Excel");
+        }
+        return count;
     }
 
     // Helper kecil untuk cek angka
@@ -264,7 +339,7 @@ public class DataService {
         
         // 2. Handle NIP (sama seperti addAsset)
         String nipInput = asset.getKeterangan();
-        if (nipInput != null && !nipInput.trim().isEmpty() && isNumeric(nipInput)) {
+        if (nipInput != null && !nipInput.trim().isEmpty() && !"0".equals(nipInput.trim()) && isNumeric(nipInput)) {
             try {
                 PegawaiDto pegawaiDto = pegawaiApi.getPegawaiByNip(Long.parseLong(nipInput));
                 if (pegawaiDto != null && pegawaiDto.getNama() != null) {
@@ -298,6 +373,7 @@ public class DataService {
         
         boolean success = assetApi.putAsset(assetDto);
         if (success) {
+            clearAssetCache(); // Invalidate cache
             logActivity("admin", "Update", "Memperbarui aset", "Aset #" + asset.getKodeAset(), asset.getNamaAset());
             return true;
         }
@@ -310,11 +386,24 @@ public class DataService {
         // TIDAK mengubah status: tetap "Non Aktif"
         // TIDAK mengubah kondisi: tetap sesuai kondisi asli
         assetApi.deleteAssetById(asset.getIdAset());
+        clearAssetCache(); // Invalidate cache
         logActivity("admin", "Delete", "Menghapus aset", "Aset #" + asset.getKodeAset(), asset.getNamaAset());
+    }
+
+    public int batchDeleteAssets(List<Long> assetIds) {
+        if (assetIds == null || assetIds.isEmpty()) return 0;
+        
+        int result = assetApi.batchDeleteAset(assetIds);
+        if (result >= 0) {
+            clearAssetCache(); // Invalidate cache
+            logActivity("admin", "Delete", "Menghapus " + result + " aset", "-", "Bulk Delete");
+        }
+        return result;
     }
 
     public void removeAsset(Asset asset) {
         assets.remove(asset);
+        clearAssetCache(); // Invalidate cache
     }
 
     public List<Asset> getDeletedAssets() {
@@ -394,24 +483,41 @@ public class DataService {
             PermohonanDto permohonanDto = new PermohonanDto();
             // Kode permohonan akan di-generate otomatis oleh server
             permohonanDto.setPegawaiDto(LoginSession.getPegawaiDto());
-            // Set nama pemohon dari input user
-            permohonanDto.setNamaPemohon(request.getPemohon());
-            // Set unit dari input user, bukan dari pegawai yang login
-            permohonanDto.setUnit(request.getUnit());
+            
+            // Set NIP dan Subdirektorat dari input user (previously mapped to pemohon/unit in model)
+            permohonanDto.setNipPengguna(request.getPemohon());
+            permohonanDto.setSubdirektoratPengguna(request.getUnit());
 
             permohonanDto.setJenisAset(request.getJenisAset());
             permohonanDto.setJumlah(request.getJumlah());
             permohonanDto.setDeskripsi(request.getDeskripsi());
             permohonanDto.setTujuanPenggunaan(request.getTujuanPenggunaan());
-            permohonanDto.setPrioritas(request.getPrioritas());
+            // Prioritas removed
             permohonanDto.setTimestamp(LocalDate.now());
             permohonanApi.createPermohonan(permohonanDto);
         } else {
             PengajuanDto pengajuanDto = new PengajuanDto();
             // Kode pengajuan akan di-generate otomatis oleh server
             pengajuanDto.setPegawaiDto(LoginSession.getPegawaiDto());
-            // Set nama pengaju dari input user
-            pengajuanDto.setNamaPengaju(request.getPemohon());
+            
+            // request.getPemohon() now contains NIP, we need to look up the name
+            String nipOrName = request.getPemohon();
+            String namaPengaju = nipOrName; // Default to input value
+            
+            // Try to look up employee name from NIP
+            if (nipOrName != null && !nipOrName.trim().isEmpty()) {
+                try {
+                    PegawaiDto pegawai = pegawaiApi.getPegawaiByNip(Long.parseLong(nipOrName.trim()));
+                    if (pegawai != null && pegawai.getNama() != null) {
+                        namaPengaju = pegawai.getNama();
+                    }
+                } catch (NumberFormatException e) {
+                    // Input is not a number (might already be a name), use as-is
+                    namaPengaju = nipOrName;
+                }
+            }
+            
+            pengajuanDto.setNamaPengaju(namaPengaju);
             // Set unit dari input user, bukan dari pegawai yang login
             pengajuanDto.setUnit(request.getUnit());
 
@@ -436,9 +542,9 @@ public class DataService {
     public void updateAssetRequestStatus(AssetRequest request, String newStatus, String approver) {
         request.setStatus(newStatus);
         if (request.getTipe().equals("Permohonan")) {
-            permohonanApi.patchStatus(request.getId(), newStatus);
+            permohonanApi.patchStatus(request.getId(), newStatus, null, null);
         } else {
-            pengajuanApi.patchStatus(request.getId(), newStatus);
+            pengajuanApi.patchStatus(request.getId(), newStatus, null, null);
         }
         String actionType = newStatus.contains("Disetujui") ? "Approve" : "Reject";
         logActivity(approver, actionType,
@@ -447,22 +553,64 @@ public class DataService {
                 request.getDeskripsi() != null ? request.getDeskripsi() : request.getJenisAset());
     }
 
+    public void updateAssetRequestStatus(Long id, String tipe, String newStatus, String catatan, String lampiran, java.util.function.Consumer<Boolean> callback) {
+        javafx.concurrent.Task<Boolean> task = new javafx.concurrent.Task<>() {
+            @Override
+            protected Boolean call() throws Exception {
+                try {
+                    boolean success;
+                    if ("Permohonan".equals(tipe)) {
+                        success = permohonanApi.patchStatus(id, newStatus, catatan, lampiran);
+                    } else {
+                        success = pengajuanApi.patchStatus(id, newStatus, catatan, lampiran);
+                    }
+                    
+                    if (success) {
+                        // Log activity
+                        String approver = LoginSession.getPegawaiDto() != null ? LoginSession.getPegawaiDto().getNama() : "Admin";
+                        String actionType = newStatus.contains("Disetujui") ? "Approve" : "Reject";
+                        // Note: We don't have full request details here easily for logging without fetching, 
+                        // but we can log basic info or fetch. For now, basic log.
+                        logActivity(approver, actionType, 
+                                actionType.equals("Approve") ? "Menyetujui request" : "Menolak request", 
+                                tipe + " #" + id, 
+                                "Status: " + newStatus);
+                    }
+                    return success;
+                } catch (Exception e) {
+                    e.printStackTrace();
+                    return false;
+                }
+            }
+        };
+        
+        task.setOnSucceeded(e -> {
+            if (callback != null) callback.accept(task.getValue());
+        });
+        
+        task.setOnFailed(e -> {
+            if (callback != null) callback.accept(false);
+        });
+        
+        new Thread(task).start();
+    }
+
     public void updateAssetRequest(AssetRequest request) {
         if ("Permohonan".equals(request.getTipe())) {
             // Logika untuk permohonan
             PermohonanDto dto = new PermohonanDto();
             dto.setIdPermohonan(request.getId());
             dto.setKodePermohonan(request.getNoPermohonan());
-            // Update nama pemohon jika diedit
-            dto.setNamaPemohon(request.getPemohon());
-            // Update unit dari input user
-            dto.setUnit(request.getUnit());
+            
+            // Update NIP dan Subdir
+            dto.setNipPengguna(request.getPemohon());
+            dto.setSubdirektoratPengguna(request.getUnit());
 
             dto.setJenisAset(request.getJenisAset());
             dto.setJumlah(request.getJumlah());
             dto.setDeskripsi(request.getDeskripsi());
             dto.setTujuanPenggunaan(request.getTujuanPenggunaan());
-            dto.setPrioritas(request.getPrioritas());
+            // Prioritas removed
             dto.setTimestamp(request.getTanggal());
 
             // Panggil API
@@ -504,17 +652,35 @@ public class DataService {
     public List<AssetRequest> getPermohonanAset() {
         PermohonanDto[] permohonanDtos = permohonanApi.getPermohonan();
         List<AssetRequest> assetRequestList = new ArrayList<>();
+        
+        // Fetch all employees for name lookup to avoid N+1 issues
+        List<Employee> allEmployees = getEmployees();
+        java.util.Map<String, String> nipToNameMap = new java.util.HashMap<>();
+        for (Employee e : allEmployees) {
+            nipToNameMap.put(e.getNip(), e.getNamaLengkap());
+        }
 
         for (PermohonanDto dto : permohonanDtos) {
             AssetRequest assetRequest = new AssetRequest();
             assetRequest.setId(dto.getIdPermohonan());
             assetRequest.setNoPermohonan(dto.getKodePermohonan());
             assetRequest.setTanggal(dto.getTimestamp());
-            assetRequest.setPemohon(dto.getNamaPemohon());
-            assetRequest.setUnit(dto.getUnit());
+            
+            // Lookup Name from NIP for display
+            String nip = dto.getNipPengguna();
+            String beneficiaryName = nip; // default to NIP
+            if (nip != null) {
+                String foundName = nipToNameMap.get(nip.trim());
+                if (foundName != null) {
+                    beneficiaryName = foundName;
+                }
+            }
+            assetRequest.setPemohon(beneficiaryName);
+            
+            assetRequest.setUnit(dto.getSubdirektoratPengguna());
             assetRequest.setJenisAset(dto.getJenisAset());
             assetRequest.setJumlah(dto.getJumlah());
-            assetRequest.setPrioritas(dto.getPrioritas());
+            // Prioritas removed from model so we skip setting it
             assetRequest.setTipe("Permohonan");
             assetRequest.setDeskripsi(dto.getDeskripsi());
             assetRequest.setTujuanPenggunaan(dto.getTujuanPenggunaan());

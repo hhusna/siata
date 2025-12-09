@@ -52,6 +52,14 @@ public class LogRiwayat {
     @NotNull(message = "Timestamp tidak boleh kosong")
     private LocalDateTime timestamp;
 
+    @Column(name = "catatan", columnDefinition = "TEXT")
+    @Size(max = 1000, message = "Catatan maksimal 1000 karakter")
+    private String catatan; // Approver's message/notes
+
+    @Column(name = "lampiran", length = 500)
+    @Size(max = 500, message = "Path lampiran maksimal 500 karakter")
+    private String lampiran; // File path to attachment
+
     // Constructor untuk log umum
     public LogRiwayat(Pegawai pegawai, String jenisLog, String isiLog) {
         this.pegawai = pegawai;

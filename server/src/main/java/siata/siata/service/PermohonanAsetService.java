@@ -26,21 +26,21 @@ public class PermohonanAsetService {
     private PegawaiRepository pegawaiRepository;
 
     /**
-     * Validasi apakah nama pemohon terdaftar di unit yang sesuai
+     * Validasi apakah NIP pemohon terdaftar di unit yang sesuai
      * @return error message jika tidak valid, null jika valid
      */
-    public String validatePemohonByUnit(String namaPemohon, String unit) {
-        if (namaPemohon == null || unit == null) {
-            return "Nama pemohon dan unit tidak boleh kosong";
+    public String validatePemohonByUnit(String nipPengguna, String subdirektoratPengguna) {
+        if (nipPengguna == null || subdirektoratPengguna == null) {
+            return "NIP dan subdirektorat tidak boleh kosong";
         }
         
-        // Cek apakah ada pegawai dengan nama dan unit yang sesuai
+        // Cek apakah ada pegawai dengan NIP dan unit yang sesuai
         boolean exists = pegawaiRepository.findAll().stream()
-            .anyMatch(p -> p.getNama().equalsIgnoreCase(namaPemohon.trim()) && 
-                          p.getNamaSubdir().equals(unit));
+            .anyMatch(p -> String.valueOf(p.getNip()).equals(nipPengguna.trim()) && 
+                          p.getNamaSubdir().equals(subdirektoratPengguna));
         
         if (!exists) {
-            return "Nama pemohon '" + namaPemohon + "' tidak terdaftar di subdirektorat " + unit;
+            return "NIP '" + nipPengguna + "' tidak terdaftar di subdirektorat " + subdirektoratPengguna;
         }
         
         return null; // Valid
@@ -49,6 +49,41 @@ public class PermohonanAsetService {
     @Cacheable("permohonanList")
     public List<PermohonanAset> getAll() {
         return repository.findAllWithPegawai();
+    }
+
+    public List<PermohonanAset> getAllByRole(String role) {
+        List<PermohonanAset> all = repository.findAllWithPegawai();
+        
+        if ("TIM_MANAJEMEN_ASET".equals(role) || "DEV".equals(role) || "ADMIN".equals(role)) {
+            return all;
+        }
+
+        return all.stream()
+            .filter(p -> {
+                String status = p.getStatusPersetujuan();
+                if (status == null) return false;
+                
+                if ("PPBJ".equals(role)) {
+                    // PPBJ sees Pending, and their own decisions
+                    return "Pending".equalsIgnoreCase(status) || 
+                           status.toUpperCase().contains("PPBJ");
+                }
+                
+                if ("PPK".equals(role)) {
+                    // PPK sees Approved by PPBJ, and their own decisions
+                    return "Disetujui PPBJ".equalsIgnoreCase(status) || 
+                           status.toUpperCase().contains("PPK");
+                }
+                
+                if ("DIREKTUR".equals(role)) {
+                    // Direktur sees Approved by PPK, and their own decisions
+                    return "Disetujui PPK".equalsIgnoreCase(status) || 
+                           status.toUpperCase().contains("DIREKTUR");
+                }
+                
+                return false;
+            })
+            .toList();
     }
 
     public Optional<PermohonanAset> getById(Long id) {
@@ -79,13 +114,16 @@ public class PermohonanAsetService {
     }
 
     @CacheEvict(value = {"permohonanList", "approvalLogs"}, allEntries = true)
-    public PermohonanAset updateStatus(Long id, String status, Pegawai userPegawai) {
+    public PermohonanAset updateStatus(Long id, String status, String catatan, String lampiran, Pegawai userPegawai) {
         PermohonanAset data = repository.findById(id).orElseThrow(() -> new RuntimeException("Permohonan not found"));
         data.setStatusPersetujuan(status);
         PermohonanAset savedData = repository.save(data);
 
         String isiLog = "Memperbarui status permohonan (ID: " + id + ") menjadi: " + status;
-        logRiwayatService.saveLog(new LogRiwayat(userPegawai, savedData, "UPDATE_STATUS_PERMOHONAN", isiLog));
+        LogRiwayat log = new LogRiwayat(userPegawai, savedData, "UPDATE_STATUS_PERMOHONAN", isiLog);
+        log.setCatatan(catatan);
+        log.setLampiran(lampiran);
+        logRiwayatService.saveLog(log);
 
         return savedData;
     }

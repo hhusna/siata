@@ -28,15 +28,19 @@ public class PermohonanAsetController {
 
     @GetMapping
     @PreAuthorize("hasAnyRole('TIM_MANAJEMEN_ASET', 'PPBJ', 'PPK', 'DIREKTUR', 'DEV')")
-    public List<PermohonanAset> getAll() {
-        return permohonanAsetService.getAll();
+    public List<PermohonanAset> getAll(Authentication authentication) {
+        User user = (User) authentication.getPrincipal();
+        // Gunakan effective role agar DEV bisa simulasi sebagai role lain
+        String role = user.getEffectiveRole();
+        return permohonanAsetService.getAllByRole(role);
     }
 
     @PostMapping
     @PreAuthorize("hasAnyRole('TIM_MANAJEMEN_ASET', 'DEV')")
     public ResponseEntity<?> create(@Valid @RequestBody PermohonanAset permohonanAset, Authentication authentication) {
         // Validasi: cek apakah nama pemohon terdaftar di unit yang sesuai
-        String validationError = permohonanAsetService.validatePemohonByUnit(permohonanAset.getNamaPemohon(), permohonanAset.getUnit());
+        // Menggunakan nipPengguna dan subdirektoratPengguna
+        String validationError = permohonanAsetService.validatePemohonByUnit(permohonanAset.getNipPengguna(), permohonanAset.getSubdirektoratPengguna());
         if (validationError != null) {
             return ResponseEntity.badRequest().body(validationError);
         }
@@ -48,7 +52,9 @@ public class PermohonanAsetController {
     public ResponseEntity<PermohonanAset> updateStatus(@PathVariable Long id, @Valid @RequestBody StatusUpdateDTO statusUpdate, Authentication authentication) {
         try {
             String status = statusUpdate.getStatus();
-            return ResponseEntity.ok(permohonanAsetService.updateStatus(id, status, getPegawaiFromAuth(authentication)));
+            String catatan = statusUpdate.getCatatan();
+            String lampiran = statusUpdate.getLampiran();
+            return ResponseEntity.ok(permohonanAsetService.updateStatus(id, status, catatan, lampiran, getPegawaiFromAuth(authentication)));
         } catch (Exception e) {
             return ResponseEntity.notFound().build();
         }
@@ -65,7 +71,7 @@ public class PermohonanAsetController {
     @PreAuthorize("hasAnyRole('TIM_MANAJEMEN_ASET', 'DEV')")
     public ResponseEntity<?> update(@PathVariable Long id, @Valid @RequestBody PermohonanAset permohonanDetails, Authentication authentication) {
         // Validasi: cek apakah nama pemohon terdaftar di unit yang sesuai
-        String validationError = permohonanAsetService.validatePemohonByUnit(permohonanDetails.getNamaPemohon(), permohonanDetails.getUnit());
+        String validationError = permohonanAsetService.validatePemohonByUnit(permohonanDetails.getNipPengguna(), permohonanDetails.getSubdirektoratPengguna());
         if (validationError != null) {
             return ResponseEntity.badRequest().body(validationError);
         }
@@ -73,13 +79,13 @@ public class PermohonanAsetController {
         return permohonanAsetService.getById(id)
                 .map(existing -> {
                     // Update field sesuai ERD
-                    existing.setNamaPemohon(permohonanDetails.getNamaPemohon());
-                    existing.setUnit(permohonanDetails.getUnit());
+                    existing.setNipPengguna(permohonanDetails.getNipPengguna());
+                    existing.setSubdirektoratPengguna(permohonanDetails.getSubdirektoratPengguna());
                     existing.setJenisAset(permohonanDetails.getJenisAset());
                     existing.setJumlah(permohonanDetails.getJumlah());
                     existing.setDeskripsi(permohonanDetails.getDeskripsi());
                     existing.setTujuanPenggunaan(permohonanDetails.getTujuanPenggunaan());
-                    existing.setPrioritas(permohonanDetails.getPrioritas());
+                    // prioritas removed
                     existing.setTimestamp(permohonanDetails.getTimestamp());
 
                     // Simpan perubahan

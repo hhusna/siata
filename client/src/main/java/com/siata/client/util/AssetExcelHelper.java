@@ -65,7 +65,10 @@ public class AssetExcelHelper {
                     if (jenisAset == null) jenisAset = "";
                     if (merkBarang == null) merkBarang = "";
                     if (nipPemegang == null) nipPemegang = "";
-                    else nipPemegang = nipPemegang.replaceAll("\\s+", ""); // Remove spaces
+                    else {
+                        nipPemegang = nipPemegang.replaceAll("\\s+", ""); // Remove spaces
+                        if ("0".equals(nipPemegang)) nipPemegang = ""; // Treat "0" as empty
+                    }
                     
                     if (subdir == null) subdir = "";
                     if (kondisi == null || kondisi.isEmpty()) kondisi = "Baik";

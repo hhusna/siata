@@ -36,9 +36,20 @@ public class User implements UserDetails {
 
     @Column(name = "role", nullable = false, length = 50)
     @NotBlank(message = "Role tidak boleh kosong")
-    @Pattern(regexp = "^(TIM_MANAJEMEN_ASET|PPK|PPBJ|DIREKTUR)$", 
-             message = "Role harus salah satu dari: TIM_MANAJEMEN_ASET, PPK, PPBJ, DIREKTUR")
+    @Pattern(regexp = "^(TIM_MANAJEMEN_ASET|PPK|PPBJ|DIREKTUR|DEV)$", 
+             message = "Role harus salah satu dari: TIM_MANAJEMEN_ASET, PPK, PPBJ, DIREKTUR, DEV")
     private String role;
+
+    // Field untuk mode simulasi (hanya untuk DEV)
+    @Column(name = "simulation_role", length = 50)
+    private String simulationRole;
+
+    public String getEffectiveRole() {
+        if (simulationRole != null && !simulationRole.isEmpty()) {
+            return simulationRole;
+        }
+        return role;
+    }
 
     // Implementasi UserDetails
     @Override

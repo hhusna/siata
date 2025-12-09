@@ -29,8 +29,9 @@ public class PengajuanAset {
 
     @Column(name = "nama_pengaju", length = 100)
     @NotBlank(message = "Nama pengaju tidak boleh kosong")
-    @Size(min = 3, max = 100, message = "Nama harus 3-100 karakter")
-    @Pattern(regexp = "[a-zA-Z\\s]+", message = "Nama hanya boleh berisi huruf dan spasi")
+    @Size(min = 2, max = 100, message = "Nama harus 2-100 karakter")
+    // Relaxed pattern: allow letters, numbers, spaces, dots, commas, apostrophes
+    @Pattern(regexp = "[a-zA-Z0-9\\s'.,-]+", message = "Nama hanya boleh berisi huruf, angka, spasi, dan tanda baca umum")
     private String namaPengaju;
 
     @Column(name = "unit", length = 100)

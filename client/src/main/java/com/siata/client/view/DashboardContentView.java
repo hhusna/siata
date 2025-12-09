@@ -119,6 +119,11 @@ public class DashboardContentView extends VBox {
             protected Void call() throws Exception {
                 // Fetch dashboard data dari API
                 cachedDashboardData = assetApi.getDashboard();
+                
+                // Pre-fetch assets in background to prime cache
+                // This ensures buildContent() on UI thread gets data instantly from cache
+                dataService.getAssets(force);
+                
                 cacheTimestamp = System.currentTimeMillis();
                 return null;
             }

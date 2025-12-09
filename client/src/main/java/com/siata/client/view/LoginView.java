@@ -416,6 +416,7 @@ public class LoginView extends HBox {
             
             if (loginTask.getValue()) {
                 System.out.println("Login berhasil!");
+                stopAnimations(); // Stop animations before leaving view
                 onLogin.ifPresent(Runnable::run);
             } else {
                 statusLabel.setText("Login gagal. Periksa username dan password.");
@@ -433,6 +434,13 @@ public class LoginView extends HBox {
         });
         
         new Thread(loginTask).start();
+    }
+
+    public void stopAnimations() {
+        for (Timeline timeline : animationTimelines) {
+            timeline.stop();
+        }
+        animationTimelines.clear();
     }
 
     public void setOnLogin(Runnable onLogin) {

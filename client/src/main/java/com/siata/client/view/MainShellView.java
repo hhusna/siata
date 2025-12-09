@@ -388,18 +388,29 @@ public class MainShellView extends BorderPane {
             roleBtn.setOnAction(ev -> {
                 popupStage.close();
                 if (!roleName.equals(currentRole)) {
-                    // Switch role
-                    LoginSession.setRole(roleName);
-                    
-                    // Clear page cache and rebuild view
-                    pageContent.clear();
-                    menuItems.clear();
-                    menuTextLabels.clear();
-                    
-                    // Rebuild the entire view
-                    getChildren().clear();
-                    buildView();
-                    switchPage(MainPage.DASHBOARD);
+                    // Call API to simulate role on server
+                    com.siata.client.api.UserApi userApi = new com.siata.client.api.UserApi();
+                    if (userApi.simulateRole(roleName)) {
+                        // Switch role locally only if API success
+                        LoginSession.setRole(roleName);
+                        
+                        // Clear page cache and rebuild view
+                        pageContent.clear();
+                        menuItems.clear();
+                        menuTextLabels.clear();
+                        
+                        // Rebuild the entire view
+                        getChildren().clear();
+                        buildView();
+                        switchPage(MainPage.DASHBOARD);
+                    } else {
+                        // Show error
+                        javafx.scene.control.Alert alert = new javafx.scene.control.Alert(javafx.scene.control.Alert.AlertType.ERROR);
+                        alert.setTitle("Error");
+                        alert.setHeaderText("Gagal Mengubah Role");
+                        alert.setContentText("Gagal memperbarui role di server. Silakan coba lagi.");
+                        alert.showAndWait();
+                    }
                 }
             });
             
@@ -502,6 +513,12 @@ public class MainShellView extends BorderPane {
                     ((DashboardContentView) newContent).refreshDashboard(false); // Check cache dulu
                 } else if (page == MainPage.RECAPITULATION && newContent instanceof RecapitulationView) {
                     ((RecapitulationView) newContent).refreshData();
+                } else if (page == MainPage.ASSET_MANAGEMENT && newContent instanceof AssetManagementView) {
+                    ((AssetManagementView) newContent).refreshTable();
+                } else if (page == MainPage.ASSET_APPROVAL && newContent instanceof AssetApprovalView) {
+                    ((AssetApprovalView) newContent).refreshTables();
+                } else if (page == MainPage.ASSET_REMOVAL && newContent instanceof AssetRemovalView) {
+                    ((AssetRemovalView) newContent).refreshTable();
                 }
                 
                 // Set new content with initial low opacity
@@ -532,6 +549,12 @@ public class MainShellView extends BorderPane {
                 ((DashboardContentView) content).refreshDashboard(false); // Check cache dulu
             } else if (page == MainPage.RECAPITULATION && content instanceof RecapitulationView) {
                 ((RecapitulationView) content).refreshData();
+            } else if (page == MainPage.ASSET_MANAGEMENT && content instanceof AssetManagementView) {
+                ((AssetManagementView) content).refreshTable();
+            } else if (page == MainPage.ASSET_APPROVAL && content instanceof AssetApprovalView) {
+                ((AssetApprovalView) content).refreshTables();
+            } else if (page == MainPage.ASSET_REMOVAL && content instanceof AssetRemovalView) {
+                ((AssetRemovalView) content).refreshTable();
             }
             
             contentContainer.getChildren().setAll(content);

@@ -77,24 +77,47 @@ public class LogRiwayatService {
             .map(log -> {
                 String isiLog = log.getIsiLog();
                 String status = "Pending";
+                String role = "";
                 
-                // PENTING: Cek Ditolak dulu sebelum Disetujui
+                // Extract status and role from isiLog
+                // Format: "Memperbarui status ... menjadi: Disetujui PPBJ" or "... Ditolak PPK"
                 if (isiLog.contains("Ditolak")) {
                     status = "Ditolak";
+                    role = extractRoleFromStatus(isiLog);
                 } else if (isiLog.contains("Disetujui")) {
                     status = "Disetujui";
+                    role = extractRoleFromStatus(isiLog);
                 }
                 
-                String role = extractRole(log.getPegawai().getUser().getRole());
+                // Fallback to user's role if extraction failed
+                if (role.isEmpty()) {
+                    role = extractRole(log.getPegawai().getUser().getRole());
+                }
                 
                 return new ApprovalLogDTO(
                     log.getPegawai().getNama(),
                     role,
                     status,
-                    log.getTimestamp()
+                    log.getTimestamp(),
+                    log.getCatatan(),
+                    log.getLampiran()
                 );
             })
             .collect(Collectors.toList());
+    }
+
+    /**
+     * Extract role from status string in log content
+     * e.g., "menjadi: Disetujui PPBJ" -> "PPBJ"
+     */
+    private String extractRoleFromStatus(String isiLog) {
+        // Look for patterns like "Disetujui PPBJ", "Ditolak PPK", "Disetujui Direktur"
+        if (isiLog.contains("PPBJ")) return "PPBJ";
+        if (isiLog.contains("PPK")) return "PPK";
+        if (isiLog.contains("Direktur")) return "Direktur";
+        if (isiLog.contains("Tim Manajemen Aset") || isiLog.contains("TIM_MANAJEMEN_ASET")) return "Tim Manajemen Aset";
+        if (isiLog.contains("Tim Aset")) return "Tim Manajemen Aset";
+        return "";
     }
 
     private String extractRole(String roleString) {

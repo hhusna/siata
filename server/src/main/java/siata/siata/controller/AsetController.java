@@ -59,6 +59,12 @@ public class AsetController {
         return asetService.searchAset(jenis, status, namaPegawai, namaSubdir);
     }
 
+    @PostMapping("/batch")
+    public ResponseEntity<Integer> batchCreateAset(@RequestBody List<Aset> assets, Authentication authentication) {
+        int count = asetService.batchSaveAset(assets, getPegawaiFromAuth(authentication));
+        return ResponseEntity.ok(count);
+    }
+
     @PostMapping
     public Aset createAset(@Valid @RequestBody Aset aset, Authentication authentication) {
         return asetService.saveAset(aset, getPegawaiFromAuth(authentication));

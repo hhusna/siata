@@ -37,6 +37,16 @@ public class AssetRequest {
     public AssetRequest() {
     }
 
+    public AssetRequest(String noPermohonan, LocalDate tanggal, String pemohon, String unit, String jenisAset, int jumlah) {
+        this.noPermohonan = noPermohonan;
+        this.tanggal = tanggal;
+        this.pemohon = pemohon;
+        this.unit = unit;
+        this.jenisAset = jenisAset;
+        this.jumlah = jumlah;
+        this.status = "Pending";
+    }
+
     public AssetRequest(String noPermohonan, LocalDate tanggal, String pemohon, String unit, String jenisAset, int jumlah, String prioritas) {
         this.noPermohonan = noPermohonan;
         this.tanggal = tanggal;
@@ -48,6 +58,20 @@ public class AssetRequest {
         this.status = "Pending";
     }
 
+    public AssetRequest(String noPermohonan, LocalDate tanggal, String pemohon, String unit, String jenisAset, int jumlah, String tipe, String deskripsi, String tujuanPenggunaan) {
+        this.noPermohonan = noPermohonan;
+        this.tanggal = tanggal;
+        this.pemohon = pemohon;
+        this.unit = unit;
+        this.jenisAset = jenisAset;
+        this.jumlah = jumlah;
+        this.tipe = tipe;
+        this.deskripsi = deskripsi;
+        this.tujuanPenggunaan = tujuanPenggunaan;
+        this.status = "Pending";
+    }
+
+    // Constructor with prioritas
     public AssetRequest(String noPermohonan, LocalDate tanggal, String pemohon, String unit, String jenisAset, int jumlah, String prioritas, String tipe, String deskripsi, String tujuanPenggunaan) {
         this.noPermohonan = noPermohonan;
         this.tanggal = tanggal;

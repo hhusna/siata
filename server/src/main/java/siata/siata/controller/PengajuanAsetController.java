@@ -28,8 +28,11 @@ public class PengajuanAsetController {
 
     @GetMapping
     @PreAuthorize("hasAnyRole('TIM_MANAJEMEN_ASET', 'PPBJ', 'PPK', 'DIREKTUR', 'DEV')")
-    public List<PengajuanAset> getAll() {
-        return pengajuanAsetService.getAll();
+    public List<PengajuanAset> getAll(Authentication authentication) {
+        User user = (User) authentication.getPrincipal();
+        // Gunakan effective role agar DEV bisa simulasi sebagai role lain
+        String role = user.getEffectiveRole();
+        return pengajuanAsetService.getAllByRole(role);
     }
 
     @PostMapping
@@ -48,7 +51,9 @@ public class PengajuanAsetController {
     public ResponseEntity<PengajuanAset> updateStatus(@PathVariable Long id, @Valid @RequestBody StatusUpdateDTO statusUpdate, Authentication authentication) {
         try {
             String status = statusUpdate.getStatus();
-            return ResponseEntity.ok(pengajuanAsetService.updateStatus(id, status, getPegawaiFromAuth(authentication)));
+            String catatan = statusUpdate.getCatatan();
+            String lampiran = statusUpdate.getLampiran();
+            return ResponseEntity.ok(pengajuanAsetService.updateStatus(id, status, catatan, lampiran, getPegawaiFromAuth(authentication)));
         } catch (Exception e) {
             return ResponseEntity.notFound().build();
         }

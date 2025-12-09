@@ -264,6 +264,41 @@ public class AssetApi {
         return 0;
     }
 
+    public int batchAddAsset(java.util.List<AssetDtoForRequest> payload) {
+        try {
+            ObjectMapper mapper = new ObjectMapper();
+            mapper.registerModule(new JavaTimeModule());
+            String requestBodyJson = mapper.writeValueAsString(payload);
+
+            System.out.println("AssetApi: Mengirim Batch Payload (" + payload.size() + " records)");
+
+            HttpClient client = HttpClient.newBuilder()
+                    .connectTimeout(Duration.ofSeconds(60)) // Longer timeout for batch
+                    .build();
+
+            String targetUrl = ApiConfig.getAsetUrl() + "/batch";
+
+            HttpRequest request = HttpRequest.newBuilder()
+                    .uri(URI.create(targetUrl))
+                    .header("Content-Type", "application/json")
+                    .header("Authorization", "Bearer " + jwt)
+                    .POST(HttpRequest.BodyPublishers.ofString(requestBodyJson))
+                    .build();
+
+            HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+
+            if (response.statusCode() == 200) {
+                System.out.println("AssetApi: Sukses Batch Menambahkan Asset!");
+                return mapper.readValue(response.body(), Integer.class);
+            } else {
+                System.out.println("AssetApi: Gagal batch mengirim " + response.statusCode());
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return 0;
+    }
+
     public Integer getNextNoAset(String kodeAset) {
         try {
             HttpClient client = HttpClient.newBuilder()

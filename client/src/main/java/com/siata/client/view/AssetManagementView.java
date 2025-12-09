@@ -343,17 +343,25 @@ public class AssetManagementView extends VBox {
                         return;
                     }
                     if (confirmDelete(asset)) {
-                        dataService.deleteAsset(asset);
-                        
-                        // Tunggu sebentar untuk memastikan server selesai update cache
-                        new Thread(() -> {
-                            try {
-                                Thread.sleep(200); // 200ms delay
-                            } catch (InterruptedException ex) {
-                                ex.printStackTrace();
+                        javafx.concurrent.Task<Void> deleteTask = new javafx.concurrent.Task<>() {
+                            @Override
+                            protected Void call() throws Exception {
+                                dataService.deleteAsset(asset);
+                                return null;
                             }
-                            javafx.application.Platform.runLater(() -> refreshTable());
-                        }).start();
+                        };
+
+                        deleteTask.setOnSucceeded(ev -> {
+                            refreshTable(); // Now async
+                            showSuccessAlert("Aset berhasil dipindahkan ke daftar penghapusan.");
+                        });
+
+                        deleteTask.setOnFailed(ev -> {
+                            ev.getSource().getException().printStackTrace();
+                            showAlert("Gagal menghapus aset.");
+                        });
+
+                        new Thread(deleteTask).start();
                     }
                 });
             }
@@ -642,14 +650,15 @@ public class AssetManagementView extends VBox {
                 // Call API if kode aset is present
                 String kode = kodeField.getText();
                 if (kode != null && !kode.isEmpty()) {
-                    new Thread(() -> {
-                        try {
-                            Integer nextNo = assetApi.getNextNoAset(kode);
-                            Platform.runLater(() -> noAsetField.setText(String.valueOf(nextNo)));
-                        } catch (Exception ex) {
-                            ex.printStackTrace();
+                    javafx.concurrent.Task<Integer> task = new javafx.concurrent.Task<>() {
+                        @Override
+                        protected Integer call() throws Exception {
+                            return assetApi.getNextNoAset(kode);
                         }
-                    }).start();
+                    };
+                    task.setOnSucceeded(ev -> noAsetField.setText(String.valueOf(task.getValue())));
+                    task.setOnFailed(ev -> ev.getSource().getException().printStackTrace());
+                    new Thread(task).start();
                 }
             } else {
                 noAsetField.setDisable(false);
@@ -659,14 +668,15 @@ public class AssetManagementView extends VBox {
         // Refresh number if code changes and auto is checked
         kodeField.textProperty().addListener((obs, oldVal, newVal) -> {
             if (autoGenerateCheck.isSelected() && newVal != null && !newVal.isEmpty()) {
-                 new Thread(() -> {
-                    try {
-                        Integer nextNo = assetApi.getNextNoAset(newVal);
-                        Platform.runLater(() -> noAsetField.setText(String.valueOf(nextNo)));
-                    } catch (Exception ex) {
-                        ex.printStackTrace();
+                 javafx.concurrent.Task<Integer> task = new javafx.concurrent.Task<>() {
+                    @Override
+                    protected Integer call() throws Exception {
+                        return assetApi.getNextNoAset(newVal);
                     }
-                }).start();
+                };
+                task.setOnSucceeded(ev -> noAsetField.setText(String.valueOf(task.getValue())));
+                task.setOnFailed(ev -> ev.getSource().getException().printStackTrace());
+                new Thread(task).start();
             }
         });
 
@@ -1090,8 +1100,25 @@ public class AssetManagementView extends VBox {
     }
 
 
-    private void refreshTable() {
-        paginatedTable.setItems(dataService.getAssets());
+    public void refreshTable() {
+        javafx.concurrent.Task<List<Asset>> task = new javafx.concurrent.Task<>() {
+            @Override
+            protected List<Asset> call() throws Exception {
+                // Fetch data (will use cache if valid)
+                return dataService.getAssets();
+            }
+        };
+        
+        task.setOnSucceeded(e -> {
+            paginatedTable.setItems(task.getValue());
+        });
+        
+        task.setOnFailed(e -> {
+            e.getSource().getException().printStackTrace();
+            showAlert("Gagal memuat data aset.");
+        });
+        
+        new Thread(task).start();
     }
 
     private void filterTable(String searchText, String jenisFilter, String statusFilter, String kesiapanLelangFilter) {
@@ -1455,14 +1482,15 @@ public class AssetManagementView extends VBox {
         removeDuplicatesBtn.getStyleClass().add("secondary-button");
         removeDuplicatesBtn.setStyle("-fx-text-fill: #e74c3c;");
         removeDuplicatesBtn.setOnAction(e -> {
-            // Keep only first occurrence of each Kode Aset
-            java.util.Set<String> seenCodes = new java.util.HashSet<>();
+            // Keep only first occurrence of each Kode Aset + No Aset
+            java.util.Set<String> seenKeys = new java.util.HashSet<>();
             List<ImportRow> toRemove = new ArrayList<>();
             for (ImportRow row : resultData) {
-                if (seenCodes.contains(row.asset.getKodeAset())) {
+                String key = row.asset.getKodeAset() + "-" + (row.asset.getNoAset() != null ? row.asset.getNoAset() : "null");
+                if (seenKeys.contains(key)) {
                     toRemove.add(row);
                 } else {
-                    seenCodes.add(row.asset.getKodeAset());
+                    seenKeys.add(key);
                 }
             }
             resultData.removeAll(toRemove);
@@ -1528,18 +1556,17 @@ public class AssetManagementView extends VBox {
             int updateSuccess = 0;
             int updateFail = 0;
             
-            // Process NEW items (add)
-            for (ImportRow row : newItems) {
+            // Process NEW items (add) via BATCH
+            if (!newItems.isEmpty()) {
+                List<Asset> assetsToInsert = newItems.stream().map(r -> r.asset).collect(Collectors.toList());
                 try {
-                    boolean result = dataService.addAsset(row.asset);
-                    if (result) {
-                        addSuccess++;
-                    } else {
-                        addFail++;
-                    }
+                    // Use batch add for performance
+                    int count = dataService.batchAddAssets(assetsToInsert);
+                    addSuccess = count;
+                    addFail = assetsToInsert.size() - count;
                 } catch (Exception ex) {
-                    addFail++;
-                    System.err.println("Error adding asset: " + ex.getMessage());
+                    addFail += assetsToInsert.size();
+                    System.err.println("Error batch adding assets: " + ex.getMessage());
                 }
             }
             
@@ -1706,14 +1733,30 @@ public class AssetManagementView extends VBox {
             .map(Asset::getIdAset)
             .collect(Collectors.toList());
         
-        int result = assetApi.batchDeleteAset(idList);
-        
-        if (result >= 0) {
-            showSuccessAlert("Berhasil menghapus " + result + " aset.");
-            refreshTable();
-        } else {
-            showAlert("Gagal menghapus aset. Silakan coba lagi.");
-        }
+        javafx.concurrent.Task<Integer> deleteBatchTask = new javafx.concurrent.Task<>() {
+            @Override
+            protected Integer call() throws Exception {
+                // Use DataService to ensure cache is cleared
+                return dataService.batchDeleteAssets(idList);
+            }
+        };
+
+        deleteBatchTask.setOnSucceeded(ev -> {
+            int result = deleteBatchTask.getValue();
+            if (result >= 0) {
+                showSuccessAlert("Berhasil menghapus " + result + " aset.");
+                refreshTable(); // Refresh UI with fresh data
+            } else {
+                showAlert("Gagal menghapus aset. Silakan coba lagi.");
+            }
+        });
+
+        deleteBatchTask.setOnFailed(ev -> {
+            ev.getSource().getException().printStackTrace();
+            showAlert("Terjadi kesalahan saat menghapus aset.");
+        });
+
+        new Thread(deleteBatchTask).start();
     }
 
     private void showSuccessAlert(String message) {

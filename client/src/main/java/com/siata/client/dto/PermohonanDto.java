@@ -10,15 +10,18 @@ public class PermohonanDto {
 
     @JsonProperty("pegawai")
     private PegawaiDto pegawaiDto;
+    @JsonProperty("nip_pengguna")
+    private String nipPengguna;
+    
+    @JsonProperty("subdirektorat_pengguna")
+    private String subdirektoratPengguna;
+
     private String jenisAset;
     private int jumlah;
     private String deskripsi;
     private String tujuanPenggunaan;
-    private String prioritas;
     private String statusPersetujuan;
     private LocalDate timestamp;
-    private String namaPemohon;
-    private String unit;
 
     public String getKodePermohonan() {
         return kodePermohonan;
@@ -87,14 +90,6 @@ public class PermohonanDto {
         this.tujuanPenggunaan = tujuanPenggunaan;
     }
 
-    public String getPrioritas() {
-        return prioritas;
-    }
-
-    public void setPrioritas(String prioritas) {
-        this.prioritas = prioritas;
-    }
-
     public String getStatusPersetujuan() {
         return statusPersetujuan;
     }
@@ -103,19 +98,19 @@ public class PermohonanDto {
         this.statusPersetujuan = statusPersetujuan;
     }
 
-    public String getNamaPemohon() {
-        return namaPemohon;
+    public String getNipPengguna() {
+        return nipPengguna;
     }
 
-    public void setNamaPemohon(String namaPemohon) {
-        this.namaPemohon = namaPemohon;
+    public void setNipPengguna(String nipPengguna) {
+        this.nipPengguna = nipPengguna;
     }
 
-    public String getUnit() {
-        return unit;
+    public String getSubdirektoratPengguna() {
+        return subdirektoratPengguna;
     }
 
-    public void setUnit(String unit) {
-        this.unit = unit;
+    public void setSubdirektoratPengguna(String subdirektoratPengguna) {
+        this.subdirektoratPengguna = subdirektoratPengguna;
     }
 }

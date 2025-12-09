@@ -78,6 +78,22 @@ public class AsetService {
     }
 
     @CacheEvict(value = {"asetList", "asetSearch", "dashboardStats"}, allEntries = true)
+    public int batchSaveAset(List<Aset> assets, Pegawai userPegawai) {
+        int savedCount = 0;
+        for (Aset aset : assets) {
+            try {
+                // Determine isNew logic manually since we are bypassing saveAset for raw speed/logic separation if needed,
+                // BUT reusing saveAset is safer for consistency. Use local method call (bypasses cache eviction proxy).
+                saveAset(aset, userPegawai); 
+                savedCount++;
+            } catch (Exception e) {
+                System.err.println("Failed to save asset in batch: " + aset.getKodeAset() + " - " + e.getMessage());
+            }
+        }
+        return savedCount;
+    }
+
+    @CacheEvict(value = {"asetList", "asetSearch", "dashboardStats"}, allEntries = true)
     public void tandaiUntukPenghapusan(Long id, Pegawai userPegawai) {
         Aset aset = asetRepository.findById(id).orElseThrow(() -> new RuntimeException("Aset not found"));
 

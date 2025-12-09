@@ -15,6 +15,12 @@ public class ApprovalLogDto {
     
     @JsonProperty("timestamp")
     private LocalDateTime timestamp;
+    
+    @JsonProperty("catatan")
+    private String catatan; // Approver's message
+    
+    @JsonProperty("lampiran")
+    private String lampiran; // Attachment file path
 
     public ApprovalLogDto() {}
 
@@ -48,5 +54,21 @@ public class ApprovalLogDto {
 
     public void setTimestamp(LocalDateTime timestamp) {
         this.timestamp = timestamp;
+    }
+    
+    public String getCatatan() {
+        return catatan;
+    }
+
+    public void setCatatan(String catatan) {
+        this.catatan = catatan;
+    }
+
+    public String getLampiran() {
+        return lampiran;
+    }
+
+    public void setLampiran(String lampiran) {
+        this.lampiran = lampiran;
     }
 }
