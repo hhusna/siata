@@ -55,7 +55,7 @@ public class AssetRequestView extends VBox {
         VBox permohonanSection = createTableSection("Permohonan Aset", permohonanTable, permohonanList, true);
 
         // Daftar Pengajuan Aset Section
-        VBox pengajuanSection = createTableSection("Pengajuan Aset", pengajuanTable, pengajuanList, false);
+        VBox pengajuanSection = createTableSection("Kebutuhan Aset", pengajuanTable, pengajuanList, false);
 
         getChildren().addAll(permohonanSection, pengajuanSection);
     }
@@ -84,21 +84,25 @@ public class AssetRequestView extends VBox {
         HBox filterBar = new HBox(12);
         filterBar.setAlignment(Pos.CENTER_LEFT);
 
-        ComboBox<String> prioritasCombo = new ComboBox<>();
-        prioritasCombo.getItems().addAll("Semua Prioritas", "Tinggi", "Sedang", "Rendah");
-        prioritasCombo.setValue("Semua Prioritas");
-        prioritasCombo.setPrefWidth(150);
-        prioritasCombo.getStyleClass().add("filter-combo-box");
-
         TextField searchField = new TextField();
         searchField.setPromptText("Cari berdasarkan nomor, pemohon, atau jenis aset...");
         searchField.setPrefWidth(400);
         searchField.getStyleClass().add("filter-search-field");
-        searchField.textProperty().addListener((obs, oldVal, newVal) -> filterTable(newVal, list, isPermohonan, prioritasCombo.getValue()));
 
-        prioritasCombo.setOnAction(e -> filterTable(searchField.getText(), list, isPermohonan, prioritasCombo.getValue()));
-
-        filterBar.getChildren().addAll(searchField, prioritasCombo);
+        // Prioritas filter - only for Permohonan
+        ComboBox<String> prioritasCombo = new ComboBox<>();
+        if (isPermohonan) {
+            prioritasCombo.getItems().addAll("Semua Prioritas", "Tinggi", "Sedang", "Rendah");
+            prioritasCombo.setValue("Semua Prioritas");
+            prioritasCombo.setPrefWidth(150);
+            prioritasCombo.getStyleClass().add("filter-combo-box");
+            searchField.textProperty().addListener((obs, oldVal, newVal) -> filterTable(newVal, list, isPermohonan, prioritasCombo.getValue()));
+            prioritasCombo.setOnAction(e -> filterTable(searchField.getText(), list, isPermohonan, prioritasCombo.getValue()));
+            filterBar.getChildren().addAll(searchField, prioritasCombo);
+        } else {
+            searchField.textProperty().addListener((obs, oldVal, newVal) -> filterTable(newVal, list, isPermohonan, null));
+            filterBar.getChildren().add(searchField);
+        }
 
         // Table
         table.setItems(list);
@@ -162,7 +166,12 @@ public class AssetRequestView extends VBox {
 
         TableColumn<AssetRequest, Void> aksiCol = buildActionColumn();
 
-        table.getColumns().setAll(List.of(nomorCol, tanggalCol, pemohonCol, unitCol, jenisAsetCol, jumlahCol, prioritasCol, aksiCol));
+        // Only include prioritas column for Permohonan
+        if (isPermohonan) {
+            table.getColumns().setAll(List.of(nomorCol, tanggalCol, pemohonCol, unitCol, jenisAsetCol, jumlahCol, prioritasCol, aksiCol));
+        } else {
+            table.getColumns().setAll(List.of(nomorCol, tanggalCol, pemohonCol, unitCol, jenisAsetCol, jumlahCol, aksiCol));
+        }
 
         VBox tableContainer = new VBox(16);
         tableContainer.setPadding(new Insets(20));
@@ -321,9 +330,12 @@ public class AssetRequestView extends VBox {
         saveButton.setOnAction(e -> {
             String nama = isPengajuan ? loggedInNama : namaField.getText();
             String unit = isPengajuan ? loggedInUnit : unitCombo.getValue();
+            // For Pengajuan: use empty deskripsi and default prioritas (fields are hidden)
+            String deskripsiValue = isPengajuan ? "" : deskripsiArea.getText();
+            String prioritasValue = isPengajuan ? "Sedang" : prioritasCombo.getValue();
             if (saveAssetRequest(editableRequest, tipe, nama, unit, jenisCombo.getValue(),
-                    jumlahField.getText(), deskripsiArea.getText(), tujuanArea.getText(),
-                    prioritasCombo.getValue(), tanggalPicker.getValue())) {
+                    jumlahField.getText(), deskripsiValue, tujuanArea.getText(),
+                    prioritasValue, tanggalPicker.getValue())) {
                 modalStage.close();
             }
         });
@@ -385,20 +397,26 @@ public class AssetRequestView extends VBox {
             leftColumn.getChildren().addAll(namaInputBox, unitInputBox, jenisInputBox, jumlahInputBox);
         }
         
-        // Right column content (same for both modes)
-        VBox deskripsiInputBox = new VBox(8);
-        deskripsiInputBox.getChildren().addAll(deskripsiLabel, deskripsiArea);
-        
+        // Right column content - Deskripsi and Prioritas only for Permohonan
         VBox tujuanInputBox = new VBox(8);
         tujuanInputBox.getChildren().addAll(tujuanLabel, tujuanArea);
-        
-        VBox prioritasInputBox = new VBox(8);
-        prioritasInputBox.getChildren().addAll(prioritasLabel, prioritasCombo);
         
         VBox tanggalInputBox = new VBox(8);
         tanggalInputBox.getChildren().addAll(tanggalLabel, tanggalPicker);
         
-        rightColumn.getChildren().addAll(deskripsiInputBox, tujuanInputBox, prioritasInputBox, tanggalInputBox);
+        if (isPengajuan) {
+            // Pengajuan: only show Tujuan and Tanggal
+            rightColumn.getChildren().addAll(tujuanInputBox, tanggalInputBox);
+        } else {
+            // Permohonan: show all fields including Deskripsi and Prioritas
+            VBox deskripsiInputBox = new VBox(8);
+            deskripsiInputBox.getChildren().addAll(deskripsiLabel, deskripsiArea);
+            
+            VBox prioritasInputBox = new VBox(8);
+            prioritasInputBox.getChildren().addAll(prioritasLabel, prioritasCombo);
+            
+            rightColumn.getChildren().addAll(deskripsiInputBox, tujuanInputBox, prioritasInputBox, tanggalInputBox);
+        }
         
         formGrid.getChildren().addAll(leftColumn, rightColumn);
 
@@ -457,11 +475,12 @@ public class AssetRequestView extends VBox {
             showAlert("Pilih tanggal permohonan/pengajuan");
             return false;
         }
-        if (prioritas == null || prioritas.trim().isEmpty()) {
+        // Prioritas and Deskripsi validation - only for Permohonan
+        if (!isPengajuan && (prioritas == null || prioritas.trim().isEmpty())) {
             showAlert("Pilih prioritas");
             return false;
         }
-        if (deskripsi != null && deskripsi.length() > 500) {
+        if (!isPengajuan && deskripsi != null && deskripsi.length() > 500) {
             showAlert("Deskripsi maksimal 500 karakter");
             return false;
         }
@@ -539,9 +558,10 @@ public class AssetRequestView extends VBox {
                         }
                     }
                     
-                    // Prioritas filter
+                    // Prioritas filter - only apply when prioritasFilter is set
                     if (prioritasFilter != null && !prioritasFilter.equals("Semua Prioritas")) {
-                        if (!request.getPrioritas().equals(prioritasFilter)) {
+                        String prioritas = request.getPrioritas();
+                        if (prioritas == null || !prioritas.equals(prioritasFilter)) {
                             return false;
                         }
                     }
@@ -640,9 +660,14 @@ public class AssetRequestView extends VBox {
         addDetailRow(grid, 3, "Subdir", request.getUnit());
         addDetailRow(grid, 4, "Jenis Aset", request.getJenisAset());
         addDetailRow(grid, 5, "Jumlah", String.valueOf(request.getJumlah()) + " unit");
-        addDetailRow(grid, 6, "Prioritas", request.getPrioritas());
-        addDetailRow(grid, 7, "Deskripsi", request.getDeskripsi());
-        addDetailRow(grid, 8, "Tujuan Penggunaan", request.getTujuanPenggunaan());
+        
+        int nextRow = 6;
+        // Prioritas and Deskripsi only for Permohonan
+        if ("Permohonan".equals(request.getTipe())) {
+            addDetailRow(grid, nextRow++, "Prioritas", request.getPrioritas());
+            addDetailRow(grid, nextRow++, "Deskripsi", request.getDeskripsi());
+        }
+        addDetailRow(grid, nextRow, "Tujuan Penggunaan", request.getTujuanPenggunaan());
 
         ScrollPane scrollPane = new ScrollPane(grid);
         scrollPane.setFitToWidth(true);

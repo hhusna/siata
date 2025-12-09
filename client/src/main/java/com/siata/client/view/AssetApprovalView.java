@@ -88,7 +88,7 @@ public class AssetApprovalView extends VBox {
 
     private void buildView() {
         VBox permohonanSection = createApprovalSection("Daftar Permohonan", permohonanTable, permohonanList, true);
-        VBox pengajuanSection = createApprovalSection("Daftar Pengajuan", pengajuanTable, pengajuanList, false);
+        VBox pengajuanSection = createApprovalSection("Daftar Kebutuhan", pengajuanTable, pengajuanList, false);
         getChildren().addAll(buildPageHeader(), permohonanSection, pengajuanSection);
     }
 

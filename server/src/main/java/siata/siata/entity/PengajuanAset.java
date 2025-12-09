@@ -55,7 +55,6 @@ public class PengajuanAset {
     private String tujuanPenggunaan;
 
     @Column(name = "prioritas", length = 50)
-    @NotBlank(message = "Prioritas tidak boleh kosong")
     private String prioritas;
 
     @Column(name = "status_persetujuan", length = 50)

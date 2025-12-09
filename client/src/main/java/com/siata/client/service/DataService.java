@@ -507,8 +507,18 @@ public class DataService {
 
         for (PermohonanDto dto : permohonanDtos) {
             AssetRequest assetRequest = new AssetRequest();
+            assetRequest.setId(dto.getIdPermohonan());
+            assetRequest.setNoPermohonan(dto.getKodePermohonan());
+            assetRequest.setTanggal(dto.getTimestamp());
+            assetRequest.setPemohon(dto.getNamaPemohon());
+            assetRequest.setUnit(dto.getUnit());
+            assetRequest.setJenisAset(dto.getJenisAset());
+            assetRequest.setJumlah(dto.getJumlah());
+            assetRequest.setPrioritas(dto.getPrioritas());
+            assetRequest.setTipe("Permohonan");
             assetRequest.setDeskripsi(dto.getDeskripsi());
             assetRequest.setTujuanPenggunaan(dto.getTujuanPenggunaan());
+            assetRequest.setStatus(dto.getStatusPersetujuan());
             assetRequestList.add(assetRequest);
         }
 
@@ -523,6 +533,17 @@ public class DataService {
             AssetRequest assetRequest = new AssetRequest();
             assetRequest.setId(dto.getIdPengajuan());
             assetRequest.setNoPermohonan(dto.getKodePengajuan());
+            assetRequest.setTanggal(dto.getTimestamp());
+            assetRequest.setPemohon(dto.getNamaPengaju());
+            assetRequest.setUnit(dto.getUnit());
+            assetRequest.setJenisAset(dto.getJenisAset());
+            assetRequest.setJumlah(dto.getJumlah());
+            assetRequest.setPrioritas(dto.getPrioritas());
+            assetRequest.setTipe("Pengajuan");
+            assetRequest.setDeskripsi(dto.getDeskripsi());
+            assetRequest.setTujuanPenggunaan(dto.getTujuanPenggunaan());
+            assetRequest.setStatus(dto.getStatusPersetujuan());
+            assetRequestList.add(assetRequest);
         }
 
         return assetRequestList;
