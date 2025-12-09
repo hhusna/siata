@@ -3,10 +3,14 @@ package siata.siata.service;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import siata.siata.entity.LogRiwayat;
 import siata.siata.repository.LogRiwayatRepository;
 import siata.siata.dto.ApprovalLogDTO;
+
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -23,6 +27,28 @@ public class LogRiwayatService {
 
     public List<LogRiwayat> getAllLogs() {
         return logRiwayatRepository.findAllByOrderByTimestampDesc();
+    }
+    
+    /**
+     * Get logs with limit for performance optimization
+     * @param limit Maximum number of logs to return
+     */
+    public List<LogRiwayat> getLogsWithLimit(int limit) {
+        if (limit <= 0) {
+            return getAllLogs();
+        }
+        return logRiwayatRepository.findTopNByOrderByTimestampDesc(PageRequest.of(0, limit));
+    }
+    
+    /**
+     * Get logs within date range for export
+     * @param fromDate Start date (inclusive)
+     * @param toDate End date (inclusive)
+     */
+    public List<LogRiwayat> getLogsByDateRange(LocalDate fromDate, LocalDate toDate) {
+        LocalDateTime fromDateTime = fromDate.atStartOfDay();
+        LocalDateTime toDateTime = toDate.atTime(23, 59, 59);
+        return logRiwayatRepository.findByTimestampBetween(fromDateTime, toDateTime);
     }
 
     @Cacheable(value = "approvalLogs", key = "#permohonanId + '-' + #pengajuanId")

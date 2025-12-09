@@ -5,6 +5,7 @@ import org.springframework.stereotype.Service;
 import siata.siata.entity.Pegawai;
 import siata.siata.entity.LogRiwayat;
 import siata.siata.repository.PegawaiRepository;
+import siata.siata.repository.PenghapusanAsetRepository;
 import siata.siata.dto.MatriksAsetDTO;
 import java.util.List;
 import java.util.Optional;
@@ -15,6 +16,9 @@ public class PegawaiService {
 
     @Autowired
     private PegawaiRepository pegawaiRepository;
+
+    @Autowired
+    private PenghapusanAsetRepository penghapusanAsetRepository;
 
     @Autowired
     private LogRiwayatService logRiwayatService;
@@ -64,6 +68,9 @@ public class PegawaiService {
 
     public void deletePegawai(Long nip, Pegawai userPegawai) {
         Pegawai pegawai = pegawaiRepository.findById(nip).orElseThrow(() -> new RuntimeException("Pegawai not found"));
+
+        // Delete any PenghapusanAset entries for assets owned by this pegawai first
+        penghapusanAsetRepository.deleteByPegawaiNip(nip);
 
         String isiLog = "Menghapus data pegawai: " + pegawai.getNama() + " (NIP: " + nip + ")";
         logRiwayatService.saveLog(new LogRiwayat(userPegawai, "DELETE_PEGAWAI", isiLog));
@@ -121,6 +128,8 @@ public class PegawaiService {
                 if (pegawaiOpt.isPresent()) {
                     if (deletedNames.length() > 0) deletedNames.append(", ");
                     deletedNames.append(pegawaiOpt.get().getNama());
+                    // Delete any PenghapusanAset entries for assets owned by this pegawai first
+                    penghapusanAsetRepository.deleteByPegawaiNip(nip);
                     pegawaiRepository.deleteById(nip);
                     deletedCount++;
                 }

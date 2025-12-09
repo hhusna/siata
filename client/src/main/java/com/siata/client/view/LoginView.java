@@ -2,6 +2,7 @@ package com.siata.client.view;
 
 import com.siata.client.MainApplication;
 import com.siata.client.api.UserApi;
+import com.siata.client.component.CustomTitleBar;
 import com.siata.client.session.LoginSession;
 import com.siata.client.util.AnimationUtils;
 import javafx.animation.Timeline;
@@ -35,18 +36,53 @@ public class LoginView extends HBox {
     }
 
     private void buildView() {
+        // Main background: gradient from bottom (dark) to top (light)
+        setStyle("-fx-background-color: linear-gradient(to top, #bcc4cc 0%, #d0d6dc 15%, #e4e8ec 45%, #f5f7f9 75%, #ffffff 100%);");
+        
+        javafx.stage.Stage stage = MainApplication.getPrimaryStage();
+        
         // === LEFT PANEL - Dark blue with logo and decorations ===
         StackPane leftPanel = createLeftPanel();
         HBox.setHgrow(leftPanel, Priority.ALWAYS);
         
-        // === RIGHT PANEL - Login form ===
-        VBox rightPanel = createRightPanel();
-        rightPanel.setMinWidth(420);
-        rightPanel.setMaxWidth(480);
+        // Make left panel draggable for window movement
+        final double[] dragOffset = new double[2];
+        leftPanel.setOnMousePressed(event -> {
+            if (stage != null && !stage.isMaximized()) {
+                dragOffset[0] = event.getSceneX();
+                dragOffset[1] = event.getSceneY();
+            }
+        });
+        leftPanel.setOnMouseDragged(event -> {
+            if (stage != null && !stage.isMaximized()) {
+                stage.setX(event.getScreenX() - dragOffset[0]);
+                stage.setY(event.getScreenY() - dragOffset[1]);
+            }
+        });
         
-        getChildren().addAll(leftPanel, rightPanel);
-        // Main background: gradient from bottom (dark) to top (light)
-        setStyle("-fx-background-color: linear-gradient(to top, #bcc4cc 0%, #d0d6dc 15%, #e4e8ec 45%, #f5f7f9 75%, #ffffff 100%);");
+        // === RIGHT SIDE - Header with window controls + Login form ===
+        VBox rightSide = new VBox();
+        rightSide.setMinWidth(420);
+        rightSide.setMaxWidth(480);
+        rightSide.setStyle("-fx-background-color: transparent;");
+        
+        // Mini header with window controls (only on right side)
+        HBox miniHeader = new HBox();
+        miniHeader.setAlignment(Pos.CENTER_RIGHT);
+        miniHeader.setPadding(new Insets(8, 8, 0, 8));
+        miniHeader.setMinHeight(36);
+        
+        HBox windowControls = CustomTitleBar.createWindowControls(stage);
+        windowControls.getStyleClass().add("login-window-controls");
+        miniHeader.getChildren().add(windowControls);
+        
+        // Login form panel
+        VBox rightPanel = createRightPanel();
+        VBox.setVgrow(rightPanel, Priority.ALWAYS);
+        
+        rightSide.getChildren().addAll(miniHeader, rightPanel);
+        
+        getChildren().addAll(leftPanel, rightSide);
     }
     
     private StackPane createLeftPanel() {

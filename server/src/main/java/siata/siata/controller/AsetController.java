@@ -15,7 +15,7 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/aset")
-@PreAuthorize("hasRole('TIM_MANAJEMEN_ASET')")
+@PreAuthorize("hasAnyRole('TIM_MANAJEMEN_ASET', 'DEV')")
 public class AsetController {
 
     @Autowired
@@ -32,11 +32,21 @@ public class AsetController {
         return asetService.getAllAset();
     }
 
+    @GetMapping("/deleted")
+    public List<Aset> getDeletedAset() {
+        return asetService.getAllDeletedAset();
+    }
+
     @GetMapping("/{id}")
     public ResponseEntity<Aset> getAsetById(@PathVariable Long id) {
         return asetService.getAsetById(id)
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
+    }
+
+    @GetMapping("/next-no")
+    public ResponseEntity<Integer> getNextNoAset(@RequestParam String kodeAset) {
+        return ResponseEntity.ok(asetService.getNextNoAset(kodeAset));
     }
 
     // FR 2.2: Pencarian Aset - MODIFIKASI METHOD INI
@@ -60,6 +70,7 @@ public class AsetController {
                 .map(aset -> {
                     // Update fields
                     aset.setKodeAset(asetDetails.getKodeAset());
+                    aset.setNoAset(asetDetails.getNoAset());
                     aset.setJenisAset(asetDetails.getJenisAset());
                     aset.setMerkAset(asetDetails.getMerkAset());
                     aset.setTanggalPerolehan(asetDetails.getTanggalPerolehan());
@@ -121,5 +132,31 @@ public class AsetController {
         
         int deletedCount = asetService.batchDeleteAset(idList, getPegawaiFromAuth(authentication));
         return ResponseEntity.ok(deletedCount);
+    }
+
+    // Undo delete: Set apakahDihapus = 0 to restore asset
+    @PostMapping("/undo/{id}")
+    public ResponseEntity<?> undoDeleteAset(@PathVariable Long id, Authentication authentication) {
+        try {
+            asetService.undoDeleteAset(id, getPegawaiFromAuth(authentication));
+            return ResponseEntity.ok().build();
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError().body("Terjadi kesalahan sistem: " + e.getMessage());
+        }
+    }
+
+    // Permanent delete: Actually remove from database
+    @DeleteMapping("/permanent/{id}")
+    public ResponseEntity<?> permanentDeleteAset(@PathVariable Long id, Authentication authentication) {
+        try {
+            asetService.permanentDeleteAset(id, getPegawaiFromAuth(authentication));
+            return ResponseEntity.ok().build();
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError().body("Terjadi kesalahan sistem: " + e.getMessage());
+        }
     }
 }

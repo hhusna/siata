@@ -57,15 +57,59 @@ public class Aset {
     @Column(name = "subdirektorat", length = 100)
     private String subdirektorat;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "nip_pegawai", referencedColumnName = "nip")
-    private Pegawai pegawai;
+    @Column(name = "apakah_dihapus", nullable = false)
+    private Integer apakahDihapus = 0;
 
-    @JsonIgnore
-    @OneToOne(mappedBy = "aset", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
-    private PenghapusanAset penghapusanAset;
+    @Column(name = "no_aset")
+    private Integer noAset;
+
+    @Column(name = "dipakai")
+    private String dipakai; // Refactored to String
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "nip_pegawai")
+    private Pegawai pegawai;
 
     @JsonIgnore
     @OneToMany(mappedBy = "aset", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<LogRiwayat> logList;
+
+    /**
+     * Computed: Tua (formerly Siap Lelang)
+     * Non-vehicle assets: 1 if age > 4 years AND status = AKTIF
+     * Mobil/Motor: always 0
+     */
+    @Transient
+    public Integer getTua() {
+        if (tanggalPerolehan == null || jenisAset == null || statusPemakaian == null) return 0;
+        String jenis = jenisAset.toLowerCase();
+        if (jenis.contains("mobil") || jenis.contains("motor")) return 0;
+        // Status must be AKTIF
+        if (!"AKTIF".equalsIgnoreCase(statusPemakaian.replace(" ", ""))) return 0;
+        long usia = java.time.temporal.ChronoUnit.YEARS.between(tanggalPerolehan, LocalDate.now());
+        return usia > 4 ? 1 : 0;
+    }
+
+    /**
+     * Computed: Akan Tua (formerly Akan Siap Lelang)
+     * Non-vehicle assets: 1 if age > 3 && <= 4 years
+     * Mobil/Motor: always 0
+     */
+    @Transient
+    public Integer getAkanTua() {
+        if (tanggalPerolehan == null || jenisAset == null) return 0;
+        String jenis = jenisAset.toLowerCase();
+        if (jenis.contains("mobil") || jenis.contains("motor")) return 0;
+        long usia = java.time.temporal.ChronoUnit.YEARS.between(tanggalPerolehan, LocalDate.now());
+        return (usia > 3 && usia <= 4) ? 1 : 0;
+    }
+
+    /**
+     * Computed: Siap Lelang (NEW)
+     * 1 if Tua = 1 AND apakahDihapus = 1 (marked for deletion)
+     */
+    @Transient
+    public Integer getSiapLelang() {
+        return (getTua() == 1 && apakahDihapus != null && apakahDihapus == 1) ? 1 : 0;
+    }
 }

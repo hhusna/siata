@@ -46,13 +46,13 @@ public class LogbookView extends VBox {
         
         TextField searchField = new TextField();
         searchField.setPromptText("Cari aktivitas...");
-        searchField.setPrefWidth(300);
+        searchField.setPrefWidth(250);
         searchField.getStyleClass().add("filter-search-field");
         
         ComboBox<String> userCombo = new ComboBox<>();
         userCombo.getItems().addAll("Semua User", "admin", "Admin PPBJ");
         userCombo.setValue("Semua User");
-        userCombo.setPrefWidth(150);
+        userCombo.setPrefWidth(120);
         userCombo.getStyleClass().add("filter-combo-box");
         
         ComboBox<String> jenisCombo = new ComboBox<>();
@@ -62,14 +62,22 @@ public class LogbookView extends VBox {
                                       "CREATE_PENGAJUAN", "UPDATE_PENGAJUAN", "DELETE_PENGAJUAN", "UPDATE_STATUS_PENGAJUAN",
                                       "AUTO_LELANG", "HARD_DELETE_ASET");
         jenisCombo.setValue("Semua Jenis");
-        jenisCombo.setPrefWidth(180);
+        jenisCombo.setPrefWidth(150);
         jenisCombo.getStyleClass().add("filter-combo-box");
         jenisCombo.setOnAction(e -> filterActivities(searchField.getText(), jenisCombo.getValue(), userCombo.getValue()));
         
         searchField.textProperty().addListener((obs, oldVal, newVal) -> filterActivities(newVal, jenisCombo.getValue(), userCombo.getValue()));
         userCombo.setOnAction(e -> filterActivities(searchField.getText(), jenisCombo.getValue(), userCombo.getValue()));
         
-        filterBar.getChildren().addAll(searchField, jenisCombo, userCombo);
+        // Export button
+        Button exportBtn = new Button("📥 Export TXT");
+        exportBtn.getStyleClass().add("primary-button");
+        exportBtn.setOnAction(e -> showExportDialog());
+        
+        Region spacer = new Region();
+        HBox.setHgrow(spacer, Priority.ALWAYS);
+        
+        filterBar.getChildren().addAll(searchField, jenisCombo, userCombo, spacer, exportBtn);
         filterSection.getChildren().addAll(filterTitle, filterBar);
 
         // Timeline section
@@ -77,12 +85,127 @@ public class LogbookView extends VBox {
         timelineSection.setPadding(new Insets(20));
         timelineSection.getStyleClass().add("table-container");
         
-        Label timelineTitle = new Label("Timeline Aktivitas");
+        Label timelineTitle = new Label("Timeline Aktivitas (15 Terbaru)");
         timelineTitle.getStyleClass().add("table-title");
         
-        timelineSection.getChildren().addAll(timelineTitle, timelineContainer);
+        // Info note about limit
+        Label limitNote = new Label("📋 Log dibatasi sampai 15 entries, gunakan fitur Export TXT untuk melihat log lengkap");
+        limitNote.setStyle("-fx-font-size: 11px; -fx-text-fill: #64748b; -fx-font-style: italic; -fx-padding: 8 0 0 0;");
+        
+        timelineSection.getChildren().addAll(timelineTitle, timelineContainer, limitNote);
 
         getChildren().addAll(filterSection, timelineSection);
+    }
+    
+    /**
+     * Shows export dialog with date range selection
+     */
+    private void showExportDialog() {
+        Dialog<Void> dialog = new Dialog<>();
+        dialog.setTitle("Export Logbook ke TXT");
+        dialog.setHeaderText("Pilih rentang waktu untuk export");
+        
+        DialogPane dialogPane = dialog.getDialogPane();
+        dialogPane.getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
+        dialogPane.setPrefWidth(400);
+        
+        VBox content = new VBox(16);
+        content.setPadding(new Insets(16));
+        
+        // Date pickers
+        HBox dateRow = new HBox(12);
+        dateRow.setAlignment(Pos.CENTER_LEFT);
+        
+        Label fromLabel = new Label("Dari:");
+        DatePicker fromDate = new DatePicker();
+        fromDate.setValue(java.time.LocalDate.now().minusMonths(1));
+        fromDate.setPrefWidth(140);
+        
+        Label toLabel = new Label("Sampai:");
+        DatePicker toDate = new DatePicker();
+        toDate.setValue(java.time.LocalDate.now());
+        toDate.setPrefWidth(140);
+        
+        dateRow.getChildren().addAll(fromLabel, fromDate, toLabel, toDate);
+        
+        // Info label
+        Label infoLabel = new Label("File akan disimpan dengan format: logbook_[tanggal].txt");
+        infoLabel.setStyle("-fx-font-size: 11px; -fx-text-fill: #64748b;");
+        
+        content.getChildren().addAll(dateRow, infoLabel);
+        dialogPane.setContent(content);
+        
+        dialog.setResultConverter(buttonType -> {
+            if (buttonType == ButtonType.OK) {
+                exportToTxt(fromDate.getValue(), toDate.getValue());
+            }
+            return null;
+        });
+        
+        dialog.showAndWait();
+    }
+    
+    /**
+     * Exports activities within date range to TXT file
+     */
+    private void exportToTxt(java.time.LocalDate fromDate, java.time.LocalDate toDate) {
+        // Use API with date range for efficient data fetching
+        List<Activity> filtered = dataService.getActivitiesByDateRange(fromDate, toDate);
+        
+        if (filtered.isEmpty()) {
+            Alert alert = new Alert(Alert.AlertType.INFORMATION);
+            alert.setTitle("Info");
+            alert.setHeaderText(null);
+            alert.setContentText("Tidak ada aktivitas dalam rentang waktu tersebut.");
+            alert.showAndWait();
+            return;
+        }
+        
+        // Build TXT content
+        StringBuilder sb = new StringBuilder();
+        sb.append("========================================\n");
+        sb.append("LOGBOOK AKTIVITAS SIATA\n");
+        sb.append("Periode: ").append(fromDate).append(" s/d ").append(toDate).append("\n");
+        sb.append("Diekspor: ").append(LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"))).append("\n");
+        sb.append("Total: ").append(filtered.size()).append(" aktivitas\n");
+        sb.append("========================================\n\n");
+        
+        for (Activity activity : filtered) {
+            sb.append("─────────────────────────────────────────\n");
+            sb.append("Waktu   : ").append(activity.getTimestamp().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"))).append("\n");
+            sb.append("User    : ").append(activity.getUser()).append("\n");
+            sb.append("Aksi    : ").append(activity.getActionType()).append("\n");
+            sb.append("Deskripsi: ").append(activity.getDescription()).append("\n");
+            sb.append("Target  : ").append(activity.getTarget()).append("\n");
+            if (activity.getDetails() != null && !activity.getDetails().isEmpty()) {
+                sb.append("Detail  : ").append(activity.getDetails()).append("\n");
+            }
+            sb.append("\n");
+        }
+        
+        // Save file
+        String fileName = "logbook_" + fromDate + "_to_" + toDate + ".txt";
+        javax.swing.JFileChooser fileChooser = new javax.swing.JFileChooser();
+        fileChooser.setSelectedFile(new java.io.File(fileName));
+        fileChooser.setDialogTitle("Simpan Logbook");
+        
+        int result = fileChooser.showSaveDialog(null);
+        if (result == javax.swing.JFileChooser.APPROVE_OPTION) {
+            try {
+                java.nio.file.Files.writeString(fileChooser.getSelectedFile().toPath(), sb.toString());
+                Alert alert = new Alert(Alert.AlertType.INFORMATION);
+                alert.setTitle("Sukses");
+                alert.setHeaderText(null);
+                alert.setContentText("Logbook berhasil diekspor ke:\n" + fileChooser.getSelectedFile().getAbsolutePath());
+                alert.showAndWait();
+            } catch (Exception e) {
+                Alert alert = new Alert(Alert.AlertType.ERROR);
+                alert.setTitle("Error");
+                alert.setHeaderText(null);
+                alert.setContentText("Gagal menyimpan file: " + e.getMessage());
+                alert.showAndWait();
+            }
+        }
     }
 
     private Node buildPageHeader() {
@@ -91,9 +214,10 @@ public class LogbookView extends VBox {
     }
 
     private void filterActivities(String searchText, String jenisFilter, String userFilter) {
-        List<Activity> allActivities = dataService.getActivities();
+        // Use API with limit (15) for efficient data fetching
+        List<Activity> recentActivities = dataService.getRecentActivities(15);
         
-        filteredActivities.setAll(allActivities.stream()
+        filteredActivities.setAll(recentActivities.stream()
             .filter(activity -> {
                 // Search filter
                 if (searchText != null && !searchText.isEmpty()) {
@@ -121,7 +245,6 @@ public class LogbookView extends VBox {
                 
                 return true;
             })
-            .sorted((a, b) -> b.getTimestamp().compareTo(a.getTimestamp()))
             .toList()
         );
         

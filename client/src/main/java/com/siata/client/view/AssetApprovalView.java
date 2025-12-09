@@ -290,7 +290,7 @@ public class AssetApprovalView extends VBox {
     private void showRequestDetail(AssetRequest request) {
         Stage modalStage = new Stage();
         modalStage.initModality(Modality.APPLICATION_MODAL);
-        modalStage.initStyle(StageStyle.UTILITY);
+        modalStage.initStyle(StageStyle.TRANSPARENT);
         modalStage.setTitle("Detail " + request.getTipe());
 
         VBox modalContent = new VBox(0);
@@ -361,6 +361,7 @@ public class AssetApprovalView extends VBox {
         modalContent.getChildren().addAll(headerBox, scrollPane);
 
         Scene scene = new Scene(modalContent);
+        scene.setFill(null);
         scene.getStylesheets().add(getClass().getResource("/styles.css").toExternalForm());
         modalStage.setScene(scene);
         
@@ -466,7 +467,7 @@ public class AssetApprovalView extends VBox {
     private void showEditApprovalModal(AssetRequest request) {
         Stage modalStage = new Stage();
         modalStage.initModality(Modality.APPLICATION_MODAL);
-        modalStage.initStyle(StageStyle.UTILITY);
+        modalStage.initStyle(StageStyle.TRANSPARENT);
         modalStage.setTitle("Edit Persetujuan");
 
         VBox modalContent = new VBox(16);
@@ -561,6 +562,7 @@ public class AssetApprovalView extends VBox {
         modalContent.getChildren().addAll(title, requestLabel, radioBox, buttonBox);
 
         Scene scene = new Scene(modalContent);
+        scene.setFill(null);
         scene.getStylesheets().add(getClass().getResource("/styles.css").toExternalForm());
         modalStage.setScene(scene);
         

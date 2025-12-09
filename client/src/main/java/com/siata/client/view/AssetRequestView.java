@@ -184,15 +184,14 @@ public class AssetRequestView extends VBox {
     private void showAssetRequestModal(String tipe, AssetRequest editableRequest) {
         Stage modalStage = new Stage();
         modalStage.initModality(Modality.APPLICATION_MODAL);
-        modalStage.initStyle(StageStyle.UNDECORATED);
+        modalStage.initStyle(StageStyle.TRANSPARENT);
         modalStage.setTitle(editableRequest == null
                 ? ("Permohonan".equals(tipe) ? "Tambah Permohonan" : "Tambah Pengajuan")
                 : "Edit " + tipe);
 
         VBox modalContent = new VBox(0);
-        modalContent.setPrefWidth(480);
-        modalContent.setMaxWidth(480);
-        modalContent.setMaxHeight(650);
+        modalContent.setPrefWidth(800);
+        modalContent.setMaxWidth(800);
         modalContent.getStyleClass().add("modal-content");
 
         // Header with close button
@@ -265,7 +264,7 @@ public class AssetRequestView extends VBox {
         }
 
         ComboBox<String> jenisCombo = new ComboBox<>();
-        jenisCombo.getItems().addAll("Mobil", "Motor", "Scanner", "PC","Laptop", "Tablet","Printer","Speaker", "Parabot");
+        jenisCombo.getItems().addAll("Mobil", "Motor", "Scanner", "PC", "Laptop", "Notebook", "Tablet", "Printer", "Speaker", "Parabot");
         jenisCombo.setPromptText("Pilih jenis aset");
         Label jenisLabel = new Label("Jenis Aset");
         jenisLabel.getStyleClass().add("form-label");
@@ -331,45 +330,79 @@ public class AssetRequestView extends VBox {
 
         buttonBox.getChildren().addAll(cancelButton, saveButton);
 
-        VBox formContent = new VBox(16);
-        formContent.setPadding(new Insets(0, 24, 0, 24));
+        // Two-column grid layout for form fields
+        HBox formGrid = new HBox(32);
+        formGrid.setPadding(new Insets(0, 24, 16, 24));
+        
+        // Left Column: Requester info and asset selection
+        VBox leftColumn = new VBox(12);
+        leftColumn.setPrefWidth(350);
+        leftColumn.setMaxWidth(350);
+        
+        // Right Column: Description and details
+        VBox rightColumn = new VBox(12);
+        rightColumn.setPrefWidth(350);
+        HBox.setHgrow(rightColumn, Priority.ALWAYS);
+        
+        // Set max widths for form controls
+        jenisCombo.setMaxWidth(Double.MAX_VALUE);
+        prioritasCombo.setMaxWidth(Double.MAX_VALUE);
+        tanggalPicker.setMaxWidth(Double.MAX_VALUE);
+        unitCombo.setMaxWidth(Double.MAX_VALUE);
+        deskripsiArea.setPrefHeight(80);
+        tujuanArea.setPrefHeight(80);
         
         // Add different fields based on mode
         if (isPengajuan) {
             // Pengajuan: show info labels (non-editable) from login session
-            formContent.getChildren().addAll(
-                    infoNamaLabel, infoNamaValue,
-                    infoUnitLabel, infoUnitValue,
-                    jenisLabel, jenisCombo,
-                    jumlahLabel, jumlahField,
-                    deskripsiLabel, deskripsiArea,
-                    tujuanLabel, tujuanArea,
-                    prioritasLabel, prioritasCombo,
-                    tanggalLabel, tanggalPicker
-            );
+            VBox namaInfoBox = new VBox(8);
+            namaInfoBox.getChildren().addAll(infoNamaLabel, infoNamaValue);
+            
+            VBox unitInfoBox = new VBox(8);
+            unitInfoBox.getChildren().addAll(infoUnitLabel, infoUnitValue);
+            
+            VBox jenisInputBox = new VBox(8);
+            jenisInputBox.getChildren().addAll(jenisLabel, jenisCombo);
+            
+            VBox jumlahInputBox = new VBox(8);
+            jumlahInputBox.getChildren().addAll(jumlahLabel, jumlahField);
+            
+            leftColumn.getChildren().addAll(namaInfoBox, unitInfoBox, jenisInputBox, jumlahInputBox);
         } else {
             // Permohonan: show editable fields
-            formContent.getChildren().addAll(
-                    namaLabelObj, namaField,
-                    unitLabel, unitCombo,
-                    jenisLabel, jenisCombo,
-                    jumlahLabel, jumlahField,
-                    deskripsiLabel, deskripsiArea,
-                    tujuanLabel, tujuanArea,
-                    prioritasLabel, prioritasCombo,
-                    tanggalLabel, tanggalPicker
-            );
+            VBox namaInputBox = new VBox(8);
+            namaInputBox.getChildren().addAll(namaLabelObj, namaField);
+            
+            VBox unitInputBox = new VBox(8);
+            unitInputBox.getChildren().addAll(unitLabel, unitCombo);
+            
+            VBox jenisInputBox = new VBox(8);
+            jenisInputBox.getChildren().addAll(jenisLabel, jenisCombo);
+            
+            VBox jumlahInputBox = new VBox(8);
+            jumlahInputBox.getChildren().addAll(jumlahLabel, jumlahField);
+            
+            leftColumn.getChildren().addAll(namaInputBox, unitInputBox, jenisInputBox, jumlahInputBox);
         }
+        
+        // Right column content (same for both modes)
+        VBox deskripsiInputBox = new VBox(8);
+        deskripsiInputBox.getChildren().addAll(deskripsiLabel, deskripsiArea);
+        
+        VBox tujuanInputBox = new VBox(8);
+        tujuanInputBox.getChildren().addAll(tujuanLabel, tujuanArea);
+        
+        VBox prioritasInputBox = new VBox(8);
+        prioritasInputBox.getChildren().addAll(prioritasLabel, prioritasCombo);
+        
+        VBox tanggalInputBox = new VBox(8);
+        tanggalInputBox.getChildren().addAll(tanggalLabel, tanggalPicker);
+        
+        rightColumn.getChildren().addAll(deskripsiInputBox, tujuanInputBox, prioritasInputBox, tanggalInputBox);
+        
+        formGrid.getChildren().addAll(leftColumn, rightColumn);
 
-        ScrollPane scrollPane = new ScrollPane(formContent);
-        scrollPane.setFitToWidth(true);
-        scrollPane.setVbarPolicy(ScrollPane.ScrollBarPolicy.AS_NEEDED);
-        scrollPane.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
-        scrollPane.setPrefViewportHeight(450);
-        scrollPane.setMaxHeight(450);
-        scrollPane.getStyleClass().add("modal-scroll-pane");
-
-        modalContent.getChildren().addAll(headerBox, scrollPane, buttonBox);
+        modalContent.getChildren().addAll(headerBox, formGrid, buttonBox);
 
         Scene modalScene = new Scene(modalContent);
         modalScene.getStylesheets().add(getClass().getResource("/styles.css").toExternalForm());
@@ -570,7 +603,7 @@ public class AssetRequestView extends VBox {
     private void showRequestDetail(AssetRequest request) {
         Stage modalStage = new Stage();
         modalStage.initModality(Modality.APPLICATION_MODAL);
-        modalStage.initStyle(StageStyle.UNDECORATED);
+        modalStage.initStyle(StageStyle.TRANSPARENT);
         modalStage.setTitle("Detail " + request.getTipe());
 
         VBox modalContent = new VBox(0);
@@ -622,6 +655,7 @@ public class AssetRequestView extends VBox {
         modalContent.getChildren().addAll(headerBox, scrollPane);
 
         Scene scene = new Scene(modalContent);
+        scene.setFill(null);
         scene.getStylesheets().add(getClass().getResource("/styles.css").toExternalForm());
         modalStage.setScene(scene);
         

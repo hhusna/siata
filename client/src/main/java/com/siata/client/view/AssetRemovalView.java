@@ -1,5 +1,6 @@
 package com.siata.client.view;
 
+import com.siata.client.api.AssetApi;
 import com.siata.client.model.Asset;
 import com.siata.client.service.DataService;
 import javafx.collections.FXCollections;
@@ -21,6 +22,7 @@ public class AssetRemovalView extends VBox {
     private final TableView<Asset> table;
     private final ObservableList<Asset> deletedAssetList;
     private final DataService dataService;
+    private final AssetApi assetApi = new AssetApi();
     private final AtomicInteger assetIdCounter = new AtomicInteger(9);
 
     public AssetRemovalView() {
@@ -38,45 +40,16 @@ public class AssetRemovalView extends VBox {
         table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
         table.getStyleClass().add("data-table");
 
-        TableColumn<Asset, Boolean> checkboxCol = new TableColumn<>("");
-        checkboxCol.setCellValueFactory(cellData -> 
-            new javafx.beans.property.SimpleBooleanProperty(cellData.getValue().isDeleted())
-        );
-        checkboxCol.setCellFactory(column -> new TableCell<Asset, Boolean>() {
-            private final CheckBox checkBox = new CheckBox();
-            
-            {
-                checkBox.setOnAction(e -> {
-                    Asset asset = getTableView().getItems().get(getIndex());
-                    asset.setDeleted(checkBox.isSelected());
-                });
-            }
-            
-            @Override
-            protected void updateItem(Boolean item, boolean empty) {
-                super.updateItem(item, empty);
-                if (empty) {
-                    setGraphic(null);
-                } else {
-                    Asset asset = getTableView().getItems().get(getIndex());
-                    checkBox.setSelected(asset.isDeleted());
-                    setGraphic(checkBox);
-                    setAlignment(Pos.CENTER);
-                }
-            }
-        });
-        checkboxCol.setMinWidth(35);
-        checkboxCol.setPrefWidth(80);
-        checkboxCol.setMaxWidth(100);
-
-        checkboxCol.setStyle("-fx-alignment: CENTER;");
-
-        TableColumn<Asset, String> idCol = new TableColumn<>("Kode");
+        TableColumn<Asset, String> idCol = new TableColumn<>("Kode Aset");
         idCol.setCellValueFactory(cellData -> {
-            // Generate ID based on index or use existing
             Asset asset = cellData.getValue();
-            int index = table.getItems().indexOf(asset);
             return new javafx.beans.property.SimpleStringProperty(asset.getKodeAset());
+        });
+
+        TableColumn<Asset, String> noAsetCol = new TableColumn<>("No Aset");
+        noAsetCol.setCellValueFactory(cellData -> {
+            Integer no = cellData.getValue().getNoAset();
+            return new javafx.beans.property.SimpleStringProperty(no != null ? String.valueOf(no) : "-");
         });
 
         TableColumn<Asset, String> namaCol = new TableColumn<>("Nama Aset");
@@ -103,8 +76,67 @@ public class AssetRemovalView extends VBox {
             }
             return new javafx.beans.property.SimpleStringProperty("-");
         });
+
+        // Kolom Siap Lelang
+        TableColumn<Asset, String> siapLelangCol = new TableColumn<>("Siap Lelang");
+        siapLelangCol.setCellValueFactory(new PropertyValueFactory<>("siapLelangString"));
+        siapLelangCol.setCellFactory(column -> new TableCell<Asset, String>() {
+            @Override
+            protected void updateItem(String item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || item == null) {
+                    setText(null);
+                    setStyle("");
+                } else {
+                    setText(item);
+                    if ("Ya".equals(item)) {
+                        setStyle("-fx-text-fill: #16a34a; -fx-font-weight: bold;");
+                    } else {
+                        setStyle("-fx-text-fill: #6b7280;");
+                    }
+                }
+            }
+        });
+
+        // Kolom Aksi (Undo dan Hapus Permanen)
+        TableColumn<Asset, Void> aksiCol = new TableColumn<>("Aksi");
+        aksiCol.setCellFactory(column -> new TableCell<Asset, Void>() {
+            private final Button undoBtn = new Button("↩");
+            private final Button deleteBtn = new Button("🗑");
+            private final HBox actionBox = new HBox(6, undoBtn, deleteBtn);
+            
+            {
+                actionBox.setAlignment(Pos.CENTER);
+                undoBtn.setStyle("-fx-font-size: 12px; -fx-padding: 4 8; -fx-background-color: #f0fdf4; -fx-text-fill: #16a34a; -fx-cursor: hand;");
+                deleteBtn.setStyle("-fx-font-size: 12px; -fx-padding: 4 8; -fx-background-color: #fef2f2; -fx-text-fill: #dc2626; -fx-cursor: hand;");
+                
+                undoBtn.setTooltip(new Tooltip("Kembalikan ke Manajemen Aset"));
+                deleteBtn.setTooltip(new Tooltip("Hapus Permanen dari Database"));
+                
+                undoBtn.setOnAction(e -> {
+                    Asset asset = getTableView().getItems().get(getIndex());
+                    handleUndo(asset);
+                });
+                
+                deleteBtn.setOnAction(e -> {
+                    Asset asset = getTableView().getItems().get(getIndex());
+                    handlePermanentDelete(asset);
+                });
+            }
+            
+            @Override
+            protected void updateItem(Void item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty) {
+                    setGraphic(null);
+                } else {
+                    setGraphic(actionBox);
+                }
+            }
+        });
+        aksiCol.setPrefWidth(120);
         
-        table.getColumns().setAll(List.of(checkboxCol, idCol, namaCol, jenisCol, SubdirCol, tanggalCol, kondisiCol));
+        table.getColumns().setAll(List.of(idCol, noAsetCol, namaCol, jenisCol, SubdirCol, tanggalCol, kondisiCol, siapLelangCol, aksiCol));
 
         VBox tableContainer = new VBox(16);
         tableContainer.setPadding(new Insets(20));
@@ -119,7 +151,84 @@ public class AssetRemovalView extends VBox {
         return new HBox();
     }
 
-    private void refreshTable() {
+    private void handleUndo(Asset asset) {
+        Alert confirmAlert = new Alert(Alert.AlertType.CONFIRMATION);
+        confirmAlert.setTitle("Kembalikan Aset");
+        confirmAlert.setHeaderText("Kembalikan Aset ke Manajemen Aset?");
+        confirmAlert.setContentText("Aset \"" + asset.getNamaAset() + "\" akan dikembalikan ke daftar aset aktif.\n\n" +
+                                   "Aset akan muncul kembali di Manajemen Aset.");
+        
+        if (confirmAlert.showAndWait().orElse(ButtonType.CANCEL) == ButtonType.OK) {
+            boolean success = assetApi.undoDeleteAset(asset.getIdAset());
+            if (success) {
+                showSuccessAlert("Aset berhasil dikembalikan ke Manajemen Aset.");
+                refreshTable();
+            } else {
+                showAlert("Gagal mengembalikan aset. Silakan coba lagi.");
+            }
+        }
+    }
+
+    private void handlePermanentDelete(Asset asset) {
+        // First warning
+        Alert warningAlert = new Alert(Alert.AlertType.WARNING);
+        warningAlert.setTitle("⚠️ PERINGATAN: Hapus Permanen");
+        warningAlert.setHeaderText("PERHATIAN! Aksi ini TIDAK DAPAT DIBATALKAN!");
+        warningAlert.setContentText(
+            "Anda akan MENGHAPUS PERMANEN aset:\n\n" +
+            "📦 " + asset.getNamaAset() + "\n" +
+            "🏷️ Kode: " + asset.getKodeAset() + "\n" +
+            "📍 Subdirektorat: " + asset.getSubdir() + "\n\n" +
+            "⚠️ PERINGATAN BISNIS:\n" +
+            "Secara alur bisnis, aset yang sudah ditandai hapus TIDAK BOLEH dihapus permanen.\n" +
+            "Fitur ini HANYA untuk memperbaiki kesalahan input data.\n\n" +
+            "Apakah Anda BENAR-BENAR yakin ingin melanjutkan?"
+        );
+        
+        ButtonType continueBtn = new ButtonType("Ya, Lanjutkan", ButtonBar.ButtonData.OK_DONE);
+        ButtonType cancelBtn = new ButtonType("Batal", ButtonBar.ButtonData.CANCEL_CLOSE);
+        warningAlert.getButtonTypes().setAll(continueBtn, cancelBtn);
+        
+        if (warningAlert.showAndWait().orElse(cancelBtn) == continueBtn) {
+            // Second confirmation with typed confirmation
+            TextInputDialog confirmDialog = new TextInputDialog();
+            confirmDialog.setTitle("Konfirmasi Final");
+            confirmDialog.setHeaderText("Ketik \"HAPUS\" untuk mengkonfirmasi penghapusan permanen");
+            confirmDialog.setContentText("Konfirmasi:");
+            
+            confirmDialog.showAndWait().ifPresent(input -> {
+                if ("HAPUS".equals(input.trim())) {
+                    boolean success = assetApi.permanentDeleteAset(asset.getIdAset());
+                    if (success) {
+                        showSuccessAlert("Aset telah dihapus permanen dari database.");
+                        refreshTable();
+                    } else {
+                        showAlert("Gagal menghapus aset. Silakan coba lagi.");
+                    }
+                } else {
+                    showAlert("Konfirmasi tidak valid. Penghapusan dibatalkan.");
+                }
+            });
+        }
+    }
+
+    private void showAlert(String message) {
+        Alert alert = new Alert(Alert.AlertType.WARNING);
+        alert.setTitle("Peringatan");
+        alert.setHeaderText(null);
+        alert.setContentText(message);
+        alert.showAndWait();
+    }
+
+    private void showSuccessAlert(String message) {
+        Alert alert = new Alert(Alert.AlertType.INFORMATION);
+        alert.setTitle("Berhasil");
+        alert.setHeaderText(null);
+        alert.setContentText(message);
+        alert.showAndWait();
+    }
+
+    public void refreshTable() {
         deletedAssetList.setAll(dataService.getDeletedAssets());
     }
 }

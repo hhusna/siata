@@ -18,7 +18,7 @@ import java.util.List;
 public class AssetExcelHelper {
 
     private static final String[] HEADERS = {
-        "Kode Aset", "Jenis Aset", "Merk Barang", "NIP Pemegang", 
+        "Kode Aset", "No Aset", "Jenis Aset", "Merk Barang", "NIP Pemegang", 
         "Subdirektorat", "Tanggal Perolehan", "Nilai Rupiah", "Kondisi", "Status"
     };
 
@@ -44,51 +44,65 @@ public class AssetExcelHelper {
 
                 try {
                     String kodeAset = getCellValueAsString(row.getCell(0));
-                    String jenisAset = getCellValueAsString(row.getCell(1));
-                    String merkBarang = getCellValueAsString(row.getCell(2));
-                    String nipPemegang = getCellValueAsString(row.getCell(3));
-                    String subdir = getCellValueAsString(row.getCell(4));
-                    LocalDate tanggal = getCellValueAsDate(row.getCell(5));
-                    BigDecimal nilai = getCellValueAsBigDecimal(row.getCell(6));
-                    String kondisi = getCellValueAsString(row.getCell(7));
-                    String status = getCellValueAsString(row.getCell(8));
+                    Integer noAset = getCellValueAsInteger(row.getCell(1));
+                    String jenisAset = getCellValueAsString(row.getCell(2));
+                    String merkBarang = getCellValueAsString(row.getCell(3));
+                    String nipPemegang = getCellValueAsString(row.getCell(4));
+                    String subdir = getCellValueAsString(row.getCell(5));
+                    LocalDate tanggal = getCellValueAsDate(row.getCell(6));
+                    BigDecimal nilai = getCellValueAsBigDecimal(row.getCell(7));
+                    String kondisi = getCellValueAsString(row.getCell(8));
+                    String status = getCellValueAsString(row.getCell(9));
+                    
+                    // Auto-calculate "Dipakai" status based on NIP or Subdir
+                    // Logic: IF (NIP is present OR Subdir is present) -> TRUE, ELSE -> FALSE
+                    String dipakai = "FALSE";
+                    // Validation logic for auto-dipakai happens after we clean NIP and Subdir below
 
-                    // Skip rows with empty kode aset
-                    if (kodeAset == null || kodeAset.trim().isEmpty()) {
-                        continue;
-                    }
-
-                    // Clean kode aset
+                    // Cleaning and validations...
+                    if (kodeAset == null || kodeAset.trim().isEmpty()) continue;
                     kodeAset = kodeAset.replaceAll("\\.0$", "").trim();
-
-                    // Default values
                     if (jenisAset == null) jenisAset = "";
                     if (merkBarang == null) merkBarang = "";
                     if (nipPemegang == null) nipPemegang = "";
+                    else nipPemegang = nipPemegang.replaceAll("\\s+", ""); // Remove spaces
+                    
                     if (subdir == null) subdir = "";
                     if (kondisi == null || kondisi.isEmpty()) kondisi = "Baik";
-                    if (status == null || status.isEmpty()) status = "Aktif";
+                    // Normalize status to AKTIF or NONAKTIF
+                    if (status == null || status.isEmpty()) {
+                        status = "AKTIF";
+                    } else {
+                        String upper = status.trim().toUpperCase().replace(" ", "");
+                        status = upper.contains("NON") || upper.equals("NONAKTIF") || upper.equals("INACTIVE") ? "NONAKTIF" : "AKTIF";
+                    }
                     if (tanggal == null) tanggal = LocalDate.now();
                     if (nilai == null) nilai = BigDecimal.ZERO;
 
-                    Asset asset = new Asset(
-                        kodeAset,
-                        jenisAset.trim(),
-                        merkBarang.trim(),
-                        nipPemegang.replaceAll("\\.0$", "").trim(),
-                        subdir.trim(),
-                        tanggal,
-                        nilai,
-                        kondisi.trim(),
-                        status.trim()
-                    );
+                    Asset asset = new Asset();
+                    asset.setKodeAset(kodeAset);
+                    asset.setNoAset(noAset);
+                    asset.setJenisAset(jenisAset);
+                    asset.setMerkBarang(merkBarang);
+                    asset.setKeterangan(nipPemegang); // NIP
+                    asset.setSubdir(subdir);
+                    asset.setTanggalPerolehan(tanggal);
+                    asset.setNilaiRupiah(nilai);
+                    asset.setKondisi(kondisi);
+                    asset.setStatus(status);
+                    asset.setStatus(status);
+                    
+                    // Final auto-calc logic for Dipakai
+                    boolean isUsed = (nipPemegang != null && !nipPemegang.isEmpty()) || (subdir != null && !subdir.isEmpty());
+                    asset.setDipakai(isUsed ? "TRUE" : "FALSE");
+                    
                     assets.add(asset);
+
                 } catch (Exception e) {
-                    System.err.println("Skipping invalid row: " + e.getMessage());
+                    System.err.println("Error parsing row " + (row.getRowNum() + 1) + ": " + e.getMessage());
                 }
             }
         }
-
         return assets;
     }
 
@@ -133,29 +147,22 @@ public class AssetExcelHelper {
                 Row row = sheet.createRow(rowNum++);
 
                 createCell(row, 0, asset.getKodeAset(), dataStyle);
-                createCell(row, 1, asset.getJenisAset(), dataStyle);
-                createCell(row, 2, asset.getMerkBarang(), dataStyle);
-                createCell(row, 3, asset.getKeterangan(), dataStyle);
-                createCell(row, 4, asset.getSubdir(), dataStyle);
+                createCell(row, 1, asset.getNoAset() != null ? String.valueOf(asset.getNoAset()) : "", dataStyle);
+                createCell(row, 2, asset.getJenisAset(), dataStyle);
+                createCell(row, 3, asset.getMerkBarang(), dataStyle);
+                createCell(row, 4, asset.getKeterangan(), dataStyle);
+                createCell(row, 5, asset.getSubdir(), dataStyle);
                 
-                Cell dateCell = row.createCell(5);
+                Cell dateCell = row.createCell(6);
                 if (asset.getTanggalPerolehan() != null) {
                     dateCell.setCellValue(Date.from(asset.getTanggalPerolehan()
                         .atStartOfDay(ZoneId.systemDefault()).toInstant()));
                 }
                 dateCell.setCellStyle(dateStyle);
-                
-                Cell nilaiCell = row.createCell(6);
-                nilaiCell.setCellValue(asset.getNilaiRupiah() != null ? asset.getNilaiRupiah().doubleValue() : 0);
-                nilaiCell.setCellStyle(dataStyle);
-                
-                createCell(row, 7, asset.getKondisi(), dataStyle);
-                createCell(row, 8, asset.getStatus(), dataStyle);
-            }
 
-            // Auto-size columns
-            for (int i = 0; i < HEADERS.length; i++) {
-                sheet.autoSizeColumn(i);
+                createCell(row, 7, asset.getNilaiRupiah() != null ? asset.getNilaiRupiah().toString() : "0", dataStyle);
+                createCell(row, 8, asset.getKondisi(), dataStyle);
+                createCell(row, 9, asset.getStatus(), dataStyle);
             }
 
             // Write to file
@@ -240,5 +247,22 @@ public class AssetExcelHelper {
             // Ignore parse errors
         }
         return BigDecimal.ZERO;
+    }
+
+    private static Integer getCellValueAsInteger(Cell cell) {
+        if (cell == null) return null;
+        try {
+            if (cell.getCellType() == CellType.NUMERIC) {
+                return (int) cell.getNumericCellValue();
+            } else if (cell.getCellType() == CellType.STRING) {
+                String val = cell.getStringCellValue().replaceAll("[^\\d]", "");
+                if (!val.isEmpty()) {
+                    return Integer.parseInt(val);
+                }
+            }
+        } catch (Exception e) {
+            // ignore
+        }
+        return null;
     }
 }

@@ -15,7 +15,7 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/pegawai")
-@PreAuthorize("hasRole('TIM_MANAJEMEN_ASET')")
+@PreAuthorize("hasAnyRole('TIM_MANAJEMEN_ASET', 'DEV')")
 public class PegawaiController {
 
     @Autowired
@@ -32,7 +32,7 @@ public class PegawaiController {
     }
 
     @GetMapping("/matriks")
-    @PreAuthorize("hasAnyRole('TIM_MANAJEMEN_ASET', 'PPBJ', 'PPK', 'DIREKTUR')")
+    @PreAuthorize("hasAnyRole('TIM_MANAJEMEN_ASET', 'PPBJ', 'PPK', 'DIREKTUR', 'DEV')")
     public List<MatriksAsetDTO> getMatriks() {
         return pegawaiService.getMatriksAset();
     }

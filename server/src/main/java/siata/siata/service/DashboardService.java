@@ -33,20 +33,21 @@ public class DashboardService {
         // Optimize: Execute all counts in parallel batches
         stats.setTotalAset(asetRepository.count());
         
-        // Aset siap dilelang: usia > 4 tahun DAN status = "Non Aktif"
+        // Aset siap dilelang: tua=1 (usia > 4 tahun, status=AKTIF, bukan mobil/motor) DAN apakahDihapus=1
         LocalDate empatTahunLalu = LocalDate.now().minusYears(4);
         stats.setAsetSiapDilelang(asetRepository.countAsetSiapDilelang(empatTahunLalu));
         
-        stats.setAsetRusakBerat(asetRepository.countByKondisi("Rusak Berat"));
+        // Rusak Berat: includes "Rusak Berat", "R. Berat", etc (case-insensitive)
+        stats.setAsetRusakBerat(asetRepository.countByKondisiRusakBerat());
 
-        long permohonanPending = permohonanAsetRepository.countByStatusPersetujuan("Pending");
-        long pengajuanPending = pengajuanAsetRepository.countByStatusPersetujuan("Pending");
+        long permohonanPending = permohonanAsetRepository.countByStatusPersetujuanIgnoreCase("Pending");
+        long pengajuanPending = pengajuanAsetRepository.countByStatusPersetujuanIgnoreCase("Pending");
         stats.setPermohonanPending(permohonanPending);
         stats.setPengajuanPending(pengajuanPending);
 
-        stats.setAsetAktif(asetRepository.countByStatusPemakaian("Aktif"));
-        stats.setAsetNonAktif(asetRepository.countByStatusPemakaian("Non Aktif"));
-        stats.setAsetDiajukanHapus(asetRepository.countByStatusPemakaian("Diajukan Hapus"));
+        stats.setAsetAktif(asetRepository.countByStatusPemakaianIgnoreCase("Aktif"));
+        stats.setAsetNonAktif(asetRepository.countByStatusPemakaianIgnoreCase("Non Aktif"));
+        stats.setAsetDiajukanHapus(asetRepository.countByStatusPemakaianIgnoreCase("Diajukan Hapus"));
         stats.setTotalAsetDihapus(penghapusanAsetRepository.count());
 
         return stats;

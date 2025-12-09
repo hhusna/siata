@@ -20,6 +20,7 @@ public class AssetDtoForRequest {
     private String kondisi;
     private String statusPemakaian;
     private String subdirektorat;
+    private Integer noAset;
 
     @JsonProperty("pegawai")
     private PegawaiDto pegawaiDto;
@@ -98,4 +99,16 @@ public class AssetDtoForRequest {
     public void setSubdirektorat(String subdirektorat) {
         this.subdirektorat = subdirektorat;
     }
+
+    public Integer getNoAset() {
+        return noAset;
+    }
+
+    public void setNoAset(Integer noAset) {
+        this.noAset = noAset;
+    }
+
+    private String dipakai;
+    public String getDipakai() { return dipakai; }
+    public void setDipakai(String dipakai) { this.dipakai = dipakai; }
 }

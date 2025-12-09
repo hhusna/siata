@@ -269,7 +269,7 @@ public class EmployeeManagementView extends VBox {
     private void showImportModal() {
         Stage modalStage = new Stage();
         modalStage.initModality(Modality.APPLICATION_MODAL);
-        modalStage.initStyle(StageStyle.UNDECORATED);
+        modalStage.initStyle(StageStyle.TRANSPARENT);
         modalStage.setTitle("Import Data Pegawai");
 
         VBox modalContent = new VBox(0);
@@ -688,13 +688,12 @@ public class EmployeeManagementView extends VBox {
     private void showEmployeeForm(Employee editableEmployee) {
         Stage modalStage = new Stage();
         modalStage.initModality(Modality.APPLICATION_MODAL);
-        modalStage.initStyle(StageStyle.UNDECORATED);
+        modalStage.initStyle(StageStyle.TRANSPARENT);
         modalStage.setTitle(editableEmployee == null ? "Tambah Pegawai Baru" : "Edit Pegawai");
 
         VBox modalContent = new VBox(0);
-        modalContent.setPrefWidth(480);
-        modalContent.setMaxWidth(480);
-        modalContent.setMaxHeight(600);
+        modalContent.setPrefWidth(700);
+        modalContent.setMaxWidth(700);
         modalContent.getStyleClass().add("modal-content");
 
         // Header with close button
@@ -741,6 +740,7 @@ public class EmployeeManagementView extends VBox {
         ComboBox<String> unitCombo = new ComboBox<>();
         unitCombo.getItems().addAll("PPTAU", "AUNB", "AUNTB", "KAU", "SILAU", "Tata Usaha", "Direktur", "PINDAH");
         unitCombo.setPromptText("Pilih unit");
+        unitCombo.setMaxWidth(Double.MAX_VALUE);
         Label unitLabel = new Label("Unit / Subdirektorat");
         unitLabel.getStyleClass().add("form-label");
         if (editableEmployee != null) {
@@ -751,6 +751,7 @@ public class EmployeeManagementView extends VBox {
         statusCombo.getItems().addAll("AKTIF", "NONAKTIF");
         statusCombo.setPromptText("Pilih status");
         statusCombo.setValue("AKTIF");
+        statusCombo.setMaxWidth(Double.MAX_VALUE);
         Label statusLabel = new Label("Status Pegawai");
         statusLabel.getStyleClass().add("form-label");
         if (editableEmployee != null && editableEmployee.getStatus() != null) {
@@ -860,17 +861,44 @@ public class EmployeeManagementView extends VBox {
         
         buttonBox.getChildren().addAll(cancelButton, saveButton);
         
-        // Add content to form container
-        VBox formContainer = new VBox(16);
-        formContainer.setPadding(new Insets(0, 24, 0, 24));
-        formContainer.getChildren().addAll(
-            nipLabel, nipField,
-            namaLabel, namaField,
-            unitLabel, unitCombo,
-            statusLabel, statusCombo
-        );
+        // Two-column grid layout for form fields
+        GridPane formGrid = new GridPane();
+        formGrid.setHgap(24);
+        formGrid.setVgap(16);
+        formGrid.setPadding(new Insets(0, 24, 0, 24));
         
-        modalContent.getChildren().addAll(headerBox, formContainer, buttonBox);
+        // Column constraints for equal width columns
+        ColumnConstraints col1 = new ColumnConstraints();
+        col1.setPercentWidth(50);
+        col1.setHgrow(Priority.ALWAYS);
+        ColumnConstraints col2 = new ColumnConstraints();
+        col2.setPercentWidth(50);
+        col2.setHgrow(Priority.ALWAYS);
+        formGrid.getColumnConstraints().addAll(col1, col2);
+        
+        // Left column: NIP and Unit
+        VBox nipBox = new VBox(8);
+        nipBox.getChildren().addAll(nipLabel, nipField);
+        
+        VBox unitBox = new VBox(8);
+        unitBox.getChildren().addAll(unitLabel, unitCombo);
+        
+        // Right column: Nama and Status
+        VBox namaBox = new VBox(8);
+        namaBox.getChildren().addAll(namaLabel, namaField);
+        
+        VBox statusBox = new VBox(8);
+        statusBox.getChildren().addAll(statusLabel, statusCombo);
+        
+        // Row 0: NIP and Nama
+        formGrid.add(nipBox, 0, 0);
+        formGrid.add(namaBox, 1, 0);
+        
+        // Row 1: Unit and Status
+        formGrid.add(unitBox, 0, 1);
+        formGrid.add(statusBox, 1, 1);
+        
+        modalContent.getChildren().addAll(headerBox, formGrid, buttonBox);
 
         Scene modalScene = new Scene(modalContent);
         modalScene.getStylesheets().add(getClass().getResource("/styles.css").toExternalForm());
@@ -886,7 +914,7 @@ public class EmployeeManagementView extends VBox {
     private void showEmployeeAssets(Employee employee) {
         Stage modalStage = new Stage();
         modalStage.initModality(Modality.APPLICATION_MODAL);
-        modalStage.initStyle(StageStyle.UNDECORATED);
+        modalStage.initStyle(StageStyle.TRANSPARENT);
         modalStage.setTitle("Aset yang Dimiliki");
 
         VBox modalContent = new VBox(0);
@@ -944,6 +972,28 @@ public class EmployeeManagementView extends VBox {
     }
 
     private boolean confirmDelete(Employee employee) {
+        // Check if employee has any active assets (not marked for deletion)
+        List<String> activeAssets = dataService.getAssets().stream()
+            .filter(asset -> employee.getNip().equals(asset.getKeterangan()))
+            .map(asset -> asset.getJenisAset() + " " + asset.getMerkBarang() + " (" + asset.getKodeAset() + ")")
+            .toList();
+        
+        if (!activeAssets.isEmpty()) {
+            // Show warning - cannot delete
+            Alert warningAlert = new Alert(Alert.AlertType.WARNING);
+            warningAlert.setTitle("Tidak Dapat Menghapus Pegawai");
+            warningAlert.setHeaderText("Pegawai Masih Memiliki Aset Aktif");
+            warningAlert.setContentText(
+                "Pegawai \"" + employee.getNamaLengkap() + "\" masih memiliki " + activeAssets.size() + " aset aktif:\n\n" +
+                String.join("\n", activeAssets.subList(0, Math.min(5, activeAssets.size()))) +
+                (activeAssets.size() > 5 ? "\n... dan " + (activeAssets.size() - 5) + " lainnya" : "") +
+                "\n\nHarap pindahkan aset ke pegawai lain atau tandai aset untuk penghapusan terlebih dahulu."
+            );
+            warningAlert.showAndWait();
+            return false;
+        }
+        
+        // No active assets, proceed with normal confirmation
         Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
         alert.setTitle("Konfirmasi Penghapusan");
         alert.setHeaderText("Hapus Pegawai");

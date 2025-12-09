@@ -1,6 +1,7 @@
 package com.siata.client.view;
 
 import com.siata.client.MainApplication;
+import com.siata.client.component.CustomTitleBar;
 import com.siata.client.session.LoginSession;
 import com.siata.client.util.AnimationUtils;
 import javafx.animation.FadeTransition;
@@ -125,34 +126,51 @@ public class MainShellView extends BorderPane {
         separatorContainer.setAlignment(Pos.CENTER);
         separatorContainer.setPadding(new Insets(12, 16, 12, 16));
 
-        VBox menu = new VBox(10);
+        VBox menu = new VBox(2);
 
         // --- LOGIKA ROLE BASE DI SINI ---
         String role = LoginSession.getRole();
         if (role == null) role = ""; // Antisipasi null
 
-        // 1. Semua user bisa akses Dashboard
-        addMenuToSidebar(menu, MainPage.DASHBOARD);
-
         // 2. Cek Role menggunakan If-Else
         if (role.equals("TIM_MANAJEMEN_ASET") || role.equals("DEV")) {
             // Admin Aset / DEV: Akses Penuh Pengelolaan
+            
+            // === SECTION: MAIN ===
+            addSectionHeader(menu, "Menu");
+            addMenuToSidebar(menu, MainPage.DASHBOARD);
             addMenuToSidebar(menu, MainPage.RECAPITULATION);
+            
+            // === SECTION: MANAJEMEN ===
+            addSectionHeader(menu, "Manajemen");
             addMenuToSidebar(menu, MainPage.EMPLOYEE_MANAGEMENT);
             addMenuToSidebar(menu, MainPage.ASSET_MANAGEMENT);
             addMenuToSidebar(menu, MainPage.ASSET_REQUEST);
             addMenuToSidebar(menu, MainPage.ASSET_APPROVAL);
+            
+            // === SECTION: MISC ===
+            addSectionHeader(menu, "Misc");
             addMenuToSidebar(menu, MainPage.ASSET_REMOVAL);
             addMenuToSidebar(menu, MainPage.LOGBOOK);
 
         } else if (role.equals("PPBJ") || role.equals("PPK") || role.equals("DIREKTUR")) {
             // Tim Approval: Hanya melihat rekap, persetujuan, dan log
+            addSectionHeader(menu, "Menu");
+            addMenuToSidebar(menu, MainPage.DASHBOARD);
             addMenuToSidebar(menu, MainPage.RECAPITULATION);
+            
+            addSectionHeader(menu, "Manajemen");
             addMenuToSidebar(menu, MainPage.ASSET_APPROVAL);
+            
+            addSectionHeader(menu, "Misc");
             addMenuToSidebar(menu, MainPage.LOGBOOK);
 
         } else {
             // Role Lainnya (Pegawai Biasa): Hanya bisa mengajukan aset
+            addSectionHeader(menu, "Menu");
+            addMenuToSidebar(menu, MainPage.DASHBOARD);
+            
+            addSectionHeader(menu, "Manajemen");
             addMenuToSidebar(menu, MainPage.ASSET_REQUEST);
         }
 
@@ -162,11 +180,67 @@ public class MainShellView extends BorderPane {
         menuScroll.getStyleClass().add("sidebar-scroll");
         BorderPane.setMargin(menuScroll, new Insets(0, 10, 0, 10));
 
+        // === BOTTOM SECTION: User info, Switch Role, Logout ===
+        VBox bottomSection = new VBox(8);
+        bottomSection.setPadding(new Insets(12, 16, 16, 16));
+        
+        // Separator line above user info
+        Region bottomSeparator = new Region();
+        bottomSeparator.setStyle("-fx-background-color: rgba(255, 255, 255, 0.2);");
+        bottomSeparator.setMinHeight(1);
+        bottomSeparator.setPrefHeight(1);
+        bottomSeparator.setMaxHeight(1);
+        
+        // User info section
+        String usernameText = LoginSession.getUsername() != null ? LoginSession.getUsername() : "User";
+        String roleText = LoginSession.getRole() != null ? LoginSession.getRole().replace("_", " ") : "Guest";
+        
+        // Avatar button
+        Button sidebarAvatar = new Button(usernameText.substring(0, 1).toUpperCase());
+        sidebarAvatar.getStyleClass().add("sidebar-avatar");
+        sidebarAvatar.setOnAction(e -> showProfileMenu(sidebarAvatar));
+        
+        // User info text
+        Label sidebarUsername = new Label(usernameText);
+        sidebarUsername.setStyle("-fx-text-fill: white; -fx-font-size: 13px; -fx-font-weight: 600;");
+        menuTextLabels.add(sidebarUsername);
+        
+        Label sidebarRole = new Label(roleText);
+        sidebarRole.setStyle("-fx-text-fill: rgba(255,255,255,0.6); -fx-font-size: 11px;");
+        menuTextLabels.add(sidebarRole);
+        
+        VBox userTextBox = new VBox(2, sidebarUsername, sidebarRole);
+        userTextBox.setAlignment(Pos.CENTER_LEFT);
+        
+        HBox userInfoBox = new HBox(10, sidebarAvatar, userTextBox);
+        userInfoBox.setAlignment(Pos.CENTER_LEFT);
+        userInfoBox.setStyle("-fx-cursor: hand;");
+        userInfoBox.setOnMouseClicked(e -> showProfileMenu(sidebarAvatar));
+        
+        // Switch Role button (only for DEV)
+        Button switchRoleBtn = null;
+        if (LoginSession.isOriginallyDev()) {
+            switchRoleBtn = new Button("🔄 Switch Role");
+            switchRoleBtn.getStyleClass().add("sidebar-switch-role-button");
+            switchRoleBtn.setMaxWidth(Double.MAX_VALUE);
+            Button finalSwitchRoleBtn = switchRoleBtn;
+            switchRoleBtn.setOnAction(e -> showSwitchRolePopup(finalSwitchRoleBtn));
+            menuTextLabels.add(switchRoleBtn.getGraphic() instanceof Label ? (Label) switchRoleBtn.getGraphic() : null);
+        }
+        
+        // Logout button
         logoutButton = new Button("🚪 Logout");
         logoutButton.getStyleClass().add("sidebar-logout-button");
         logoutButton.setMaxWidth(Double.MAX_VALUE);
         logoutButton.setOnAction(event -> onLogout.ifPresent(Runnable::run));
-        BorderPane.setMargin(logoutButton, new Insets(12, 16, 16, 16));
+        
+        // Build bottom section
+        bottomSection.getChildren().add(bottomSeparator);
+        bottomSection.getChildren().add(userInfoBox);
+        if (switchRoleBtn != null) {
+            bottomSection.getChildren().add(switchRoleBtn);
+        }
+        bottomSection.getChildren().add(logoutButton);
 
         // Combine branding and separator in a VBox for top section
         VBox topSection = new VBox();
@@ -174,7 +248,7 @@ public class MainShellView extends BorderPane {
         
         sidebar.setTop(topSection);
         sidebar.setCenter(menuScroll);
-        sidebar.setBottom(logoutButton);
+        sidebar.setBottom(bottomSection);
         return sidebar;
     }
 
@@ -184,9 +258,18 @@ public class MainShellView extends BorderPane {
         menu.getChildren().add(item);
         menuItems.put(page, item);
     }
+    
+    // Helper method untuk menambahkan section header
+    private void addSectionHeader(VBox menu, String title) {
+        Label header = new Label(title.toUpperCase());
+        header.getStyleClass().add("sidebar-section-header");
+        header.setStyle("-fx-font-size: 12px; -fx-font-weight: 700; -fx-text-fill: rgba(255,255,255,0.6); -fx-padding: 16 6 6 6;");
+        menuTextLabels.add(header); // Track for collapse animation
+        menu.getChildren().add(header);
+    }
 
     private HBox createMenuItem(MainPage page) {
-        HBox item = new HBox(12);
+        HBox item = new HBox(6);
         item.setAlignment(Pos.CENTER_LEFT);
         item.getStyleClass().add("sidebar-item");
 
@@ -222,7 +305,7 @@ public class MainShellView extends BorderPane {
     private Node buildHeader() {
         HBox header = new HBox();
         header.getStyleClass().add("dashboard-header");
-        header.setPadding(new Insets(12, 20, 12, 20));
+        header.setPadding(new Insets(8, 8, 8, 20));
         header.setAlignment(Pos.CENTER_LEFT);
         header.setSpacing(16);
 
@@ -239,39 +322,28 @@ public class MainShellView extends BorderPane {
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
         
-        // Switch Role button (only for users whose original role from backend is DEV)
-        Button switchRoleBtn = null;
-        if (LoginSession.isOriginallyDev()) {
-            switchRoleBtn = new Button("🔄 Switch Role");
-            switchRoleBtn.getStyleClass().add("ghost-button");
-            switchRoleBtn.setStyle("-fx-font-size: 12px; -fx-text-fill: #6366f1;");
-            Button finalSwitchRoleBtn = switchRoleBtn;
-            switchRoleBtn.setOnAction(e -> showSwitchRolePopup(finalSwitchRoleBtn));
-        }
+        // Window controls (minimize, maximize, close)
+        javafx.stage.Stage stage = MainApplication.getPrimaryStage();
+        HBox windowControls = CustomTitleBar.createWindowControls(stage);
 
-        VBox userBox = new VBox(2);
-        userBox.setAlignment(Pos.CENTER_RIGHT);
-
-        // Update Header dengan Data Session yang Real
-        String usernameText = LoginSession.getUsername() != null ? LoginSession.getUsername() : "User";
-        String roleText = LoginSession.getRole() != null ? LoginSession.getRole().replace("_", " ") : "Guest";
-
-        Label username = new Label(usernameText);
-        username.getStyleClass().add("header-username");
-        Label role = new Label(roleText);
-        role.getStyleClass().add("header-role");
-        userBox.getChildren().addAll(username, role);
-
-        Button avatar = new Button(usernameText.substring(0, 1).toUpperCase());
-        avatar.getStyleClass().add("header-avatar");
-        avatar.setOnAction(e -> showProfileMenu(avatar));
-
-        // Order: menuButton, titleBox on left, spacer pushes rest to right
-        if (switchRoleBtn != null) {
-            header.getChildren().addAll(menuButton, titleBox, spacer, switchRoleBtn, userBox, avatar);
-        } else {
-            header.getChildren().addAll(menuButton, titleBox, spacer, userBox, avatar);
-        }
+        // Header now contains menu, title, and window controls
+        header.getChildren().addAll(menuButton, titleBox, spacer, windowControls);
+        
+        // Make header draggable for window movement
+        final double[] dragOffset = new double[2];
+        header.setOnMousePressed(event -> {
+            if (stage != null && !stage.isMaximized()) {
+                dragOffset[0] = event.getSceneX();
+                dragOffset[1] = event.getSceneY();
+            }
+        });
+        header.setOnMouseDragged(event -> {
+            if (stage != null && !stage.isMaximized()) {
+                stage.setX(event.getScreenX() - dragOffset[0]);
+                stage.setY(event.getScreenY() - dragOffset[1]);
+            }
+        });
+        
         return header;
     }
     
@@ -334,14 +406,19 @@ public class MainShellView extends BorderPane {
             popup.getChildren().add(roleBtn);
         }
         
-        // Position popup below the anchor button
+        // Position popup ABOVE the anchor button (not below)
         javafx.geometry.Bounds bounds = anchorButton.localToScreen(anchorButton.getBoundsInLocal());
-        popupStage.setX(bounds.getMinX());
-        popupStage.setY(bounds.getMaxY() + 8);
         
+        // We need to show the popup first to get its height, then reposition
         javafx.scene.Scene scene = new javafx.scene.Scene(popup);
         scene.setFill(javafx.scene.paint.Color.TRANSPARENT);
         popupStage.setScene(scene);
+        
+        // Calculate popup height (estimate based on content)
+        double popupHeight = 12 + 20 + 8 + (roles.length * 36) + 12; // padding + title + separator + buttons + padding
+        
+        popupStage.setX(bounds.getMinX());
+        popupStage.setY(bounds.getMinY() - popupHeight - 8); // Position above the button
         
         // Close popup when clicking outside
         popupStage.focusedProperty().addListener((obs, wasFocused, isNowFocused) -> {
@@ -643,7 +720,7 @@ public class MainShellView extends BorderPane {
     private void showProfileDetail() {
         javafx.stage.Stage modalStage = new javafx.stage.Stage();
         modalStage.initModality(javafx.stage.Modality.APPLICATION_MODAL);
-        modalStage.initStyle(javafx.stage.StageStyle.UNDECORATED);
+        modalStage.initStyle(javafx.stage.StageStyle.TRANSPARENT);
         modalStage.setTitle("Profile Pengguna");
 
         VBox modalContent = new VBox(0);

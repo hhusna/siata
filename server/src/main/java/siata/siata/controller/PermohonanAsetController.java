@@ -27,13 +27,13 @@ public class PermohonanAsetController {
     }
 
     @GetMapping
-    @PreAuthorize("hasAnyRole('TIM_MANAJEMEN_ASET', 'PPBJ', 'PPK', 'DIREKTUR')")
+    @PreAuthorize("hasAnyRole('TIM_MANAJEMEN_ASET', 'PPBJ', 'PPK', 'DIREKTUR', 'DEV')")
     public List<PermohonanAset> getAll() {
         return permohonanAsetService.getAll();
     }
 
     @PostMapping
-    @PreAuthorize("hasRole('TIM_MANAJEMEN_ASET')")
+    @PreAuthorize("hasAnyRole('TIM_MANAJEMEN_ASET', 'DEV')")
     public ResponseEntity<?> create(@Valid @RequestBody PermohonanAset permohonanAset, Authentication authentication) {
         // Validasi: cek apakah nama pemohon terdaftar di unit yang sesuai
         String validationError = permohonanAsetService.validatePemohonByUnit(permohonanAset.getNamaPemohon(), permohonanAset.getUnit());
@@ -44,7 +44,7 @@ public class PermohonanAsetController {
     }
 
     @PatchMapping("/{id}/status")
-    @PreAuthorize("hasAnyRole('TIM_MANAJEMEN_ASET', 'PPBJ', 'PPK', 'DIREKTUR')")
+    @PreAuthorize("hasAnyRole('TIM_MANAJEMEN_ASET', 'PPBJ', 'PPK', 'DIREKTUR', 'DEV')")
     public ResponseEntity<PermohonanAset> updateStatus(@PathVariable Long id, @Valid @RequestBody StatusUpdateDTO statusUpdate, Authentication authentication) {
         try {
             String status = statusUpdate.getStatus();
@@ -55,14 +55,14 @@ public class PermohonanAsetController {
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasRole('TIM_MANAJEMEN_ASET')")
+    @PreAuthorize("hasAnyRole('TIM_MANAJEMEN_ASET', 'DEV')")
     public ResponseEntity<Void> delete(@PathVariable Long id, Authentication authentication) {
         permohonanAsetService.delete(id, getPegawaiFromAuth(authentication));
         return ResponseEntity.ok().build();
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasRole('TIM_MANAJEMEN_ASET')")
+    @PreAuthorize("hasAnyRole('TIM_MANAJEMEN_ASET', 'DEV')")
     public ResponseEntity<?> update(@PathVariable Long id, @Valid @RequestBody PermohonanAset permohonanDetails, Authentication authentication) {
         // Validasi: cek apakah nama pemohon terdaftar di unit yang sesuai
         String validationError = permohonanAsetService.validatePemohonByUnit(permohonanDetails.getNamaPemohon(), permohonanDetails.getUnit());

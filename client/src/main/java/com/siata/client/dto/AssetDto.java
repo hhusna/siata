@@ -6,7 +6,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 
-@JsonIgnoreProperties
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class AssetDto {
     private long idAset;
     private String kodeAset;
@@ -17,6 +17,8 @@ public class AssetDto {
     private String kondisi;
     private String statusPemakaian;
     private String subdirektorat;
+    private Integer apakahDihapus;
+    private Integer noAset;
 
     @JsonProperty("pegawai")
     private PegawaiDto pegawaiDto;
@@ -103,4 +105,24 @@ public class AssetDto {
     public void setSubdirektorat(String subdirektorat) {
         this.subdirektorat = subdirektorat;
     }
+
+    public Integer getApakahDihapus() {
+        return apakahDihapus;
+    }
+
+    public void setApakahDihapus(Integer apakahDihapus) {
+        this.apakahDihapus = apakahDihapus;
+    }
+
+    public Integer getNoAset() {
+        return noAset;
+    }
+
+    public void setNoAset(Integer noAset) {
+        this.noAset = noAset;
+    }
+
+    private String dipakai;
+    public String getDipakai() { return dipakai; }
+    public void setDipakai(String dipakai) { this.dipakai = dipakai; }
 }

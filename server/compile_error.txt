@@ -1,0 +1,38 @@
+﻿[INFO] Scanning for projects...
+[INFO] 
+[INFO] ----------------------------< siata:siata >-----------------------------
+[INFO] Building siata 0.0.1-SNAPSHOT
+[INFO]   from pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- resources:3.3.1:resources (default-resources) @ siata ---
+[INFO] Copying 1 resource from src\main\resources to target\classes
+[INFO] Copying 2 resources from src\main\resources to target\classes
+[INFO] 
+[INFO] --- compiler:3.14.1:compile (default-compile) @ siata ---
+[INFO] Recompiling the module because of changed source code.
+[INFO] Compiling 45 source files with javac [debug parameters release 21] to target\classes
+[INFO] -------------------------------------------------------------
+[ERROR] COMPILATION ERROR : 
+[INFO] -------------------------------------------------------------
+[ERROR] /C:/Users/azelf/Documents/Project_Software/siata/server/src/main/java/siata/siata/service/AsetService.java:[282,35] reference to LogRiwayat is ambiguous
+  both constructor LogRiwayat(siata.siata.entity.Pegawai,siata.siata.entity.PermohonanAset,java.lang.String,java.lang.String) in siata.siata.entity.LogRiwayat and constructor LogRiwayat(siata.siata.entity.Pegawai,siata.siata.entity.PengajuanAset,java.lang.String,java.lang.String) in siata.siata.entity.LogRiwayat match
+[INFO] 1 error
+[INFO] -------------------------------------------------------------
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD FAILURE
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  3.882 s
+[INFO] Finished at: 2025-12-08T07:07:57+07:00
+[INFO] ------------------------------------------------------------------------
+[ERROR] Failed to execute goal org.apache.maven.plugins:maven-compiler-plugin:3.14.1:compile (default-compile) on project siata: Compilation failure
+[ERROR] /C:/Users/azelf/Documents/Project_Software/siata/server/src/main/java/siata/siata/service/AsetService.java:[282,35] reference to LogRiwayat is ambiguous
+[ERROR]   both constructor LogRiwayat(siata.siata.entity.Pegawai,siata.siata.entity.PermohonanAset,java.lang.String,java.lang.String) in siata.siata.entity.LogRiwayat and constructor LogRiwayat(siata.siata.entity.Pegawai,siata.siata.entity.PengajuanAset,java.lang.String,java.lang.String) in siata.siata.entity.LogRiwayat match
+[ERROR] 
+[ERROR] -> [Help 1]
+[ERROR] 
+[ERROR] To see the full stack trace of the errors, re-run Maven with the -e switch.
+[ERROR] Re-run Maven using the -X switch to enable full debug logging.
+[ERROR] 
+[ERROR] For more information about the errors and possible solutions, please read the following articles:
+[ERROR] [Help 1] http://cwiki.apache.org/confluence/display/MAVEN/MojoFailureException

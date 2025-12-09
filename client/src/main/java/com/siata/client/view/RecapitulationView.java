@@ -19,6 +19,8 @@ import javafx.scene.control.Label;
 import javafx.scene.control.ScrollPane;
 import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
+import javafx.scene.control.Tooltip;
+import javafx.scene.control.ComboBox;
 import javafx.scene.layout.*;
 import javafx.stage.Stage;
 
@@ -38,7 +40,7 @@ public class RecapitulationView extends VBox {
     private final ExportPdfApi exportApi = new ExportPdfApi();
 
     // Daftar Jenis Aset Standar untuk Laporan
-    private final List<String> JENIS_ASET_LIST = List.of("Mobil", "Motor", "Scanner", "PC", "Laptop", "Tablet", "Printer", "Speaker", "Parabot");
+    private final List<String> JENIS_ASET_LIST = List.of("Mobil", "Motor", "Scanner", "PC", "Laptop", "Notebook", "Tablet", "Printer", "Speaker", "Parabot");
 
     // === CACHED DATA - Load once, use everywhere ===
     private List<Asset> cachedAssets;
@@ -50,6 +52,32 @@ public class RecapitulationView extends VBox {
     private Map<String, List<Asset>> assetsBySubdir;
     private Map<String, List<Asset>> assetsByNip;
     private Map<String, Long> employeesByUnit;
+
+    // Tooltip descriptions for each column
+    private static final Map<String, String> COLUMN_TOOLTIPS = Map.ofEntries(
+        // Tabel Pencatatan BMN
+        Map.entry("Jenis Aset", "Semua jenis aset yang tercatat di aplikasi ini"),
+        Map.entry("Jumlah", "Jumlah semua aset yang tercatat di aplikasi ini"),
+        Map.entry("Sudah Dihapus", "Jumlah semua aset yang sudah masuk ke tabel penghapusan aset"),
+        Map.entry("Tercatat Sakti", "Jumlah jenis aset dikurangi aset yang sudah dihapus"),
+        // Tabel Rencana Penghapusan
+        Map.entry("Habis Pakai", "Jumlah aset yang usianya lebih dari 4 tahun dan masih aktif"),
+        Map.entry("Bersih", "Jumlah aset yang tercatat sakti dikurangi habis pakai"),
+        Map.entry("Akan Habis", "Jumlah aset yang usianya akan lebih dari 4 tahun di tahun depan"),
+        Map.entry("Total Bersih", "Jumlah aset yang tercatat sakti dikurangi habis pakai dan akan habis"),
+        // Tabel Rekap Pemakaian
+        Map.entry("Dipakai Belum Hapus", "Jumlah aset yang tidak masuk tabel penghapusan aset dan masih dipakai (ada pemegang)"),
+        Map.entry("Dipakai Sudah Hapus", "Jumlah aset yang masuk ke tabel penghapusan aset dan tidak dipakai (tidak ada pemegang)"),
+        Map.entry("Total Dipakai", "Jumlah dipakai belum hapus ditambah dipakai sudah hapus"),
+        // Tabel Keterangan Kondisi
+        Map.entry("Rusak Berat", "Jumlah aset yang memiliki status rusak berat dan tidak dipakai (tidak ada pemegang)"),
+        Map.entry("Hilang", "Jumlah aset yang memiliki keterangan subdirnya adalah hilang"),
+        Map.entry("Gudang", "Jumlah aset yang keterangan subdirnya adalah gudang"),
+        // Tabel Rekap Pemegangan
+        Map.entry("Tidak Ganda", "Jumlah aset yang jumlah asetnya adalah satu pada matriks aset"),
+        Map.entry("Ganda", "Jumlah aset yang jumlah asetnya lebih dari satu pada matriks aset"),
+        Map.entry("Total Pemegang", "Tidak ganda + Ganda")
+    );
 
     public RecapitulationView() {
         this.dataService = DataService.getInstance();
@@ -107,6 +135,9 @@ public class RecapitulationView extends VBox {
         // Add content directly without ScrollPane - parent container already handles scrolling
         getChildren().add(buildHeader());
         getChildren().add(buildStatsGrid());
+        
+        // Laptop needs detection card
+        getChildren().add(createLaptopNeedsCard());
         
         // Carousel for 5 main tables
         getChildren().add(buildTableCarousel());
@@ -192,9 +223,6 @@ public class RecapitulationView extends VBox {
         });
         
         carouselWrapper.getChildren().addAll(header, carouselContainer);
-        
-        // Add hover effect
-        AnimationUtils.addHoverLiftEffect(carouselWrapper);
         
         return carouselWrapper;
     }
@@ -396,15 +424,15 @@ public class RecapitulationView extends VBox {
 
             Map<String, String> row = new HashMap<>();
             row.put("Jenis Aset", jenis);
-            row.put("Belum Hapus", String.valueOf(belumHapus));
-            row.put("Sudah Hapus", String.valueOf(sudahHapus));
-            row.put("Total", String.valueOf(belumHapus + sudahHapus));
+            row.put("Dipakai Belum Hapus", String.valueOf(belumHapus));
+            row.put("Dipakai Sudah Hapus", String.valueOf(sudahHapus));
+            row.put("Total Dipakai", String.valueOf(belumHapus + sudahHapus));
             data.add(row);
         }
 
         return createCarouselTable(data,
-                new String[]{"Jenis Aset", "Belum Hapus", "Sudah Hapus", "Total"},
-                new int[]{200, 120, 120, 100});
+                new String[]{"Jenis Aset", "Dipakai Belum Hapus", "Dipakai Sudah Hapus", "Total Dipakai"},
+                new int[]{180, 140, 140, 120});
     }
 
     // --- LOGIKA TABEL 4: KETERANGAN KONDISI ---
@@ -455,13 +483,13 @@ public class RecapitulationView extends VBox {
             row.put("Jenis Aset", jenis);
             row.put("Tidak Ganda", String.valueOf(tidakGanda));
             row.put("Ganda", String.valueOf(ganda));
-            row.put("Total", String.valueOf(holderCounts.size()));
+            row.put("Total Pemegang", String.valueOf(holderCounts.size()));
             data.add(row);
         }
 
         return createCarouselTable(data,
-                new String[]{"Jenis Aset", "Tidak Ganda", "Ganda", "Total"},
-                new int[]{200, 120, 120, 100});
+                new String[]{"Jenis Aset", "Tidak Ganda", "Ganda", "Total Pemegang"},
+                new int[]{180, 120, 120, 130});
     }
 
     // Helper for carousel tables (no title wrapper)
@@ -477,6 +505,19 @@ public class RecapitulationView extends VBox {
 
             if (idx < widths.length) {
                 col.setPrefWidth(widths[idx]);
+            }
+
+            // Add instant tooltip to column header if available
+            String tooltipText = COLUMN_TOOLTIPS.get(colName);
+            if (tooltipText != null) {
+                Label headerLabel = new Label(colName);
+                Tooltip tooltip = new Tooltip(tooltipText);
+                tooltip.setShowDelay(Duration.ZERO);
+                tooltip.setHideDelay(Duration.millis(200));
+                tooltip.setStyle("-fx-font-size: 11px; -fx-font-weight: normal; -fx-background-color: #1e293b; -fx-text-fill: white; -fx-padding: 6 10; -fx-background-radius: 6;");
+                headerLabel.setTooltip(tooltip);
+                col.setGraphic(headerLabel);
+                col.setText(""); // Clear text since we use graphic
             }
 
             col.setCellValueFactory(cellData ->
@@ -502,7 +543,7 @@ public class RecapitulationView extends VBox {
     // === MERGED SUBDIRECTORY TABLE (Pegawai + Pemakaian BMN) ===
     private Node createMergedSubdirTable() {
         List<String> subdirs = List.of("PPTAU", "AUNB", "AUNTB", "KAU", "SILAU", "Tata Usaha", "Direktur");
-        List<String> displayTypes = List.of("Mobil", "Motor", "Scanner", "PC", "Laptop", "Tablet", "Printer", "Speaker", "Parabot");
+        List<String> displayTypes = List.of("Mobil", "Motor", "Scanner", "PC", "Laptop", "Notebook", "Tablet", "Printer", "Speaker", "Parabot");
         
         ObservableList<Map<String, String>> data = FXCollections.observableArrayList();
 
@@ -568,7 +609,7 @@ public class RecapitulationView extends VBox {
         searchField.getStyleClass().add("filter-search-field");
         searchField.setMaxWidth(280);
 
-        List<String> displayTypes = List.of("Mobil", "Motor", "Scanner", "PC", "Laptop", "Tablet", "Printer", "Speaker", "Parabot");
+        List<String> displayTypes = List.of("Mobil", "Motor", "Scanner", "PC", "Laptop", "Notebook", "Tablet", "Printer", "Speaker", "Parabot");
 
         ObservableList<Map<String, String>> allData = FXCollections.observableArrayList();
         for (Employee emp : cachedEmployees) {
@@ -668,7 +709,6 @@ public class RecapitulationView extends VBox {
         headerRow.getChildren().addAll(sectionTitle, spacer, searchField);
 
         section.getChildren().addAll(headerRow, table);
-        AnimationUtils.addHoverLiftEffect(section);
         
         return section;
     }
@@ -759,6 +799,137 @@ public class RecapitulationView extends VBox {
         } catch (NumberFormatException e) {
             return false;
         }
+    }
+    /**
+     * Creates the Laptop Needs Detection card
+     * Shows current and projected laptop requirements based on ASN count
+     */
+    private Node createLaptopNeedsCard() {
+        VBox card = new VBox(12);
+        card.getStyleClass().addAll("table-container", "chart-card");
+        card.setPadding(new javafx.geometry.Insets(16));
+        
+        java.time.LocalDate now = java.time.LocalDate.now();
+        
+        // Get total ASN (employees)
+        int totalASN = cachedEmployees.size();
+        
+        // Filter laptops that are in good condition (AKTIF, not Rusak Berat, age < 4 years)
+        List<Asset> goodLaptops = cachedAssets.stream()
+            .filter(a -> a.getJenisAset() != null && a.getJenisAset().equalsIgnoreCase("Laptop"))
+            .filter(a -> "AKTIF".equalsIgnoreCase(a.getStatus()))
+            .filter(a -> a.getKondisi() != null && !a.getKondisi().equalsIgnoreCase("Rusak Berat"))
+            .filter(a -> {
+                if (a.getTanggalPerolehan() == null) return false;
+                long days = java.time.temporal.ChronoUnit.DAYS.between(a.getTanggalPerolehan(), now);
+                double years = days / 365.25;
+                return years < 4;
+            })
+            .collect(Collectors.toList());
+        
+        int laptopBaik = goodLaptops.size();
+        
+        // Find laptops that will expire next year (3 <= age < 4 years now, will be >= 4 next year)
+        long laptopExpiring = goodLaptops.stream()
+            .filter(a -> {
+                long days = java.time.temporal.ChronoUnit.DAYS.between(a.getTanggalPerolehan(), now);
+                double years = days / 365.25;
+                return years >= 3 && years < 4;
+            })
+            .count();
+        
+        // Calculate needs
+        int kebutuhanTahunIni = totalASN - laptopBaik;
+        int laptopBaikTahunDepan = laptopBaik - (int) laptopExpiring;
+        int kebutuhanTahunDepan = totalASN - laptopBaikTahunDepan;
+        
+        // Title
+        Label titleLabel = new Label("💻 Deteksi Kebutuhan Laptop");
+        titleLabel.getStyleClass().add("chart-title");
+        
+        // Dropdown to switch versions
+        ComboBox<String> versionDropdown = new ComboBox<>();
+        versionDropdown.getItems().addAll("Tahun Ini", "Tahun Depan");
+        versionDropdown.setValue("Tahun Ini");
+        versionDropdown.setStyle("-fx-font-size: 10px;");
+        
+        HBox headerRow = new HBox(10);
+        headerRow.setAlignment(javafx.geometry.Pos.CENTER_LEFT);
+        Region spacer = new Region();
+        HBox.setHgrow(spacer, javafx.scene.layout.Priority.ALWAYS);
+        headerRow.getChildren().addAll(titleLabel, spacer, versionDropdown);
+        
+        // Main value display
+        Label valueLabel = new Label();
+        valueLabel.setStyle("-fx-font-size: 28px; -fx-font-weight: bold;");
+        
+        // Description
+        Label descLabel = new Label();
+        descLabel.setStyle("-fx-font-size: 12px;");
+        
+        // Details row
+        Label detailsLabel = new Label();
+        detailsLabel.setStyle("-fx-font-size: 11px; -fx-text-fill: #64748b; -fx-padding: 8 12; -fx-background-color: #f1f5f9; -fx-background-radius: 6;");
+        
+        // Explanation section
+        Label explanationTitle = new Label("📊 Perhitungan:");
+        explanationTitle.setStyle("-fx-font-size: 11px; -fx-font-weight: bold; -fx-text-fill: #475569;");
+        
+        Label explanationLabel = new Label();
+        explanationLabel.setStyle("-fx-font-size: 10px; -fx-text-fill: #64748b; -fx-wrap-text: true;");
+        explanationLabel.setWrapText(true);
+        
+        // Update function
+        Runnable updateDisplay = () -> {
+            boolean isCurrentYear = "Tahun Ini".equals(versionDropdown.getValue());
+            int kebutuhan = isCurrentYear ? kebutuhanTahunIni : kebutuhanTahunDepan;
+            
+            if (kebutuhan > 0) {
+                valueLabel.setText("+" + kebutuhan + " Unit");
+                valueLabel.setStyle("-fx-font-size: 28px; -fx-font-weight: bold; -fx-text-fill: #ef4444;");
+                descLabel.setText("⚠ Perlu pengadaan " + kebutuhan + " laptop");
+                descLabel.setStyle("-fx-font-size: 12px; -fx-text-fill: #ef4444;");
+            } else if (kebutuhan < 0) {
+                valueLabel.setText(kebutuhan + " Unit");
+                valueLabel.setStyle("-fx-font-size: 28px; -fx-font-weight: bold; -fx-text-fill: #22c55e;");
+                descLabel.setText("✓ Kelebihan " + Math.abs(kebutuhan) + " laptop");
+                descLabel.setStyle("-fx-font-size: 12px; -fx-text-fill: #22c55e;");
+            } else {
+                valueLabel.setText("0 Unit");
+                valueLabel.setStyle("-fx-font-size: 28px; -fx-font-weight: bold; -fx-text-fill: #3b82f6;");
+                descLabel.setText("✓ Jumlah laptop sudah sesuai kebutuhan");
+                descLabel.setStyle("-fx-font-size: 12px; -fx-text-fill: #3b82f6;");
+            }
+            
+            if (isCurrentYear) {
+                detailsLabel.setText("Total ASN: " + totalASN + "  |  Laptop Baik: " + laptopBaik);
+                explanationLabel.setText(
+                    "Kebutuhan = Total ASN - Laptop Kondisi Baik\n" +
+                    "Kebutuhan = " + totalASN + " - " + laptopBaik + " = " + kebutuhanTahunIni + "\n\n" +
+                    "Kriteria Laptop Baik: AKTIF, Kondisi ≠ Rusak Berat, Umur < 4 tahun"
+                );
+            } else {
+                detailsLabel.setText("Total ASN: " + totalASN + "  |  Laptop Baik: " + laptopBaik + "  |  Expiring: " + laptopExpiring);
+                explanationLabel.setText(
+                    "Laptop Tahun Depan = Laptop Baik - Laptop Expiring\n" +
+                    "Laptop Tahun Depan = " + laptopBaik + " - " + laptopExpiring + " = " + laptopBaikTahunDepan + "\n" +
+                    "Kebutuhan = " + totalASN + " - " + laptopBaikTahunDepan + " = " + kebutuhanTahunDepan + "\n\n" +
+                    "Laptop Expiring: umur 3-4 tahun (akan melewati batas 4 tahun)"
+                );
+            }
+        };
+        
+        // Initial display
+        updateDisplay.run();
+        
+        // Update on dropdown change
+        versionDropdown.setOnAction(e -> updateDisplay.run());
+        
+        VBox explanationBox = new VBox(4, explanationTitle, explanationLabel);
+        explanationBox.setStyle("-fx-padding: 8; -fx-background-color: #fefce8; -fx-background-radius: 6; -fx-border-color: #fef08a; -fx-border-radius: 6;");
+        
+        card.getChildren().addAll(headerRow, valueLabel, descLabel, detailsLabel, explanationBox);
+        return card;
     }
 
     private record CardData(String title, String value, String description, String icon) {

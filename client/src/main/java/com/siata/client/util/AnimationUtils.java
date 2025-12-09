@@ -330,6 +330,7 @@ public class AnimationUtils {
     /**
      * Show modal with smooth animation using the Stage's onShown event.
      * Call this instead of modalOpen() for proper timing.
+     * Also automatically manages the background overlay and transparent styling.
      * @param stage The modal Stage
      * @param modalContent The modal content node to animate
      */
@@ -339,8 +340,16 @@ public class AnimationUtils {
         modalContent.setScaleX(0.9);
         modalContent.setScaleY(0.9);
         
-        // When stage is shown, play the animation
+        // Setup overlay management
+        com.siata.client.util.ModalOverlayManager.setupModalOverlay(stage);
+        
+        // When stage is shown, configure scene transparency and play animation
         stage.setOnShown(event -> {
+            // Set scene fill to transparent for rounded corners to show properly
+            if (stage.getScene() != null) {
+                stage.getScene().setFill(javafx.scene.paint.Color.TRANSPARENT);
+            }
+            
             FadeTransition ft = new FadeTransition(Duration.millis(180), modalContent);
             ft.setFromValue(0);
             ft.setToValue(1);

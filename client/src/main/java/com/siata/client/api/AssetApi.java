@@ -189,6 +189,42 @@ public class AssetApi {
         return listAsset;
     }
 
+    public AssetDto[] getDeletedAsset() {
+        AssetDto[] listAsset = {};
+
+        try {
+            ObjectMapper mapper = new ObjectMapper();
+            mapper.registerModule(new JavaTimeModule());
+
+            HttpClient client = HttpClient.newBuilder()
+                    .connectTimeout(Duration.ofSeconds(5))
+                    .build();
+
+            String targetUrl = ApiConfig.getAsetUrl() + "/deleted";
+
+            HttpRequest request = HttpRequest.newBuilder()
+                    .uri(URI.create(targetUrl))
+                    .header("Content-Type", "application/json")
+                    .header("Authorization", "Bearer "+jwt)
+                    .GET()
+                    .build();
+
+            HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+
+            if (response.statusCode()==200) {
+                String jsonResponse = response.body();
+
+                listAsset = mapper.readValue(jsonResponse, AssetDto[].class);
+
+                return listAsset;
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        return listAsset;
+    }
+
     public long tambahAsset(AssetDtoForRequest payload) {
         try {
             ObjectMapper mapper = new ObjectMapper();
@@ -226,6 +262,35 @@ public class AssetApi {
         }
 
         return 0;
+    }
+
+    public Integer getNextNoAset(String kodeAset) {
+        try {
+            HttpClient client = HttpClient.newBuilder()
+                    .connectTimeout(Duration.ofSeconds(5))
+                    .build();
+
+            String targetUrl = ApiConfig.getAsetUrl() + "/next-no?kodeAset=" + kodeAset;
+
+            HttpRequest request = HttpRequest.newBuilder()
+                    .uri(URI.create(targetUrl))
+                    .header("Content-Type", "application/json")
+                    .header("Authorization", "Bearer " + jwt)
+                    .GET()
+                    .build();
+
+            HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+
+            if (response.statusCode() == 200) {
+                ObjectMapper mapper = new ObjectMapper();
+                return mapper.readValue(response.body(), Integer.class);
+            } else {
+                System.out.println("AssetApi: Gagal getNextNoAset " + response.statusCode());
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return 1; // Default fallback
     }
 
     public int cleanDuplicates() {
@@ -295,5 +360,69 @@ public class AssetApi {
             e.printStackTrace();
             return -1;
         }
+    }
+
+    /**
+     * Undo delete: Set apakahDihapus = 0 to restore asset
+     */
+    public boolean undoDeleteAset(long idAset) {
+        try {
+            HttpClient client = HttpClient.newBuilder()
+                    .connectTimeout(Duration.ofSeconds(5))
+                    .build();
+
+            String targetUrl = ApiConfig.getAsetUrl() + "/undo/" + idAset;
+
+            HttpRequest request = HttpRequest.newBuilder()
+                    .uri(URI.create(targetUrl))
+                    .header("Content-Type", "application/json")
+                    .header("Authorization", "Bearer " + jwt)
+                    .POST(HttpRequest.BodyPublishers.noBody())
+                    .build();
+
+            HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+
+            if (response.statusCode() == 200) {
+                System.out.println("AssetApi: Berhasil undo delete!");
+                return true;
+            } else {
+                System.out.println("AssetApi: Gagal undo delete " + response.statusCode());
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return false;
+    }
+
+    /**
+     * Permanent delete: Actually remove asset from database
+     */
+    public boolean permanentDeleteAset(long idAset) {
+        try {
+            HttpClient client = HttpClient.newBuilder()
+                    .connectTimeout(Duration.ofSeconds(5))
+                    .build();
+
+            String targetUrl = ApiConfig.getAsetUrl() + "/permanent/" + idAset;
+
+            HttpRequest request = HttpRequest.newBuilder()
+                    .uri(URI.create(targetUrl))
+                    .header("Content-Type", "application/json")
+                    .header("Authorization", "Bearer " + jwt)
+                    .DELETE()
+                    .build();
+
+            HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+
+            if (response.statusCode() == 200) {
+                System.out.println("AssetApi: Berhasil permanent delete!");
+                return true;
+            } else {
+                System.out.println("AssetApi: Gagal permanent delete " + response.statusCode());
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return false;
     }
 }

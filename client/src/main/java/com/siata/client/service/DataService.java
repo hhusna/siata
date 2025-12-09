@@ -62,6 +62,8 @@ public class DataService {
             assetValue.setNilaiRupiah(assetDto.getHargaAset());
             assetValue.setKondisi(assetDto.getKondisi());
             assetValue.setStatus(assetDto.getStatusPemakaian());
+            assetValue.setNoAset(assetDto.getNoAset()); // Map No Aset
+            assetValue.setDipakai(assetDto.getDipakai()); // Map Dipakai
             if (assetDto.getPegawaiDto() != null) {
                 assetValue.setKeterangan(Long.toString(assetDto.getPegawaiDto().getNip()));
                 assetValue.setSubdir(assetDto.getPegawaiDto().getNamaSubdir());
@@ -95,6 +97,8 @@ public class DataService {
             assetValue.setNilaiRupiah(assetDto.getHargaAset());
             assetValue.setKondisi(assetDto.getKondisi());
             assetValue.setStatus(assetDto.getStatusPemakaian());
+            assetValue.setNoAset(assetDto.getNoAset()); // Map No Aset
+            assetValue.setDipakai(assetDto.getDipakai()); // Map Dipakai
             if (assetDto.getPegawaiDto() != null) {
                 assetValue.setKeterangan(Long.toString(assetDto.getPegawaiDto().getNip()));
                 assetValue.setSubdir(assetDto.getPegawaiDto().getNamaSubdir());
@@ -126,7 +130,8 @@ public class DataService {
         List<Asset> assetList = getAssets();
         int count = 0;
         for (Asset asset : assetList) {
-            if (asset.getJenisAset().equals(jenis)) {
+            // Case-insensitive comparison
+            if (asset.getJenisAset() != null && asset.getJenisAset().equalsIgnoreCase(jenis)) {
                 count++;
             }
         }
@@ -134,7 +139,7 @@ public class DataService {
         return count;
     }
 
-    public void addAsset(Asset asset) {
+    public boolean addAsset(Asset asset) {
         assets.add(asset);
         AssetDtoForRequest assetToDto = new AssetDtoForRequest();
 
@@ -161,7 +166,7 @@ public class DataService {
             }
         } else {
             // Jika kosong atau bukan angka, berarti aset milik Subdir (tanpa pemegang)
-            System.out.println("DataService: Input pemegang kosong/teks, set pegawai null.");
+            // System.out.println("DataService: Input pemegang kosong/teks, set pegawai null. Input: " + nipInput);
             assetToDto.setPegawaiDto(null);
         }
 
@@ -173,10 +178,19 @@ public class DataService {
         assetToDto.setHargaAset(asset.getNilaiRupiah());
         assetToDto.setKondisi(asset.getKondisi());
         assetToDto.setStatusPemakaian(asset.getStatus());
+        assetToDto.setDipakai(asset.getDipakai()); // Map Dipakai
+        
+        // Handle No Aset
+        assetToDto.setNoAset(asset.getNoAset());
 
         // 4. Kirim ke API
-        assetApi.tambahAsset(assetToDto);
-        logActivity("admin", "Create", "Menambahkan aset baru", "Aset #" + asset.getKodeAset(), asset.getNamaAset());
+        long newId = assetApi.tambahAsset(assetToDto);
+        if (newId != 0) {
+            asset.setIdAset(newId); // Update ID local asset
+            logActivity("admin", "Create", "Menambahkan aset baru", "Aset #" + asset.getKodeAset(), asset.getNamaAset());
+            return true;
+        }
+        return false;
     }
 
     // Helper kecil untuk cek angka
@@ -240,7 +254,7 @@ public class DataService {
         }
     }
 
-    public void updateAsset(Asset asset) {
+    public boolean updateAsset(Asset asset) {
         AssetDto assetDto = new AssetDto();
         assetDto.setIdAset(asset.getIdAset());
         System.out.println("======= ID ASET: "+assetDto.getIdAset());
@@ -277,9 +291,17 @@ public class DataService {
         assetDto.setHargaAset(asset.getNilaiRupiah());
         assetDto.setKondisi(asset.getKondisi());
         assetDto.setStatusPemakaian(asset.getStatus());
+        assetDto.setDipakai(asset.getDipakai()); // Map Dipakai
         
-        assetApi.putAsset(assetDto);
-        logActivity("admin", "Update", "Memperbarui aset", "Aset #" + asset.getKodeAset(), asset.getNamaAset());
+        // Handle No Aset update
+        assetDto.setNoAset(asset.getNoAset());
+        
+        boolean success = assetApi.putAsset(assetDto);
+        if (success) {
+            logActivity("admin", "Update", "Memperbarui aset", "Aset #" + asset.getKodeAset(), asset.getNamaAset());
+            return true;
+        }
+        return false;
     }
 
     public void deleteAsset(Asset asset) {
@@ -297,7 +319,7 @@ public class DataService {
 
     public List<Asset> getDeletedAssets() {
         List<Asset> listAsset = new ArrayList<>();
-        AssetDto[] apiResult = assetApi.getAsset();
+        AssetDto[] apiResult = assetApi.getDeletedAsset();
         for (AssetDto assetDto : apiResult) {
             Asset assetValue = new Asset();
             assetValue.setIdAset(assetDto.getIdAset());
@@ -308,6 +330,7 @@ public class DataService {
             assetValue.setNilaiRupiah(assetDto.getHargaAset());
             assetValue.setKondisi(assetDto.getKondisi());
             assetValue.setStatus(assetDto.getStatusPemakaian());
+            assetValue.setDeleted(true);
 
             if (assetDto.getPegawaiDto() != null) {
                 assetValue.setKeterangan(Long.toString(assetDto.getPegawaiDto().getNip()));
@@ -317,9 +340,7 @@ public class DataService {
                 assetValue.setSubdir(assetDto.getSubdirektorat());
             }
 
-            if (assetValue.getStatus().equals("Tandai Dihapus")) {
-                listAsset.add(assetValue);
-            }
+            listAsset.add(assetValue);
         }
 
         return listAsset;
@@ -486,26 +507,6 @@ public class DataService {
 
         for (PermohonanDto dto : permohonanDtos) {
             AssetRequest assetRequest = new AssetRequest();
-            assetRequest.setId(dto.getIdPermohonan());
-            assetRequest.setNoPermohonan(dto.getKodePermohonan());
-            assetRequest.setTanggal(dto.getTimestamp());
-
-            // Ambil nama dari field namaPemohon, fallback ke nama pegawai jika null
-            if (dto.getNamaPemohon() != null && !dto.getNamaPemohon().isEmpty()) {
-                assetRequest.setPemohon(dto.getNamaPemohon());
-            } else if (dto.getPegawaiDto() != null) {
-                assetRequest.setPemohon(dto.getPegawaiDto().getNama());
-            } else {
-                assetRequest.setPemohon("-");
-            }
-
-            assetRequest.setJenisAset(dto.getJenisAset());
-            // Ambil unit dari field unit yang diinput user, bukan dari pegawai yang login
-            assetRequest.setUnit(dto.getUnit() != null && !dto.getUnit().isEmpty() ? dto.getUnit() : "-");
-            assetRequest.setJumlah(dto.getJumlah());
-            assetRequest.setPrioritas(dto.getPrioritas());
-            assetRequest.setTipe("Permohonan");
-            assetRequest.setStatus(dto.getStatusPersetujuan());
             assetRequest.setDeskripsi(dto.getDeskripsi());
             assetRequest.setTujuanPenggunaan(dto.getTujuanPenggunaan());
             assetRequestList.add(assetRequest);
@@ -522,27 +523,6 @@ public class DataService {
             AssetRequest assetRequest = new AssetRequest();
             assetRequest.setId(dto.getIdPengajuan());
             assetRequest.setNoPermohonan(dto.getKodePengajuan());
-            assetRequest.setTanggal(dto.getTimestamp());
-            // Ambil unit dari field unit yang diinput user, bukan dari pegawai yang login
-            assetRequest.setUnit(dto.getUnit() != null && !dto.getUnit().isEmpty() ? dto.getUnit() : "-");
-            assetRequest.setJenisAset(dto.getJenisAset());
-
-            // Ambil nama dari field namaPengaju, fallback ke nama pegawai jika null
-            if (dto.getNamaPengaju() != null && !dto.getNamaPengaju().isEmpty()) {
-                assetRequest.setPemohon(dto.getNamaPengaju());
-            } else if (dto.getPegawaiDto() != null) {
-                assetRequest.setPemohon(dto.getPegawaiDto().getNama());
-            } else {
-                assetRequest.setPemohon("-");
-            }
-
-            assetRequest.setJumlah(dto.getJumlah());
-            assetRequest.setPrioritas(dto.getPrioritas());
-            assetRequest.setTipe("Pengajuan");
-            assetRequest.setStatus(dto.getStatusPersetujuan());
-            assetRequest.setDeskripsi(dto.getDeskripsi());
-            assetRequest.setTujuanPenggunaan(dto.getTujuanPenggunaan());
-            assetRequestList.add(assetRequest);
         }
 
         return assetRequestList;
@@ -562,9 +542,14 @@ public class DataService {
         return activityList;
     }
 
+    /**
+     * Get recent activities with API-side limit for performance
+     * @param limit Number of activities to fetch from server
+     */
     public List<Activity> getRecentActivities(int limit) {
         List<Activity> activityList = new ArrayList<>();
-        LogDto[] logDtos = logApi.getLog();
+        // Use API with limit for better performance
+        LogDto[] logDtos = logApi.getLogWithLimit(limit);
 
         if (logDtos != null) {
             for (LogDto dto : logDtos) {
@@ -576,6 +561,28 @@ public class DataService {
         return activityList.stream()
                 .sorted((a, b) -> b.getTimestamp().compareTo(a.getTimestamp()))
                 .limit(limit)
+                .toList();
+    }
+    
+    /**
+     * Get activities within a date range for export
+     * @param fromDate Start date (inclusive)
+     * @param toDate End date (inclusive)
+     */
+    public List<Activity> getActivitiesByDateRange(LocalDate fromDate, LocalDate toDate) {
+        List<Activity> activityList = new ArrayList<>();
+        // Use API with date range
+        LogDto[] logDtos = logApi.getLogByDateRange(fromDate, toDate);
+
+        if (logDtos != null) {
+            for (LogDto dto : logDtos) {
+                Activity activity = mapLogDtoToActivity(dto);
+                activityList.add(activity);
+            }
+        }
+
+        return activityList.stream()
+                .sorted((a, b) -> b.getTimestamp().compareTo(a.getTimestamp()))
                 .toList();
     }
 

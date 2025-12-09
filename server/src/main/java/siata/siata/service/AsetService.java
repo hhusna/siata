@@ -37,20 +37,41 @@ public class AsetService {
         return asetRepository.findById(id);
     }
 
+    public List<Aset> getAllDeletedAset() {
+        return asetRepository.findAllDeletedWithPegawai();
+    }
+
     // MODIFIKASI METHOD INI
     @Cacheable(value = "asetSearch", key = "#jenis + '_' + #status + '_' + #namaPegawai + '_' + #namaSubdir", unless = "#result == null || #result.isEmpty()")
     public List<Aset> searchAset(String jenis, String status, String namaPegawai, String namaSubdir) {
         return asetRepository.searchAset(jenis, status, namaPegawai, namaSubdir);
     }
 
+    public Integer getNextNoAset(String kodeAset) {
+        Integer maxNo = asetRepository.findMaxNoAsetByKodeAset(kodeAset);
+        return (maxNo == null) ? 1 : maxNo + 1;
+    }
+
     @CacheEvict(value = {"asetList", "asetSearch", "dashboardStats"}, allEntries = true)
     public Aset saveAset(Aset aset, Pegawai userPegawai) {
         boolean isNew = aset.getIdAset() == null;
+        
+        // VALIDASI UNIK: Kode Aset + No Aset
+        if (aset.getKodeAset() != null && aset.getNoAset() != null) {
+            Optional<Aset> existingAset = asetRepository.findByKodeAsetAndNoAset(aset.getKodeAset(), aset.getNoAset());
+            if (existingAset.isPresent()) {
+                // Jika aset baru atau (aset lama tapi ID beda), maka duplikat
+                if (isNew || !existingAset.get().getIdAset().equals(aset.getIdAset())) {
+                    throw new RuntimeException("Aset dengan Kode '" + aset.getKodeAset() + "' dan No Aset '" + aset.getNoAset() + "' sudah ada!");
+                }
+            }
+        }
+        
         Aset savedAset = asetRepository.save(aset);
 
         // FR 3.1: Logbook
         String jenisLog = isNew ? "CREATE_ASET" : "UPDATE_ASET";
-        String isiLog = (isNew ? "Membuat aset baru: " : "Memperbarui aset: ") + savedAset.getKodeAset() + " (" + savedAset.getJenisAset() + ")";
+        String isiLog = (isNew ? "Membuat aset baru: " : "Memperbarui aset: ") + savedAset.getKodeAset() + " No. " + savedAset.getNoAset() + " (" + savedAset.getJenisAset() + ")";
         logRiwayatService.saveLog(new LogRiwayat(userPegawai, savedAset, jenisLog, isiLog));
 
         return savedAset;
@@ -60,17 +81,12 @@ public class AsetService {
     public void tandaiUntukPenghapusan(Long id, Pegawai userPegawai) {
         Aset aset = asetRepository.findById(id).orElseThrow(() -> new RuntimeException("Aset not found"));
 
-        // Validasi 1: Hanya aset dengan status "Non Aktif" yang bisa dihapus
-        if (!"Non Aktif".equals(aset.getStatusPemakaian())) {
-            throw new RuntimeException("Hanya aset dengan status Non Aktif yang dapat dihapus");
-        }
-
         // Simpan kondisi dan status asli sebelum penghapusan
         String kondisiAsli = aset.getKondisi();
         String statusAsli = aset.getStatusPemakaian();
 
-        // 1. Ubah status aset menjadi "Tandai Dihapus"
-        aset.setStatusPemakaian("Tandai Dihapus");
+        // 1. Set flag apakah_dihapus = 1 (soft delete)
+        aset.setApakahDihapus(1);
         asetRepository.save(aset);
 
         // 2. Buat entri di tabel PenghapusanAset dengan kondisi asli
@@ -84,8 +100,8 @@ public class AsetService {
         penghapusanAsetRepository.save(hapus);
 
         // 3. Log penghapusan
-        String isiLog = "Menandai aset untuk dihapus: " + aset.getKodeAset() + " (" + aset.getJenisAset() + ") - Status awal: " + statusAsli + ", Kondisi: " + kondisiAsli + " -> Status baru: Tandai Dihapus";
-        logRiwayatService.saveLog(new LogRiwayat(userPegawai, aset, "DELETE_ASET", isiLog));
+        String isiLog = "Memindahkan aset ke penghapusan: " + aset.getKodeAset() + " (" + aset.getJenisAset() + ") - Status: " + statusAsli + ", Kondisi: " + kondisiAsli;
+        logRiwayatService.saveLog(new LogRiwayat(userPegawai, aset, "SOFT_DELETE_ASET", isiLog));
     }
 
     // Otomatisasi Status Aset (dijalankan setiap hari jam 1 pagi)
@@ -232,5 +248,43 @@ public class AsetService {
         }
         
         return deletedCount;
+    }
+
+    /**
+     * Undo delete: Set apakahDihapus = 0 to restore asset back to active list
+     */
+    @CacheEvict(value = {"asetList", "asetSearch", "dashboardStats"}, allEntries = true)
+    public void undoDeleteAset(Long id, Pegawai userPegawai) {
+        Aset aset = asetRepository.findById(id).orElseThrow(() -> new RuntimeException("Aset not found"));
+        
+        // Restore asset
+        aset.setApakahDihapus(0);
+        asetRepository.save(aset);
+        
+        // Remove from PenghapusanAset table if exists
+        penghapusanAsetRepository.deleteByAset(aset);
+        
+        // Log action
+        String isiLog = "Mengembalikan aset dari daftar penghapusan: " + aset.getKodeAset() + " (" + aset.getJenisAset() + ")";
+        logRiwayatService.saveLog(new LogRiwayat(userPegawai, aset, "UNDO_DELETE_ASET", isiLog));
+    }
+
+    /**
+     * Permanent delete: Actually remove asset from database
+     * WARNING: This action cannot be undone!
+     */
+    @CacheEvict(value = {"asetList", "asetSearch", "dashboardStats"}, allEntries = true)
+    public void permanentDeleteAset(Long id, Pegawai userPegawai) {
+        Aset aset = asetRepository.findById(id).orElseThrow(() -> new RuntimeException("Aset not found"));
+        
+        // Log before delete
+        String isiLog = "HAPUS PERMANEN aset: " + aset.getKodeAset() + " No." + aset.getNoAset() + " (" + aset.getJenisAset() + " " + aset.getMerkAset() + ")";
+        logRiwayatService.saveLog(new LogRiwayat(userPegawai, (Aset) null, "PERMANENT_DELETE_ASET", isiLog));
+        
+        // Remove from PenghapusanAset table if exists
+        penghapusanAsetRepository.deleteByAset(aset);
+        
+        // Actually delete from database
+        asetRepository.deleteById(id);
     }
 }
