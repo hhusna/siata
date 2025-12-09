@@ -285,30 +285,58 @@ public class RecapitulationView extends VBox {
         // Use cached data
         long totalAset = cachedAllAssetsIncludingDeleted.size();
         
-        // Hitung jumlah aset per kategori
+        // 1. Total Aktif (Status = Aktif)
         long asetAktif = cachedAllAssetsIncludingDeleted.stream()
-                .filter(a -> "Aktif".equals(a.getStatus()))
+                .filter(a -> "Aktif".equalsIgnoreCase(a.getStatus()))
                 .count();
-        
+
+        // 2. Total Nonaktif (Status = Non Aktif / NONAKTIF / Nonaktif)
         long asetNonAktif = cachedAllAssetsIncludingDeleted.stream()
-                .filter(a -> "Non Aktif".equals(a.getStatus()))
+                .filter(a -> {
+                   if (a.getStatus() == null) return false;
+                   String s = a.getStatus().trim().toLowerCase();
+                   return s.equals("non aktif") || s.equals("nonaktif");
+                })
                 .count();
         
-        // Rusak = Rusak Ringan + Rusak Berat
-        long asetRusak = cachedAllAssetsIncludingDeleted.stream()
-                .filter(a -> "Rusak Ringan".equals(a.getKondisi()) || "Rusak Berat".equals(a.getKondisi()))
+        // Helper untuk filter Laptop & Notebook
+        java.util.function.Predicate<Asset> isLaptopOrNotebook = a -> {
+            if (a.getJenisAset() == null) return false;
+            String j = a.getJenisAset().toLowerCase();
+            return j.contains("laptop") || j.contains("notebook");
+        };
+
+        long totalLaptopNotebook = cachedAllAssetsIncludingDeleted.stream()
+                .filter(isLaptopOrNotebook)
+                .count();
+
+        // 3. Total Rusak Berat Laptop Notebook (Kondisi = R. BERAT / Rusak Berat)
+        long asetRusakBeratLN = cachedAllAssetsIncludingDeleted.stream()
+                .filter(isLaptopOrNotebook)
+                .filter(a -> {
+                    if (a.getKondisi() == null) return false;
+                    String k = a.getKondisi().trim().toLowerCase();
+                    return k.equals("rusak berat") || k.equals("r. berat");
+                })
+                .count();
+
+        // 4. Total Tua Laptop Notebook (isTua = true)
+        long asetTuaLN = cachedAllAssetsIncludingDeleted.stream()
+                .filter(isLaptopOrNotebook)
+                .filter(Asset::isTua)
                 .count();
 
         // Hitung persentase
         String aktifPercent = totalAset > 0 ? String.format("%.1f", (double) asetAktif / totalAset * 100) : "0";
         String nonAktifPercent = totalAset > 0 ? String.format("%.1f", (double) asetNonAktif / totalAset * 100) : "0";
-        String rusakPercent = totalAset > 0 ? String.format("%.1f", (double) asetRusak / totalAset * 100) : "0";
+        String rusakLNPercent = totalLaptopNotebook > 0 ? String.format("%.1f", (double) asetRusakBeratLN / totalLaptopNotebook * 100) : "0";
+        String tuaLNPercent = totalLaptopNotebook > 0 ? String.format("%.1f", (double) asetTuaLN / totalLaptopNotebook * 100) : "0";
 
         List<CardData> cards = List.of(
-                new CardData("Total Aset", String.valueOf(totalAset), "unit di seluruh sistem", "🧾"),
-                new CardData("Aktif", String.valueOf(asetAktif), aktifPercent + "% dari total", "✅"),
-                new CardData("Non Aktif", String.valueOf(asetNonAktif), nonAktifPercent + "% dari total", "📦"),
-                new CardData("Rusak", String.valueOf(asetRusak), rusakPercent + "% dari total", "⚠")
+                new CardData("Total Aktif", String.valueOf(asetAktif), "dari " + totalAset + " aset (" + aktifPercent + "%)", "✅"),
+                new CardData("Total Nonaktif", String.valueOf(asetNonAktif), "dari " + totalAset + " aset (" + nonAktifPercent + "%)", "📦"),
+                new CardData("Total RB Laptop Notebook", String.valueOf(asetRusakBeratLN), "dari " + totalLaptopNotebook + " aset (" + rusakLNPercent + "%)", "⚠"),
+                new CardData("Total Tua Laptop Notebook", String.valueOf(asetTuaLN), "dari " + totalLaptopNotebook + " aset (" + tuaLNPercent + "%)", "👴")
         );
 
         for (int i = 0; i < cards.size(); i++) {

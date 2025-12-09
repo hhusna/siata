@@ -205,6 +205,10 @@ public class Asset {
         return getTua() == 1 ? "Ya" : "Tidak";
     }
 
+    public boolean isTua() {
+        return getTua() == 1;
+    }
+
     /**
      * Computed: Akan Tua (formerly akanSiapLelang)
      * Untuk semua jenis aset SELAIN Mobil dan Motor: 1 jika umur > 3 tahun DAN <= 4 tahun
