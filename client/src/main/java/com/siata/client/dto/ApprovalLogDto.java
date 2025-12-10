@@ -8,7 +8,7 @@ public class ApprovalLogDto {
     private String namaPegawai;
     
     @JsonProperty("role")
-    private String role;
+    private String role; // The role being approved (PPBJ, PPK, Direktur)
     
     @JsonProperty("status")
     private String status; // "Disetujui" or "Ditolak"
@@ -20,7 +20,10 @@ public class ApprovalLogDto {
     private String catatan; // Approver's message
     
     @JsonProperty("lampiran")
-    private String lampiran; // Attachment file path
+    private String lampiran; // Nomor surat
+    
+    @JsonProperty("actualApproverRole")
+    private String actualApproverRole; // The actual role of person who made approval
 
     public ApprovalLogDto() {}
 
@@ -70,5 +73,22 @@ public class ApprovalLogDto {
 
     public void setLampiran(String lampiran) {
         this.lampiran = lampiran;
+    }
+    
+    public String getActualApproverRole() {
+        return actualApproverRole;
+    }
+
+    public void setActualApproverRole(String actualApproverRole) {
+        this.actualApproverRole = actualApproverRole;
+    }
+    
+    /**
+     * Check if this approval was delegated (made by Tim Manajemen Aset on behalf of another role)
+     */
+    public boolean isDelegated() {
+        return actualApproverRole != null && 
+               "Tim Manajemen Aset".equals(actualApproverRole) && 
+               !actualApproverRole.equals(role);
     }
 }

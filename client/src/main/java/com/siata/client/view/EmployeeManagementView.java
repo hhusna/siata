@@ -724,9 +724,17 @@ public class EmployeeManagementView extends VBox {
         nipField.setPromptText("Contoh: 199001152015011001 (Kosongkan jika PPNPN)");
         Label nipLabel = new Label("NIP (Opsional)");
         nipLabel.getStyleClass().add("form-label");
+        
+        // Store original NIP for edit case
+        final String originalNip = editableEmployee != null ? editableEmployee.getNip() : null;
+        final boolean wasOriginallyPpnpn = editableEmployee != null && editableEmployee.isPpnpn();
+        
         if (editableEmployee != null) {
-            nipField.setText(editableEmployee.getNip());
-            nipField.setDisable(true);
+            // For PPNPN employees, show empty field; for others, show NIP
+            if (!wasOriginallyPpnpn) {
+                nipField.setText(editableEmployee.getNip());
+            }
+            // NIP field is now editable (removed setDisable(true))
         }
 
         TextField namaField = new TextField();
@@ -774,11 +782,23 @@ public class EmployeeManagementView extends VBox {
             String unit = unitCombo.getValue();
             String status = statusCombo.getValue();
 
-            // Validasi input
-            boolean isPpnpn = (nipInput == null || nipInput.trim().isEmpty());
-
-            if (!isPpnpn) {
-                // Formatting Nip (ensure numeric)
+            // Determine if this is PPNPN (empty NIP input)
+            boolean isNipEmpty = (nipInput == null || nipInput.trim().isEmpty());
+            
+            // For edit mode: if NIP is empty, use original NIP (no change)
+            String finalNip;
+            boolean isPpnpn;
+            
+            if (editableEmployee != null && isNipEmpty) {
+                // Keep original NIP when editing and field is left empty
+                finalNip = originalNip;
+                isPpnpn = wasOriginallyPpnpn;
+            } else if (isNipEmpty) {
+                // New employee with empty NIP = PPNPN
+                finalNip = null;
+                isPpnpn = true;
+            } else {
+                // Validate NIP format
                 if (!nipInput.matches("\\d+")) {
                     showAlert("NIP harus berupa angka");
                     return;
@@ -787,6 +807,8 @@ public class EmployeeManagementView extends VBox {
                     showAlert("NIP harus 18 digit");
                     return;
                 }
+                finalNip = nipInput;
+                isPpnpn = false;
             }
 
             if (nama == null || nama.trim().isEmpty()) {
@@ -817,7 +839,7 @@ public class EmployeeManagementView extends VBox {
                     dto.setNip(System.currentTimeMillis());
                     dto.setIsPpnpn(true);
                 } else {
-                    dto.setNip(Long.parseLong(nipInput));
+                    dto.setNip(Long.parseLong(finalNip));
                     dto.setIsPpnpn(false);
                 }
                 dto.setNama(nama);
@@ -825,29 +847,22 @@ public class EmployeeManagementView extends VBox {
                 dto.setStatus(status);
                 success = pegawaiApi.addPegawai(dto);
             } else {
-                // For edit, we assume NIP (ID) cannot be changed or is already PPNPN
-                // Just update other fields
+                // Edit existing employee
                 PegawaiDto dto = new PegawaiDto();
-                String existingNip = editableEmployee.getNip();
                 
-                // If the employee was already PPNPN (no valid NIP string), we keep key as is
-                // But editableEmployee.getNip() returns a String. 
-                // We need to parse what's there. Note: The existing NIP for PPNPN might be the generated Long.
-                // We should parse it back.
+                // Use finalNip (could be original or new)
                 try {
-                    dto.setNip(Long.parseLong(existingNip));
+                    dto.setNip(Long.parseLong(finalNip));
                 } catch (NumberFormatException ex) {
-                    // Fallback if something weird, but existingNip is from DB so it's a Long string
-                    dto.setNip(0L); 
+                    dto.setNip(0L);
                 }
                 
                 dto.setNama(nama);
                 dto.setNamaSubdir(unit);
                 dto.setStatus(status);
-                // Preserve isPpnpn status or derive it? The backend doesn't change ID on update.
-                // We just send the DTO.
+                dto.setIsPpnpn(isPpnpn);
                 
-                success = pegawaiApi.updatePegawai(editableEmployee.getNip(), dto);
+                success = pegawaiApi.updatePegawai(originalNip, dto);
             }
 
             if (success) {
@@ -1019,9 +1034,9 @@ public class EmployeeManagementView extends VBox {
                     }
                 }
                 
-                // Unit filter
+                // Unit filter (case insensitive)
                 if (unitFilter != null && !unitFilter.equals("Semua Subdir")) {
-                    if (!employee.getUnit().equals(unitFilter)) {
+                    if (!employee.getUnit().equalsIgnoreCase(unitFilter)) {
                         return false;
                     }
                 }

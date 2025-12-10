@@ -1137,24 +1137,26 @@ public class AssetManagementView extends VBox {
                     }
                 }
                 
-                // Jenis filter
+                // Jenis filter (case insensitive)
                 if (jenisFilter != null && !jenisFilter.equals("Semua Jenis")) {
-                    if (!asset.getJenisAset().equals(jenisFilter)) {
+                    if (!asset.getJenisAset().equalsIgnoreCase(jenisFilter)) {
                         return false;
                     }
                 }
                 
-                // Status filter
+                // Status filter (case insensitive, normalize spaces)
                 if (statusFilter != null && !statusFilter.equals("Semua Status")) {
-                    if (!asset.getStatus().equals(statusFilter)) {
+                    String normalizedFilter = statusFilter.replaceAll("\\s+", "").toLowerCase();
+                    String normalizedStatus = asset.getStatus().replaceAll("\\s+", "").toLowerCase();
+                    if (!normalizedStatus.equals(normalizedFilter)) {
                         return false;
                     }
                 }
                 
-                // Kesiapan Lelang filter - hanya untuk TIM_MANAJEMEN_ASET
+                // Kesiapan Lelang filter - hanya untuk TIM_MANAJEMEN_ASET (case insensitive)
                 if ("TIM_MANAJEMEN_ASET".equals(com.siata.client.session.LoginSession.getRole())) {
                     if (kesiapanLelangFilter != null && !kesiapanLelangFilter.equals("Semua Kesiapan")) {
-                        if (!asset.getKesiapanLelang().equals(kesiapanLelangFilter)) {
+                        if (!asset.getKesiapanLelang().equalsIgnoreCase(kesiapanLelangFilter)) {
                             return false;
                         }
                     }

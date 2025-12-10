@@ -330,8 +330,8 @@ public class AssetApprovalView extends VBox {
         modalStage.setTitle("Proses Persetujuan Aset");
 
         VBox modalContent = new VBox(0);
-        modalContent.setPrefWidth(580);
-        modalContent.setMaxWidth(580);
+        modalContent.setPrefWidth(620);
+        modalContent.setMaxWidth(620);
         modalContent.getStyleClass().add("modal-content");
 
         // Header with close button (matching other modals)
@@ -357,7 +357,7 @@ public class AssetApprovalView extends VBox {
         scrollPane.setFitToWidth(true);
         scrollPane.setHbarPolicy(javafx.scene.control.ScrollPane.ScrollBarPolicy.NEVER);
         scrollPane.setVbarPolicy(javafx.scene.control.ScrollPane.ScrollBarPolicy.AS_NEEDED);
-        scrollPane.setMaxHeight(500);
+        scrollPane.setMaxHeight(550);
         
         VBox contentArea = new VBox(16);
         contentArea.setPadding(new Insets(0, 24, 24, 24));
@@ -381,81 +381,244 @@ public class AssetApprovalView extends VBox {
         txtInfo.setStyle("-fx-background-color: #f1f5f9;");
         
         infoBox.getChildren().addAll(lblInfo, txtInfo);
+        contentArea.getChildren().add(infoBox);
 
-        // 2. Catatan Penyetuju (Editable)
-        VBox catatanBox = new VBox(8);
-        Label lblCatatan = new Label("Catatan Anda (opsional):");
-        lblCatatan.getStyleClass().add("form-label");
-        lblCatatan.setStyle("-fx-font-weight: bold;");
+        String currentRole = LoginSession.getRole();
         
-        TextArea txtCatatan = new TextArea();
-        txtCatatan.setPromptText("Tulis catatan atau pesan untuk pemohon...");
-        txtCatatan.setWrapText(true);
-        txtCatatan.setPrefRowCount(3);
-        txtCatatan.getStyleClass().add("form-textarea");
-        
-        catatanBox.getChildren().addAll(lblCatatan, txtCatatan);
+        // Check if TIM_MANAJEMEN_ASET - special multi-role approval
+        if ("TIM_MANAJEMEN_ASET".equals(currentRole)) {
+            // Get pending roles
+            java.util.List<String> pendingRoles = getPendingRoles(request);
+            
+            if (pendingRoles.isEmpty()) {
+                Label lblNoAction = new Label("✓ Semua persetujuan sudah lengkap.");
+                lblNoAction.setStyle("-fx-font-size: 14px; -fx-text-fill: #16a34a; -fx-font-weight: bold;");
+                contentArea.getChildren().add(lblNoAction);
+            } else {
+                // Info label for TMA
+                Label lblTmaInfo = new Label("Sebagai Tim Manajemen Aset, centang persetujuan yang ingin diwakilkan dan isi nomor surat yang telah ditandatangani.");
+                lblTmaInfo.setWrapText(true);
+                lblTmaInfo.setStyle("-fx-font-size: 12px; -fx-text-fill: #64748b; -fx-font-style: italic;");
+                contentArea.getChildren().add(lblTmaInfo);
+                
+                Separator sepInfo = new Separator();
+                sepInfo.setPadding(new Insets(8, 0, 8, 0));
+                contentArea.getChildren().add(sepInfo);
+                
+                // Create approval fields for each pending role with checkboxes
+                java.util.List<java.util.Map<String, Object>> roleFieldsList = new java.util.ArrayList<>();
+                
+                for (String pendingRole : pendingRoles) {
+                    VBox roleBox = new VBox(8);
+                    roleBox.setPadding(new Insets(12));
+                    roleBox.setStyle("-fx-background-color: #f8fafc; -fx-border-color: #e2e8f0; -fx-border-radius: 8; -fx-background-radius: 8;");
+                    
+                    // Checkbox to enable this role's approval
+                    CheckBox cbRole = new CheckBox("Setujui atas nama " + pendingRole);
+                    cbRole.setStyle("-fx-font-size: 14px; -fx-font-weight: 700; -fx-text-fill: #2c3e50;");
+                    
+                    // Fields container (hidden by default)
+                    VBox fieldsContainer = new VBox(8);
+                    fieldsContainer.setVisible(false);
+                    fieldsContainer.setManaged(false);
+                    
+                    // Nomor Surat for this role
+                    Label lblNomorSurat = new Label("Nomor Surat " + pendingRole + " (wajib jika dicentang):");
+                    lblNomorSurat.setStyle("-fx-font-size: 12px; -fx-font-weight: 600; -fx-text-fill: #475569;");
+                    
+                    TextField txtNomorSurat = new TextField();
+                    txtNomorSurat.setPromptText("Contoh: SURAT/" + pendingRole + "/2024/001");
+                    txtNomorSurat.getStyleClass().add("form-input");
+                    
+                    // Catatan for this role (optional)
+                    Label lblCatatan = new Label("Catatan (opsional):");
+                    lblCatatan.setStyle("-fx-font-size: 12px; -fx-font-weight: 600; -fx-text-fill: #475569;");
+                    
+                    TextField txtCatatan = new TextField();
+                    txtCatatan.setPromptText("Catatan tambahan...");
+                    txtCatatan.getStyleClass().add("form-input");
+                    
+                    fieldsContainer.getChildren().addAll(lblNomorSurat, txtNomorSurat, lblCatatan, txtCatatan);
+                    
+                    // Toggle fields visibility based on checkbox
+                    cbRole.selectedProperty().addListener((obs, oldVal, newVal) -> {
+                        fieldsContainer.setVisible(newVal);
+                        fieldsContainer.setManaged(newVal);
+                        if (newVal) {
+                            roleBox.setStyle("-fx-background-color: #f0fdf4; -fx-border-color: #16a34a; -fx-border-radius: 8; -fx-background-radius: 8;");
+                        } else {
+                            roleBox.setStyle("-fx-background-color: #f8fafc; -fx-border-color: #e2e8f0; -fx-border-radius: 8; -fx-background-radius: 8;");
+                        }
+                    });
+                    
+                    roleBox.getChildren().addAll(cbRole, fieldsContainer);
+                    contentArea.getChildren().add(roleBox);
+                    
+                    // Store references
+                    java.util.Map<String, Object> roleFields = new java.util.HashMap<>();
+                    roleFields.put("role", pendingRole);
+                    roleFields.put("checkbox", cbRole);
+                    roleFields.put("nomorSurat", txtNomorSurat);
+                    roleFields.put("catatan", txtCatatan);
+                    roleFieldsList.add(roleFields);
+                }
+                
+                // Footer Buttons for TMA
+                HBox buttonBox = new HBox(12);
+                buttonBox.setAlignment(Pos.CENTER_RIGHT);
+                buttonBox.setPadding(new Insets(16, 0, 0, 0));
+                
+                Button btnCancel = new Button("Batal");
+                btnCancel.getStyleClass().add("secondary-button");
+                btnCancel.setOnAction(e -> modalStage.close());
+                
+                Button btnSave = new Button("Simpan Persetujuan");
+                btnSave.getStyleClass().add("primary-button");
+                btnSave.setStyle("-fx-background-color: #16a34a;");
+                
+                btnSave.setOnAction(e -> {
+                    // Collect checked roles and validate
+                    java.util.List<java.util.Map<String, Object>> selectedRoles = new java.util.ArrayList<>();
+                    boolean allValid = true;
+                    
+                    for (java.util.Map<String, Object> fields : roleFieldsList) {
+                        CheckBox cb = (CheckBox) fields.get("checkbox");
+                        TextField nomorField = (TextField) fields.get("nomorSurat");
+                        
+                        if (cb.isSelected()) {
+                            if (nomorField.getText() == null || nomorField.getText().trim().isEmpty()) {
+                                nomorField.setStyle("-fx-border-color: #dc2626; -fx-border-width: 2;");
+                                allValid = false;
+                            } else {
+                                nomorField.setStyle("");
+                                selectedRoles.add(fields);
+                            }
+                        }
+                    }
+                    
+                    if (selectedRoles.isEmpty()) {
+                        showNotification("Peringatan", "Pilih minimal satu persetujuan!");
+                        return;
+                    }
+                    
+                    if (!allValid) {
+                        showNotification("Error", "Nomor surat wajib diisi untuk persetujuan yang dicentang!");
+                        return;
+                    }
+                    
+                    // Process selected approvals
+                    for (java.util.Map<String, Object> fields : selectedRoles) {
+                        String role = (String) fields.get("role");
+                        TextField nomorField = (TextField) fields.get("nomorSurat");
+                        TextField catatanField = (TextField) fields.get("catatan");
+                        
+                        String nomorSurat = nomorField.getText();
+                        String catatan = catatanField.getText();
+                        
+                        // Determine status based on role
+                        String newStatus = "Disetujui " + role;
+                        
+                        // Call API for each approval
+                        dataService.updateAssetRequestStatus(request.getId(), request.getTipe(), newStatus, catatan, nomorSurat, success -> {
+                            // Handled after loop
+                        });
+                    }
+                    
+                    modalStage.close();
+                    
+                    // Refresh after a short delay
+                    int count = selectedRoles.size();
+                    new Thread(() -> {
+                        try { Thread.sleep(500); } catch (InterruptedException ex) {}
+                        Platform.runLater(() -> {
+                            refreshTables();
+                            showNotification("Sukses", count + " persetujuan berhasil disimpan!");
+                        });
+                    }).start();
+                });
+                
+                buttonBox.getChildren().addAll(btnCancel, btnSave);
+                contentArea.getChildren().add(buttonBox);
+            }
+        } else {
+            // Normal single-role approval (PPBJ, PPK, DIREKTUR)
+            
+            // 2. Catatan Penyetuju (Editable)
+            VBox catatanBox = new VBox(8);
+            Label lblCatatan = new Label("Catatan Anda (opsional):");
+            lblCatatan.getStyleClass().add("form-label");
+            lblCatatan.setStyle("-fx-font-weight: bold;");
+            
+            TextArea txtCatatan = new TextArea();
+            txtCatatan.setPromptText("Tulis catatan atau pesan untuk pemohon...");
+            txtCatatan.setWrapText(true);
+            txtCatatan.setPrefRowCount(3);
+            txtCatatan.getStyleClass().add("form-textarea");
+            
+            catatanBox.getChildren().addAll(lblCatatan, txtCatatan);
 
-        // 3. Nomor Surat (Optional Text Field)
-        VBox nomorSuratBox = new VBox(8);
-        Label lblNomorSurat = new Label("Nomor Surat (opsional):");
-        lblNomorSurat.getStyleClass().add("form-label");
-        lblNomorSurat.setStyle("-fx-font-weight: bold;");
-        
-        TextField txtNomorSurat = new TextField();
-        txtNomorSurat.setPromptText("Contoh: SURAT/2024/001");
-        txtNomorSurat.getStyleClass().add("form-input");
-        
-        nomorSuratBox.getChildren().addAll(lblNomorSurat, txtNomorSurat);
+            // 3. Nomor Surat (Optional Text Field)
+            VBox nomorSuratBox = new VBox(8);
+            Label lblNomorSurat = new Label("Nomor Surat (opsional):");
+            lblNomorSurat.getStyleClass().add("form-label");
+            lblNomorSurat.setStyle("-fx-font-weight: bold;");
+            
+            TextField txtNomorSurat = new TextField();
+            txtNomorSurat.setPromptText("Contoh: SURAT/2024/001");
+            txtNomorSurat.getStyleClass().add("form-input");
+            
+            nomorSuratBox.getChildren().addAll(lblNomorSurat, txtNomorSurat);
 
-        // Separator
-        Separator sep = new Separator();
-        sep.setPadding(new Insets(8, 0, 8, 0));
+            // Separator
+            Separator sep = new Separator();
+            sep.setPadding(new Insets(8, 0, 8, 0));
 
-        // 4. Keputusan (Radio Box)
-        VBox decisionBox = new VBox(12);
-        Label lblKeputusan = new Label("Keputusan Anda:");
-        lblKeputusan.getStyleClass().add("form-label");
-        lblKeputusan.setStyle("-fx-font-weight: bold; -fx-font-size: 14px;");
-        
-        ToggleGroup group = new ToggleGroup();
-        
-        RadioButton rbSetuju = new RadioButton("Setujui Permohonan");
-        rbSetuju.setToggleGroup(group);
-        rbSetuju.setStyle("-fx-text-fill: #16a34a; -fx-font-weight: 600; -fx-font-size: 13px;");
-        
-        RadioButton rbTolak = new RadioButton("Tolak Permohonan");
-        rbTolak.setToggleGroup(group);
-        rbTolak.setStyle("-fx-text-fill: #dc2626; -fx-font-weight: 600; -fx-font-size: 13px;");
+            // 4. Keputusan (Radio Box)
+            VBox decisionBox = new VBox(12);
+            Label lblKeputusan = new Label("Keputusan Anda:");
+            lblKeputusan.getStyleClass().add("form-label");
+            lblKeputusan.setStyle("-fx-font-weight: bold; -fx-font-size: 14px;");
+            
+            ToggleGroup group = new ToggleGroup();
+            
+            RadioButton rbSetuju = new RadioButton("Setujui Permohonan");
+            rbSetuju.setToggleGroup(group);
+            rbSetuju.setStyle("-fx-text-fill: #16a34a; -fx-font-weight: 600; -fx-font-size: 13px;");
+            
+            RadioButton rbTolak = new RadioButton("Tolak Permohonan");
+            rbTolak.setToggleGroup(group);
+            rbTolak.setStyle("-fx-text-fill: #dc2626; -fx-font-weight: 600; -fx-font-size: 13px;");
 
-        decisionBox.getChildren().addAll(lblKeputusan, rbSetuju, rbTolak);
+            decisionBox.getChildren().addAll(lblKeputusan, rbSetuju, rbTolak);
 
-        // Footer Buttons
-        HBox buttonBox = new HBox(12);
-        buttonBox.setAlignment(Pos.CENTER_RIGHT);
-        buttonBox.setPadding(new Insets(16, 0, 0, 0));
-        
-        Button btnCancel = new Button("Batal");
-        btnCancel.getStyleClass().add("secondary-button");
-        btnCancel.setOnAction(e -> modalStage.close());
-        
-        Button btnSave = new Button("Simpan Keputusan");
-        btnSave.getStyleClass().add("primary-button");
-        btnSave.setDisable(true);
-        
-        group.selectedToggleProperty().addListener((obs, oldVal, newVal) -> btnSave.setDisable(newVal == null));
-        
-        btnSave.setOnAction(e -> {
-            boolean isApprove = rbSetuju.isSelected();
-            String catatan = txtCatatan.getText();
-            String nomorSurat = txtNomorSurat.getText();
-            handleApproval(request, isApprove, catatan, nomorSurat);
-            modalStage.close();
-        });
-        
-        buttonBox.getChildren().addAll(btnCancel, btnSave);
+            // Footer Buttons
+            HBox buttonBox = new HBox(12);
+            buttonBox.setAlignment(Pos.CENTER_RIGHT);
+            buttonBox.setPadding(new Insets(16, 0, 0, 0));
+            
+            Button btnCancel = new Button("Batal");
+            btnCancel.getStyleClass().add("secondary-button");
+            btnCancel.setOnAction(e -> modalStage.close());
+            
+            Button btnSave = new Button("Simpan Keputusan");
+            btnSave.getStyleClass().add("primary-button");
+            btnSave.setDisable(true);
+            
+            group.selectedToggleProperty().addListener((obs, oldVal, newVal) -> btnSave.setDisable(newVal == null));
+            
+            btnSave.setOnAction(e -> {
+                boolean isApprove = rbSetuju.isSelected();
+                String catatan = txtCatatan.getText();
+                String nomorSurat = txtNomorSurat.getText();
+                handleApproval(request, isApprove, catatan, nomorSurat);
+                modalStage.close();
+            });
+            
+            buttonBox.getChildren().addAll(btnCancel, btnSave);
 
-        contentArea.getChildren().addAll(infoBox, catatanBox, nomorSuratBox, sep, decisionBox, buttonBox);
+            contentArea.getChildren().addAll(catatanBox, nomorSuratBox, sep, decisionBox, buttonBox);
+        }
+        
         scrollPane.setContent(contentArea);
         modalContent.getChildren().addAll(headerBox, scrollPane);
 
@@ -468,6 +631,37 @@ public class AssetApprovalView extends VBox {
         AnimationUtils.setupModalAnimation(modalStage, modalContent);
         
         modalStage.showAndWait();
+    }
+    
+    /**
+     * Get list of roles that haven't approved yet (for TIM_MANAJEMEN_ASET)
+     */
+    private java.util.List<String> getPendingRoles(AssetRequest request) {
+        java.util.List<String> pendingRoles = new java.util.ArrayList<>();
+        String[] allRoles = {"PPBJ", "PPK", "Direktur"};
+        
+        // Fetch approval logs for this request
+        String cacheKey = request.getId() + "-" + request.getTipe();
+        java.util.List<ApprovalLogDto> logs = approvalLogsCache.get(cacheKey);
+        
+        if (logs == null) {
+            ApprovalLogDto[] logsArray = "Permohonan".equals(request.getTipe()) 
+                ? logRiwayatApi.getApprovalLogs(request.getId(), null)
+                : logRiwayatApi.getApprovalLogs(null, request.getId());
+            logs = Arrays.asList(logsArray);
+            approvalLogsCache.put(cacheKey, logs);
+        }
+        
+        // Check which roles have NOT approved yet
+        for (String role : allRoles) {
+            boolean hasApproved = logs.stream()
+                .anyMatch(log -> role.equals(log.getRole()) && "Disetujui".equals(log.getStatus()));
+            if (!hasApproved) {
+                pendingRoles.add(role);
+            }
+        }
+        
+        return pendingRoles;
     }
 
     private void handleApproval(AssetRequest request, boolean isApprove, String catatan, String lampiran) {
@@ -865,6 +1059,13 @@ public class AssetApprovalView extends VBox {
                 
                 infoBox.getChildren().addAll(roleLabel, statusLabel);
                 
+                // Add delegation indicator if delegated by Tim Manajemen Aset
+                if (log.isDelegated()) {
+                    Label delegatedLabel = new Label("↳ diwakilkan oleh " + log.getNamaPegawai() + " (Tim Manajemen Aset)");
+                    delegatedLabel.setStyle("-fx-font-size: 11px; -fx-text-fill: #6366f1; -fx-font-style: italic;");
+                    infoBox.getChildren().add(delegatedLabel);
+                }
+                
                 // Add catatan if exists
                 if (log.getCatatan() != null && !log.getCatatan().isEmpty()) {
                     Label catatanLabel = new Label("💬 " + log.getCatatan());
@@ -889,6 +1090,13 @@ public class AssetApprovalView extends VBox {
                 statusLabel.setStyle("-fx-font-weight: 600; -fx-text-fill: #dc2626; -fx-font-size: 13px;");
                 
                 infoBox.getChildren().addAll(roleLabel, statusLabel);
+                
+                // Add delegation indicator if delegated by Tim Manajemen Aset
+                if (log.isDelegated()) {
+                    Label delegatedLabel = new Label("↳ diwakilkan oleh " + log.getNamaPegawai() + " (Tim Manajemen Aset)");
+                    delegatedLabel.setStyle("-fx-font-size: 11px; -fx-text-fill: #6366f1; -fx-font-style: italic;");
+                    infoBox.getChildren().add(delegatedLabel);
+                }
                 
                 // Add catatan if exists (especially important for rejection reasons)
                 if (log.getCatatan() != null && !log.getCatatan().isEmpty()) {
