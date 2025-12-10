@@ -22,8 +22,8 @@ git branch -r
 
 > Satu branch dapat digunakan oleh dua orang (frontend dan backend).  
 > Folder frontend dan backend **dipisah** agar meminimalkan merge conflict.  
-> Frontend = Mayoritas isinya adalah JavaFX, tidak menggunakan Spring Boot.  
-> Backend = Mayoritas isinya adalah Web Service, menggunakan Spring Boot. 
+> Client = Mayoritas isinya adalah JavaFX, tidak menggunakan Spring Boot.  
+> Server = Mayoritas isinya adalah Web Service, menggunakan Spring Boot. 
 
 ---
 
