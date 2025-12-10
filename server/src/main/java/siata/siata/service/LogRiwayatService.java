@@ -94,13 +94,17 @@ public class LogRiwayatService {
                     role = extractRole(log.getPegawai().getUser().getRole());
                 }
                 
+                // Get the actual role of the person who made the approval
+                String actualApproverRole = extractRole(log.getPegawai().getUser().getRole());
+                
                 return new ApprovalLogDTO(
                     log.getPegawai().getNama(),
                     role,
                     status,
                     log.getTimestamp(),
                     log.getCatatan(),
-                    log.getLampiran()
+                    log.getLampiran(),
+                    actualApproverRole
                 );
             })
             .collect(Collectors.toList());

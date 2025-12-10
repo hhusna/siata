@@ -29,7 +29,7 @@ public class Aset {
 
     @Column(name = "kode_aset", nullable = false, length = 100)
     @NotBlank(message = "Kode aset tidak boleh kosong")
-    @Pattern(regexp = "[0-9]{10}", message = "Kode aset harus 10 digit angka")
+    @Size(min = 1, max = 100, message = "Kode aset maksimal 100 karakter")
     private String kodeAset;
 
     @Column(name = "jenis_aset", nullable = false, length = 100)
