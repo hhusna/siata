@@ -347,14 +347,17 @@ public class AssetRequestView extends VBox {
             String unit = "";
             
             if (isPengajuan) {
-                nama = loggedInNama; // This will map to NIP in validation? Not ideal, Pengajuan needs NIP too.
-                // Assuming Pengajuan logic is separate or needs cleanup. Focusing on Permohonan requests.
-                // Wait, Pengajuan also uses this form. loggedInUser.getNip() should be used instead of loggedInNama?
-                // For now following request: "di form Tambah Permohonan". 
-                // But saveAssetRequest signature needs update.
-                nama = loggedInUser != null ? String.valueOf(loggedInUser.getNip()) : ""; // Changed to NIP
-                unit = loggedInUnit;
+                // Mode Edit: use existing data from editableRequest
+                // Mode Tambah: use login session
+                if (editableRequest != null) {
+                    nama = editableRequest.getPemohon(); // Keep original pemohon NIP
+                    unit = editableRequest.getUnit(); // Keep original unit
+                } else {
+                    nama = loggedInUser != null ? String.valueOf(loggedInUser.getNip()) : "";
+                    unit = loggedInUnit;
+                }
             } else {
+                // Permohonan: always use selected employee
                 if (selectedEmployee[0] != null) {
                     nama = selectedEmployee[0].getNip(); // Send NIP
                     unit = selectedEmployee[0].getUnit(); // Send Unit from employee
@@ -395,20 +398,32 @@ public class AssetRequestView extends VBox {
         
         // Add different fields based on mode
         if (isPengajuan) {
-            // Pengajuan: show info labels (non-editable) from login session
-            VBox namaInfoBox = new VBox(8);
-            namaInfoBox.getChildren().addAll(infoNamaLabel, infoNamaValue);
-            
-            VBox unitInfoBox = new VBox(8);
-            unitInfoBox.getChildren().addAll(infoUnitLabel, infoUnitValue);
-            
-            VBox jenisInputBox = new VBox(8);
-            jenisInputBox.getChildren().addAll(jenisLabel, jenisCombo);
-            
-            VBox jumlahInputBox = new VBox(8);
-            jumlahInputBox.getChildren().addAll(jumlahLabel, jumlahField);
-            
-            leftColumn.getChildren().addAll(namaInfoBox, unitInfoBox, jenisInputBox, jumlahInputBox);
+            // Pengajuan: show info labels (non-editable) for NEW only, editable for EDIT
+            if (editableRequest == null) {
+                // Mode Tambah: show non-editable info
+                VBox namaInfoBox = new VBox(8);
+                namaInfoBox.getChildren().addAll(infoNamaLabel, infoNamaValue);
+                
+                VBox unitInfoBox = new VBox(8);
+                unitInfoBox.getChildren().addAll(infoUnitLabel, infoUnitValue);
+                
+                VBox jenisInputBox = new VBox(8);
+                jenisInputBox.getChildren().addAll(jenisLabel, jenisCombo);
+                
+                VBox jumlahInputBox = new VBox(8);
+                jumlahInputBox.getChildren().addAll(jumlahLabel, jumlahField);
+                
+                leftColumn.getChildren().addAll(namaInfoBox, unitInfoBox, jenisInputBox, jumlahInputBox);
+            } else {
+                // Mode Edit: show editable fields only (jenis dan jumlah)
+                VBox jenisInputBox = new VBox(8);
+                jenisInputBox.getChildren().addAll(jenisLabel, jenisCombo);
+                
+                VBox jumlahInputBox = new VBox(8);
+                jumlahInputBox.getChildren().addAll(jumlahLabel, jumlahField);
+                
+                leftColumn.getChildren().addAll(jenisInputBox, jumlahInputBox);
+            }
         } else {
             // Permohonan: show searchable dropdown (no unit combo)
             VBox namaInputBox = new VBox(8);
@@ -580,18 +595,25 @@ public class AssetRequestView extends VBox {
             private final Button detailButton = createIconButton("👁");
             private final Button editButton = createIconButton("✏");
             private final Button deleteButton = createIconButton("🗑");
-            private final HBox actionBox = new HBox(6, detailButton, editButton, deleteButton);
+            private final HBox actionBox = new HBox(6);
 
             {
                 actionBox.setAlignment(Pos.CENTER);
+                
+                // Check role permissions
+                String currentRole = LoginSession.getRole();
+                boolean canEdit = "TIM_MANAJEMEN_ASET".equals(currentRole);
+                
                 detailButton.setOnAction(e -> {
                     AssetRequest request = getTableView().getItems().get(getIndex());
                     showRequestDetail(request);
                 });
+                
                 editButton.setOnAction(e -> {
                     AssetRequest request = getTableView().getItems().get(getIndex());
                     showAssetRequestModal(request.getTipe(), request);
                 });
+                
                 deleteButton.setOnAction(e -> {
                     AssetRequest request = getTableView().getItems().get(getIndex());
                     if (confirmDelete(request)) {
@@ -599,6 +621,12 @@ public class AssetRequestView extends VBox {
                         refreshTables();
                     }
                 });
+                
+                // Add buttons based on role
+                actionBox.getChildren().add(detailButton);
+                if (canEdit) {
+                    actionBox.getChildren().addAll(editButton, deleteButton);
+                }
             }
 
             @Override
