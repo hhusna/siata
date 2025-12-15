@@ -61,8 +61,12 @@ public class MainShellView extends BorderPane {
     private boolean isLoading = false;
     private boolean isAnimating = false;
 
-    // Global loading overlay
-    private static LoadingOverlay loadingOverlay;
+    // Global loading overlay stage
+    private static javafx.stage.Stage loadingStage;
+    
+    // Toast notification stage
+    private static javafx.stage.Stage toastStage;
+    private static VBox toastContainer;
 
     private Optional<Runnable> onLogout = Optional.empty();
     private MainPage activePage;
@@ -83,11 +87,8 @@ public class MainShellView extends BorderPane {
         setLeft(sidebar);
         setCenter(rightSide);
 
-        // Create global loading overlay
-        loadingOverlay = new LoadingOverlay();
-        
-        // Wrap this BorderPane in a StackPane in the scene for overlay
-        // This will be done when MainShellView is added to scene
+        // Create global loading overlay (Stage based)
+        // loadingStage will be created lazily when needed
     }
 
     private Node buildSidebar() {
@@ -721,24 +722,72 @@ public class MainShellView extends BorderPane {
      * Call this before starting heavy operations.
      * @param message Optional message to show (e.g., "Mengimpor data...")
      */
+    private static void ensureLoadingStage() {
+        if (loadingStage == null) {
+            loadingStage = new javafx.stage.Stage();
+            loadingStage.initStyle(javafx.stage.StageStyle.TRANSPARENT);
+            loadingStage.initModality(javafx.stage.Modality.APPLICATION_MODAL); // Blocks input
+            loadingStage.setAlwaysOnTop(true);
+            
+            LoadingOverlay overlay = new LoadingOverlay();
+            // Force overlay to fill screen/window? 
+            // Better: use a transparent scene with the overlay centered
+            
+            StackPane root = new StackPane(overlay);
+            root.setStyle("-fx-background-color: transparent;");
+            
+            javafx.scene.Scene scene = new javafx.scene.Scene(root);
+            scene.setFill(javafx.scene.paint.Color.TRANSPARENT);
+            loadingStage.setScene(scene);
+            
+            // Initial showing to size?
+            // Bind to primary stage to cover it
+            javafx.stage.Stage primary = MainApplication.getPrimaryStage();
+            if (primary != null) {
+                loadingStage.initOwner(primary);
+                // Sync size/position with owner using listeners (since properties are read-only)
+                javafx.beans.value.ChangeListener<Number> syncListener = (obs, old, val) -> {
+                    if (loadingStage.isShowing()) {
+                        loadingStage.setX(primary.getX());
+                        loadingStage.setY(primary.getY());
+                        loadingStage.setWidth(primary.getWidth());
+                        loadingStage.setHeight(primary.getHeight());
+                    }
+                };
+                
+                primary.xProperty().addListener(syncListener);
+                primary.yProperty().addListener(syncListener);
+                primary.widthProperty().addListener(syncListener);
+                primary.heightProperty().addListener(syncListener);
+                
+                // Initial sync
+                loadingStage.setOnShown(e -> {
+                     loadingStage.setX(primary.getX());
+                     loadingStage.setY(primary.getY());
+                     loadingStage.setWidth(primary.getWidth());
+                     loadingStage.setHeight(primary.getHeight());
+                });
+                
+                // Also pass message handling
+                root.setUserData(overlay); 
+            }
+        }
+    }
+
+    /**
+     * Show global loading overlay.
+     * Call this before starting heavy operations.
+     * @param message Optional message to show (e.g., "Mengimpor data...")
+     */
     public static void showLoading(String message) {
         javafx.application.Platform.runLater(() -> {
-            if (loadingOverlay != null) {
-                javafx.stage.Stage stage = MainApplication.getPrimaryStage();
-                if (stage != null && stage.getScene() != null) {
-                    // Add overlay to scene if not already added
-                    if (stage.getScene().getRoot() instanceof StackPane root) {
-                        if (!root.getChildren().contains(loadingOverlay)) {
-                            root.getChildren().add(loadingOverlay);
-                        }
-                        loadingOverlay.show(message);
-                    } else if (stage.getScene().getRoot() instanceof MainShellView mainShell) {
-                        // Wrap MainShellView in StackPane if needed
-                        StackPane wrapper = new StackPane(mainShell, loadingOverlay);
-                        stage.getScene().setRoot(wrapper);
-                        loadingOverlay.show(message);
-                    }
+            ensureLoadingStage();
+            if (loadingStage != null) {
+                if (loadingStage.getScene().getRoot().getUserData() instanceof LoadingOverlay overlay) {
+                    overlay.show(message);
                 }
+                loadingStage.show();
+                loadingStage.toFront();
             }
         });
     }
@@ -754,17 +803,13 @@ public class MainShellView extends BorderPane {
      * Hide global loading overlay.
      * Call this after heavy operation completes.
      */
-    // Toast notification container
-    private static VBox toastContainer;
-
-    /**
-     * Hide global loading overlay.
-     * Call this after heavy operation completes.
-     */
     public static void hideLoading() {
         javafx.application.Platform.runLater(() -> {
-            if (loadingOverlay != null) {
-                loadingOverlay.hide();
+            if (loadingStage != null) {
+                loadingStage.hide();
+                if (loadingStage.getScene().getRoot().getUserData() instanceof LoadingOverlay overlay) {
+                    overlay.hide();
+                }
             }
         });
     }
@@ -797,10 +842,25 @@ public class MainShellView extends BorderPane {
         showToast("Info", message, com.siata.client.component.Toast.Type.INFO);
     }
 
+    private static void updateToastPosition() {
+        if (toastStage != null && toastStage.isShowing()) {
+            javafx.stage.Stage primary = MainApplication.getPrimaryStage();
+            if (primary != null) {
+                // Position: Bottom-Right of the APPLICATION WINDOW
+                double padding = 20;
+                double x = primary.getX() + primary.getWidth() - toastStage.getWidth() - padding;
+                double y = primary.getY() + primary.getHeight() - toastStage.getHeight() - padding;
+                
+                toastStage.setX(x);
+                toastStage.setY(y);
+            }
+        }
+    }
+
     private static void showToast(String title, String message, com.siata.client.component.Toast.Type type) {
         javafx.application.Platform.runLater(() -> {
-            // Create container if not exists or not in scene
-            ensureToastContainer();
+            // Create container/stage if not exists
+            ensureToastStage();
             
             if (toastContainer != null) {
                 com.siata.client.component.Toast toast = new com.siata.client.component.Toast(title, message, type);
@@ -809,6 +869,21 @@ public class MainShellView extends BorderPane {
                 
                 toastContainer.getChildren().add(0, toast); // Add to top
                 
+                // Show stage if not visible
+                if (!toastStage.isShowing()) {
+                    toastStage.show();
+                    updateToastPosition();
+                }
+                
+                // Ensure on top of other child windows (modals)
+                toastStage.toFront();
+                
+                // Resize stage to fit content
+                toastStage.sizeToScene();
+                
+                // Reposition
+                updateToastPosition();
+
                 // Animate In
                 FadeTransition fadeIn = new FadeTransition(Duration.millis(300), toast);
                 fadeIn.setFromValue(0);
@@ -833,7 +908,15 @@ public class MainShellView extends BorderPane {
                     slideOut.setFromX(0);
                     slideOut.setToX(350);
                     
-                    slideOut.setOnFinished(event -> toastContainer.getChildren().remove(toast));
+                    slideOut.setOnFinished(event -> {
+                        toastContainer.getChildren().remove(toast);
+                        if (toastContainer.getChildren().isEmpty()) {
+                            toastStage.hide();
+                        } else {
+                            toastStage.sizeToScene();
+                            updateToastPosition();
+                        }
+                    });
                     
                     fadeOut.play();
                     slideOut.play();
@@ -843,35 +926,32 @@ public class MainShellView extends BorderPane {
         });
     }
 
-    private static void ensureToastContainer() {
-        javafx.stage.Stage stage = MainApplication.getPrimaryStage();
-        if (stage != null && stage.getScene() != null) {
-            StackPane root = null;
-            if (stage.getScene().getRoot() instanceof StackPane) {
-                root = (StackPane) stage.getScene().getRoot();
-            } else if (stage.getScene().getRoot() instanceof MainShellView mainShell) {
-                // Wrap MainShellView if simpler root
-                root = new StackPane(mainShell);
-                // Re-add loading overlay if exists
-                if (loadingOverlay != null && !root.getChildren().contains(loadingOverlay)) {
-                    root.getChildren().add(loadingOverlay);
-                }
-                stage.getScene().setRoot(root);
-            }
+    private static void ensureToastStage() {
+        if (toastStage == null) {
+            toastStage = new javafx.stage.Stage();
+            toastStage.initStyle(javafx.stage.StageStyle.TRANSPARENT);
+            // toastStage.setAlwaysOnTop(true); // REMOVED: Causes toast to float over other apps
             
-            if (root != null) {
-                if (toastContainer == null) {
-                    toastContainer = new VBox(10);
-                    toastContainer.setPadding(new Insets(20));
-                    toastContainer.setAlignment(Pos.BOTTOM_RIGHT);
-                    toastContainer.setPickOnBounds(false); // Allow clicking through empty space
-                    root.getChildren().add(toastContainer);
-                } else if (!root.getChildren().contains(toastContainer)) {
-                    root.getChildren().add(toastContainer);
-                }
-                // Ensure toast container is always on top (but below loading overlay if visible)
-                toastContainer.toFront();
-                if (loadingOverlay != null && loadingOverlay.isVisible()) loadingOverlay.toFront();
+            toastContainer = new VBox(10);
+            toastContainer.setPadding(new Insets(10));
+            toastContainer.setStyle("-fx-background-color: transparent;");
+            toastContainer.setAlignment(Pos.BOTTOM_RIGHT);
+            
+            javafx.scene.Scene scene = new javafx.scene.Scene(toastContainer);
+            scene.setFill(javafx.scene.paint.Color.TRANSPARENT);
+            toastStage.setScene(scene);
+            
+            // Sync with primary stage movement & Minimization
+            javafx.stage.Stage primary = MainApplication.getPrimaryStage();
+            if (primary != null) {
+                // Set owner to primary -> minimizes with app, z-ordered with app
+                toastStage.initOwner(primary);
+                
+                javafx.beans.value.ChangeListener<Number> posListener = (obs, old, val) -> updateToastPosition();
+                primary.xProperty().addListener(posListener);
+                primary.yProperty().addListener(posListener);
+                primary.widthProperty().addListener(posListener);
+                primary.heightProperty().addListener(posListener);
             }
         }
     }

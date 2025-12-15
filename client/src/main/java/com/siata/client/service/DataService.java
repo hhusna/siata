@@ -233,11 +233,60 @@ public class DataService {
         long newId = assetApi.tambahAsset(assetToDto);
         if (newId != 0) {
             asset.setIdAset(newId); // Update ID local asset
+            
+            // LOGIC FIX: Jika No Aset 0/null (Auto Gen), set sama dengan ID Aset
+            if (asset.getNoAset() == null || asset.getNoAset() == 0) {
+                 asset.setNoAset((int) newId); // Sync ID -> No Aset
+                 
+                 // Update ke server agar disimpan
+                 try {
+                     AssetDto updatePayload = new AssetDto();
+                     // Copy fields from initial logic or just set necessary ones?
+                     // putAsset might require full object. Let's create from asset value again.
+                     updatePayload.setIdAset(newId);
+                     updatePayload.setNoAset((int) newId);
+                     
+                     // We need all other fields because PUT usually replaces.
+                     // Copying from `assetToDto` which we just sent.
+                     updatePayload.setKodeAset(assetToDto.getKodeAset());
+                     updatePayload.setJenisAset(assetToDto.getJenisAset());
+                     updatePayload.setMerkAset(assetToDto.getMerkAset());
+                     updatePayload.setTanggalPerolehan(assetToDto.getTanggalPerolehan());
+                     updatePayload.setHargaAset(assetToDto.getHargaAset());
+                     updatePayload.setKondisi(assetToDto.getKondisi());
+                     updatePayload.setStatusPemakaian(assetToDto.getStatusPemakaian());
+                     updatePayload.setDipakai(assetToDto.getDipakai());
+                     updatePayload.setPegawaiDto(assetToDto.getPegawaiDto());
+                     updatePayload.setSubdirektorat(assetToDto.getSubdirektorat());
+                     
+                     assetApi.putAsset(updatePayload);
+                     System.out.println("DataService: Sync No Aset = ID " + newId);
+                 } catch (Exception e) {
+                     e.printStackTrace();
+                     System.err.println("DataService: Gagal sync No Aset dengan ID.");
+                 }
+            }
+            
             clearAssetCache(); // Invalidate cache
             logActivity("admin", "Create", "Menambahkan aset baru", "Aset #" + asset.getKodeAset(), asset.getNamaAset());
             return true;
         }
         return false;
+    }
+
+    /**
+     * Get a map of all registered employees (NIP -> Name).
+     * Used for validating NIPs during import.
+     */
+    public java.util.Map<String, String> getAllEmployeeNipNameMap() {
+        java.util.Map<String, String> map = new java.util.HashMap<>();
+        PegawaiDto[] dtos = pegawaiApi.getPegawai();
+        if (dtos != null) {
+            for (PegawaiDto p : dtos) {
+                map.put(String.valueOf(p.getNip()), p.getNama());
+            }
+        }
+        return map;
     }
 
     public int batchAddAssets(List<Asset> assets) {

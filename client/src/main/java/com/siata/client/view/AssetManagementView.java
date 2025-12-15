@@ -26,6 +26,7 @@ import javafx.stage.Modality;
 import javafx.stage.Stage;
 import javafx.stage.StageStyle;
 import javafx.util.StringConverter;
+import javafx.concurrent.Task;
 
 import java.io.File;
 import java.math.BigDecimal;
@@ -47,6 +48,8 @@ public class AssetManagementView extends VBox {
     // Column references for visibility toggle
     private final java.util.Map<String, TableColumn<Asset, ?>> columnMap = new java.util.LinkedHashMap<>();
     private final java.util.Map<String, CheckBox> columnCheckBoxes = new java.util.LinkedHashMap<>();
+    // Map for NIP to Name lookup, refreshed in refreshTable
+    private final java.util.Map<String, String> nipToNameMap = new java.util.HashMap<>();
 
     public AssetManagementView() {
         setSpacing(20);
@@ -97,29 +100,19 @@ public class AssetManagementView extends VBox {
         statusCombo.setPrefWidth(150);
         statusCombo.getStyleClass().add("filter-combo-box");
         
-        // Filter Kesiapan Lelang - hanya untuk TIM_MANAJEMEN_ASET
-        ComboBox<String> kesiapanLelangCombo = new ComboBox<>();
-        kesiapanLelangCombo.getItems().addAll("Semua Kesiapan", "Siap", "Belum");
-        kesiapanLelangCombo.setValue("Semua Kesiapan");
-        kesiapanLelangCombo.setPrefWidth(150);
-        kesiapanLelangCombo.getStyleClass().add("filter-combo-box");
+
         
         TextField searchField = new TextField();
         searchField.setPromptText("Cari berdasarkan ID, nama, atau jenis aset...");
         searchField.setPrefWidth(200);
-        searchField.textProperty().addListener((obs, oldVal, newVal) -> filterTable(newVal, jenisCombo.getValue(), statusCombo.getValue(), kesiapanLelangCombo.getValue()));
+        searchField.textProperty().addListener((obs, oldVal, newVal) -> filterTable(newVal, jenisCombo.getValue(), statusCombo.getValue()));
         searchField.getStyleClass().add("filter-combo-box");
         
-        jenisCombo.setOnAction(e -> filterTable(searchField.getText(), jenisCombo.getValue(), statusCombo.getValue(), kesiapanLelangCombo.getValue()));
-        statusCombo.setOnAction(e -> filterTable(searchField.getText(), jenisCombo.getValue(), statusCombo.getValue(), kesiapanLelangCombo.getValue()));
-        kesiapanLelangCombo.setOnAction(e -> filterTable(searchField.getText(), jenisCombo.getValue(), statusCombo.getValue(), kesiapanLelangCombo.getValue()));
+        jenisCombo.setOnAction(e -> filterTable(searchField.getText(), jenisCombo.getValue(), statusCombo.getValue()));
+        statusCombo.setOnAction(e -> filterTable(searchField.getText(), jenisCombo.getValue(), statusCombo.getValue()));
         
-        // Tambahkan filter ke filterBar berdasarkan role
-        if ("TIM_MANAJEMEN_ASET".equals(com.siata.client.session.LoginSession.getRole())) {
-            filterBar.getChildren().addAll(searchField, jenisCombo, statusCombo, kesiapanLelangCombo);
-        } else {
-            filterBar.getChildren().addAll(searchField, jenisCombo, statusCombo);
-        }
+        // Tambahkan filter ke filterBar
+        filterBar.getChildren().addAll(searchField, jenisCombo, statusCombo);
 
         // Paginated Table with multi-selection
         paginatedTable = new PaginatedTableView<>();
@@ -144,10 +137,7 @@ public class AssetManagementView extends VBox {
         merkCol.setCellValueFactory(new PropertyValueFactory<>("merkBarang"));
         
         // Build employee NIP to Name map for display
-        java.util.Map<String, String> nipToNameMap = new java.util.HashMap<>();
-        for (Employee emp : dataService.getEmployees()) {
-            nipToNameMap.put(emp.getNip(), emp.getNamaLengkap());
-        }
+        // nipToNameMap is now a class field refreshed in refreshTable()
 
         TableColumn<Asset, String> keteranganCol = new TableColumn<>("Pemegang");
         keteranganCol.setCellValueFactory(new PropertyValueFactory<>("keterangan"));
@@ -170,7 +160,11 @@ public class AssetManagementView extends VBox {
                     Label nameLabel = new Label(employeeName);
                     nameLabel.setStyle("-fx-font-weight: 700; -fx-text-fill: #1e293b; -fx-font-size: 13px;");
                     
-                    Label nipLabel = new Label(nip);
+                    String nipText = nip;
+                    if (nip.length() != 18) {
+                        nipText = "No NIP";
+                    }
+                    Label nipLabel = new Label(nipText);
                     nipLabel.setStyle("-fx-font-size: 11px; -fx-text-fill: #94a3b8;");
                     
                     container.getChildren().addAll(nameLabel, nipLabel);
@@ -339,7 +333,7 @@ public class AssetManagementView extends VBox {
                     Asset asset = getTableView().getItems().get(getIndex());
                     // Validasi: Aset Aktif tidak bisa dihapus
                     if ("Aktif".equals(asset.getStatus())) {
-                        showAlert("Aset dengan status Aktif tidak dapat dihapus. Ubah status menjadi Non Aktif terlebih dahulu.");
+                        MainShellView.showWarning("Aset dengan status Aktif tidak dapat dihapus. Ubah status menjadi Non Aktif terlebih dahulu.");
                         return;
                     }
                     if (confirmDelete(asset)) {
@@ -442,6 +436,7 @@ public class AssetManagementView extends VBox {
     
     private void showColumnConfigPopup(Button anchorButton) {
         Stage popupStage = new Stage();
+        popupStage.initOwner(com.siata.client.MainApplication.getPrimaryStage());
         popupStage.initStyle(StageStyle.UNDECORATED);
         popupStage.initModality(Modality.NONE);
         
@@ -592,6 +587,7 @@ public class AssetManagementView extends VBox {
 
     private void showAssetForm(Asset editableAsset) {
         Stage modalStage = new Stage();
+        modalStage.initOwner(com.siata.client.MainApplication.getPrimaryStage());
         modalStage.initModality(Modality.APPLICATION_MODAL);
         modalStage.initStyle(StageStyle.TRANSPARENT);
         modalStage.setTitle(editableAsset == null ? "Tambah Aset Baru" : "Edit Aset");
@@ -647,38 +643,16 @@ public class AssetManagementView extends VBox {
         autoGenerateCheck.selectedProperty().addListener((obs, oldVal, newVal) -> {
             if (newVal) {
                 noAsetField.setDisable(true);
-                // Call API if kode aset is present
-                String kode = kodeField.getText();
-                if (kode != null && !kode.isEmpty()) {
-                    javafx.concurrent.Task<Integer> task = new javafx.concurrent.Task<>() {
-                        @Override
-                        protected Integer call() throws Exception {
-                            return assetApi.getNextNoAset(kode);
-                        }
-                    };
-                    task.setOnSucceeded(ev -> noAsetField.setText(String.valueOf(task.getValue())));
-                    task.setOnFailed(ev -> ev.getSource().getException().printStackTrace());
-                    new Thread(task).start();
-                }
+                noAsetField.setText(""); // Clear field, DataService will handle sync with ID
             } else {
                 noAsetField.setDisable(false);
             }
         });
         
-        // Refresh number if code changes and auto is checked
-        kodeField.textProperty().addListener((obs, oldVal, newVal) -> {
-            if (autoGenerateCheck.isSelected() && newVal != null && !newVal.isEmpty()) {
-                 javafx.concurrent.Task<Integer> task = new javafx.concurrent.Task<>() {
-                    @Override
-                    protected Integer call() throws Exception {
-                        return assetApi.getNextNoAset(newVal);
-                    }
-                };
-                task.setOnSucceeded(ev -> noAsetField.setText(String.valueOf(task.getValue())));
-                task.setOnFailed(ev -> ev.getSource().getException().printStackTrace());
-                new Thread(task).start();
-            }
-        });
+        // Refresh number if code changes and auto is checked - REMOVED, we use ID now
+        /* 
+        kodeField.textProperty().addListener((obs, oldVal, newVal) -> { ... });
+        */
 
         if (editableAsset != null) {
             if (editableAsset.getNoAset() != null) {
@@ -959,15 +933,15 @@ public class AssetManagementView extends VBox {
             
             // === VALIDATION ON UI THREAD ===
             if (kode == null || kode.trim().isEmpty() || kode.length() != 10 || !kode.matches("\\d+")) {
-                showAlert("Kode Aset harus terdiri dari 10 digit angka!");
+                MainShellView.showWarning("Kode Aset harus terdiri dari 10 digit angka!");
                 return;
             }
             if (jenis == null) {
-                showAlert("Pilih Jenis Aset!");
+                MainShellView.showWarning("Pilih Jenis Aset!");
                 return;
             }
             if (rupiah == null || rupiah.trim().isEmpty()) {
-                showAlert("Masukkan nilai rupiah aset!");
+                MainShellView.showWarning("Masukkan nilai rupiah aset!");
                 return;
             }
             
@@ -977,7 +951,7 @@ public class AssetManagementView extends VBox {
                 try {
                     noAset = Integer.parseInt(noAsetStr.trim());
                 } catch (NumberFormatException ex) {
-                    showAlert("No Aset harus berupa angka!");
+                    MainShellView.showWarning("No Aset harus berupa angka!");
                     return;
                 }
             } else {
@@ -1123,17 +1097,17 @@ public class AssetManagementView extends VBox {
                               String rupiahStr, String kondisi, String status, String dipakai) {
         // Validation
         if (kodeAset == null || kodeAset.trim().isEmpty() || kodeAset.length() != 10 || !kodeAset.matches("\\d+")) {
-            showAlert("Kode Aset harus terdiri dari 10 digit angka!");
+            MainShellView.showWarning("Kode Aset harus terdiri dari 10 digit angka!");
             return false;
         }
         
         if (jenisAset == null) {
-            showAlert("Pilih Jenis Aset!");
+            MainShellView.showWarning("Pilih Jenis Aset!");
             return false;
         }
 
         if (rupiahStr == null || rupiahStr.trim().isEmpty()) {
-            showAlert("Masukkan nilai rupiah aset!");
+            MainShellView.showWarning("Masukkan nilai rupiah aset!");
             return false;
         }
 
@@ -1142,7 +1116,7 @@ public class AssetManagementView extends VBox {
             try {
                 noAset = Integer.parseInt(noAsetStr.trim());
             } catch (NumberFormatException e) {
-                showAlert("No Aset harus berupa angka!");
+                MainShellView.showWarning("No Aset harus berupa angka!");
                 return false;
             }
         }
@@ -1173,12 +1147,12 @@ public class AssetManagementView extends VBox {
                 asset.setDipakai(dipakai); // Set Dipakai
                 
                 if (dataService.addAsset(asset)) {
-                    showSuccessAlert("Aset berhasil ditambahkan!");
+                    MainShellView.showSuccess("Aset berhasil ditambahkan!");
                     refreshTable();
                     MainShellView.invalidateDataViews(); // Refresh Dashboard, Recapitulation, Employee
                     return true;
                 } else {
-                    showAlert("Gagal menambah aset! Kemungkinan duplikat Kode+No Aset.");
+                    MainShellView.showError("Gagal menambah aset! Kemungkinan duplikat Kode+No Aset.");
                     return false;
                 }
             } else {
@@ -1196,18 +1170,19 @@ public class AssetManagementView extends VBox {
                 editableAsset.setDipakai(dipakai); // Set Dipakai
                 
                 if (dataService.updateAsset(editableAsset)) {
-                    showSuccessAlert("Aset berhasil diperbarui!");
+                    MainShellView.showSuccess("Aset berhasil diperbarui!");
                     refreshTable();
                     MainShellView.invalidateDataViews(); // Refresh Dashboard, Recapitulation, Employee
                     return true;
                 } else {
-                    showAlert("Gagal memperbarui aset!");
+                    MainShellView.showError("Gagal memperbarui aset!");
                     return false;
                 }
             }
         } catch (Exception e) {
             e.printStackTrace();
-            showAlert("Gagal menyimpan aset: " + e.getMessage());
+            e.printStackTrace();
+            MainShellView.showError("Gagal menyimpan aset: " + e.getMessage());
         }
         
         return false;
@@ -1215,27 +1190,46 @@ public class AssetManagementView extends VBox {
 
 
     public void refreshTable() {
-        javafx.concurrent.Task<List<Asset>> task = new javafx.concurrent.Task<>() {
+        javafx.concurrent.Task<Object[]> task = new javafx.concurrent.Task<>() {
             @Override
-            protected List<Asset> call() throws Exception {
+            protected Object[] call() throws Exception {
                 // Fetch data (will use cache if valid)
-                return dataService.getAssets();
+                List<Asset> assets = dataService.getAssets();
+                List<Employee> employees = dataService.getEmployees();
+                
+                // Build map
+                java.util.Map<String, String> map = new java.util.HashMap<>();
+                for (Employee emp : employees) {
+                    map.put(emp.getNip(), emp.getNamaLengkap());
+                }
+                
+                return new Object[]{assets, map};
             }
         };
         
         task.setOnSucceeded(e -> {
-            paginatedTable.setItems(task.getValue());
+            Object[] result = task.getValue();
+            List<Asset> assets = (List<Asset>) result[0];
+            java.util.Map<String, String> map = (java.util.Map<String, String>) result[1];
+            
+            // Update local map
+            nipToNameMap.clear();
+            nipToNameMap.putAll(map);
+            
+            paginatedTable.setItems(assets);
+            // Force refresh columns to apply new map?
+            paginatedTable.getTable().refresh();
         });
         
         task.setOnFailed(e -> {
             e.getSource().getException().printStackTrace();
-            showAlert("Gagal memuat data aset.");
+            MainShellView.showError("Gagal memuat data aset.");
         });
         
         new Thread(task).start();
     }
 
-    private void filterTable(String searchText, String jenisFilter, String statusFilter, String kesiapanLelangFilter) {
+    private void filterTable(String searchText, String jenisFilter, String statusFilter) {
         List<Asset> allAssets = dataService.getAssets();
         
         List<Asset> filtered = allAssets.stream()
@@ -1264,15 +1258,6 @@ public class AssetManagementView extends VBox {
                     String normalizedStatus = asset.getStatus().replaceAll("\\s+", "").toLowerCase();
                     if (!normalizedStatus.equals(normalizedFilter)) {
                         return false;
-                    }
-                }
-                
-                // Kesiapan Lelang filter - hanya untuk TIM_MANAJEMEN_ASET (case insensitive)
-                if ("TIM_MANAJEMEN_ASET".equals(com.siata.client.session.LoginSession.getRole())) {
-                    if (kesiapanLelangFilter != null && !kesiapanLelangFilter.equals("Semua Kesiapan")) {
-                        if (!asset.getKesiapanLelang().equalsIgnoreCase(kesiapanLelangFilter)) {
-                            return false;
-                        }
                     }
                 }
                 
@@ -1313,13 +1298,7 @@ public class AssetManagementView extends VBox {
         return alert.showAndWait().orElse(ButtonType.CANCEL) == ButtonType.OK;
     }
 
-    private void showAlert(String message) {
-        Alert alert = new Alert(Alert.AlertType.WARNING);
-        alert.setTitle("Peringatan");
-        alert.setHeaderText(null);
-        alert.setContentText(message);
-        alert.showAndWait();
-    }
+
 
     private void cleanDuplicates() {
         Alert confirmAlert = new Alert(Alert.AlertType.CONFIRMATION);
@@ -1384,6 +1363,7 @@ public class AssetManagementView extends VBox {
     // ==================== IMPORT MODAL ====================
     private void showImportModal() {
         Stage modalStage = new Stage();
+        modalStage.initOwner(com.siata.client.MainApplication.getPrimaryStage());
         modalStage.initModality(Modality.APPLICATION_MODAL);
         modalStage.initStyle(StageStyle.TRANSPARENT);
         modalStage.setTitle("Import Data Aset");
@@ -1568,7 +1548,7 @@ public class AssetManagementView extends VBox {
                         previewData.add(new ImportRow(a));
                     }
                 } catch (Exception ex) {
-                    showAlert("Gagal membaca file Excel: " + ex.getMessage());
+                    MainShellView.showError("Gagal membaca file Excel: " + ex.getMessage());
                 }
             }
         });
@@ -1629,7 +1609,7 @@ public class AssetManagementView extends VBox {
             }
             resultData.removeAll(toRemove);
             updateAssetResultStatuses(resultData);
-            showSuccessAlert("Berhasil menghapus " + toRemove.size() + " data duplikat.");
+            MainShellView.showSuccess("Berhasil menghapus " + toRemove.size() + " data duplikat.");
         });
         
         resultButtons.getChildren().addAll(removeDuplicatesBtn);
@@ -1657,14 +1637,14 @@ public class AssetManagementView extends VBox {
                 .toList();
             
             if (newItems.isEmpty() && existingItems.isEmpty()) {
-                showAlert("Tidak ada data untuk diproses.");
+                MainShellView.showWarning("Tidak ada data untuk diproses.");
                 return;
             }
             
             // Check for duplicates (within import, not existing in DB)
             long dupCount = resultData.stream().filter(r -> "Duplikat".equals(r.status)).count();
             if (dupCount > 0) {
-                showAlert("Masih ada " + dupCount + " data duplikat dalam import. Hapus duplikat terlebih dahulu.");
+                MainShellView.showWarning("Masih ada " + dupCount + " data duplikat dalam import. Hapus duplikat terlebih dahulu.");
                 return;
             }
             
@@ -1685,72 +1665,160 @@ public class AssetManagementView extends VBox {
                 }
             }
             
-            int addSuccess = 0;
-            int addFail = 0;
-            int updateSuccess = 0;
-            int updateFail = 0;
+            // Capture variables for background thread
+            List<ImportRow> fNewItems = new ArrayList<>(newItems);
+            List<ImportRow> fExistingItems = new ArrayList<>(existingItems);
             
-            // Process NEW items (add) via BATCH
-            if (!newItems.isEmpty()) {
-                List<Asset> assetsToInsert = newItems.stream().map(r -> r.asset).collect(Collectors.toList());
-                try {
-                    // Use batch add for performance
-                    int count = dataService.batchAddAssets(assetsToInsert);
-                    addSuccess = count;
-                    addFail = assetsToInsert.size() - count;
-                } catch (Exception ex) {
-                    addFail += assetsToInsert.size();
-                    System.err.println("Error batch adding assets: " + ex.getMessage());
-                }
-            }
+            MainShellView.showLoading("Mengimport dan memproses data...");
             
-            // Process EXISTING items (update)
-            for (ImportRow row : existingItems) {
-                try {
-                    // Find matching asset by kodeAset + noAset
-                    Asset existingAsset = findExistingAsset(row.asset.getKodeAset(), row.asset.getNoAset());
-                    if (existingAsset != null) {
-                        // Copy ID to enable update
-                        row.asset.setIdAset(existingAsset.getIdAset());
-                        boolean result = dataService.updateAsset(row.asset);
-                        if (result) {
-                            updateSuccess++;
-                        } else {
-                            updateFail++;
+            Task<String> importTask = new Task<>() {
+                @Override
+                protected String call() throws Exception {
+                    int addSuccess = 0;
+                    int addFail = 0;
+                    int updateSuccess = 0;
+                    int updateFail = 0;
+                    
+                    // 1. Fetch valid employees for validation
+                    java.util.Map<String, String> validNips = dataService.getAllEmployeeNipNameMap();
+                    
+                    // 1b. Prepare for Auto-Generate No Aset
+                    List<Asset> allDbAssets = dataService.getAllAssetsIncludingDeleted(true);
+                    java.util.Map<String, Integer> maxNoAsetMap = new java.util.HashMap<>();
+                    for (Asset a : allDbAssets) {
+                        if (a.getKodeAset() != null && a.getNoAset() != null) {
+                            maxNoAsetMap.merge(a.getKodeAset(), a.getNoAset(), Integer::max);
                         }
-                    } else {
-                        // Fallback: try to add if not found (shouldn't happen)
-                        boolean result = dataService.addAsset(row.asset);
-                        if (result) addSuccess++; else addFail++;
                     }
-                } catch (Exception ex) {
-                    updateFail++;
-                    System.err.println("Error updating asset: " + ex.getMessage());
+
+                    // 2. Validate NEW items & Generate No Aset if needed
+                    List<Asset> assetsToInsert = new ArrayList<>();
+                    StringBuilder validationErrors = new StringBuilder();
+                    
+                    for (ImportRow row : fNewItems) {
+                        // Auto-Generate No Aset if empty/0
+                        if (row.asset.getNoAset() == null || row.asset.getNoAset() == 0) {
+                            String kode = row.asset.getKodeAset();
+                            if (kode != null) {
+                                int next = maxNoAsetMap.getOrDefault(kode, 0) + 1;
+                                row.asset.setNoAset(next);
+                                maxNoAsetMap.put(kode, next);
+                            }
+                        } else {
+                            // If explicit No Aset provided, update map to prevent collisions
+                            String kode = row.asset.getKodeAset();
+                            if (kode != null) {
+                                maxNoAsetMap.merge(kode, row.asset.getNoAset(), Integer::max);
+                            }
+                        }
+
+                        String nip = row.asset.getKeterangan();
+                        // If NIP is provided (not empty, not "0", not "-")
+                        if (nip != null && !nip.trim().isEmpty() && !"0".equals(nip.trim()) && !"-".equals(nip.trim())) {
+                            if (!validNips.containsKey(nip.trim())) {
+                                validationErrors.append("• Baru: ").append(row.asset.getKodeAset())
+                                    .append(" - NIP ").append(nip).append(" tidak ditemukan\n");
+                                addFail++;
+                                continue; // Skip this item
+                            }
+                        }
+                        assetsToInsert.add(row.asset);
+                    }
+                    
+                    // 3. Process Valid NEW items
+                    if (!assetsToInsert.isEmpty()) {
+                        try {
+                            int count = dataService.batchAddAssets(assetsToInsert);
+                            addSuccess = count;
+                            addFail += (assetsToInsert.size() - count);
+                        } catch (Exception ex) {
+                            addFail += assetsToInsert.size();
+                            System.err.println("Error batch adding assets: " + ex.getMessage());
+                        }
+                    }
+                    
+                    // 4. Process EXISTING items (Update)
+                    for (ImportRow row : fExistingItems) {
+                        try {
+                            // Validate NIP first
+                            String nip = row.asset.getKeterangan();
+                            if (nip != null && !nip.trim().isEmpty() && !"0".equals(nip.trim()) && !"-".equals(nip.trim())) {
+                                if (!validNips.containsKey(nip.trim())) {
+                                    validationErrors.append("• Update: ").append(row.asset.getKodeAset())
+                                        .append(" - NIP ").append(nip).append(" tidak ditemukan\n");
+                                    updateFail++;
+                                    continue; // Skip update
+                                }
+                            }
+                            
+                            // Proceed with update logic
+                            Asset existingAsset = findExistingAsset(row.asset.getKodeAset(), row.asset.getNoAset());
+                            if (existingAsset != null) {
+                                row.asset.setIdAset(existingAsset.getIdAset());
+                                boolean result = dataService.updateAsset(row.asset);
+                                if (result) updateSuccess++; else updateFail++;
+                            } else {
+                                boolean result = dataService.addAsset(row.asset);
+                                if (result) addSuccess++; else addFail++;
+                            }
+                        } catch (Exception ex) {
+                            updateFail++;
+                            System.err.println("Error updating asset: " + ex.getMessage());
+                        }
+                    }
+                    
+                    // 5. Build Result Summary
+                    StringBuilder summary = new StringBuilder("Import selesai!\n\n");
+                    if (addSuccess > 0 || addFail > 0) {
+                        summary.append("TAMBAH BARU:\n");
+                        summary.append("✓ Berhasil: ").append(addSuccess).append("\n");
+                        if (addFail > 0) summary.append("✗ Gagal: ").append(addFail).append("\n");
+                    }
+                    if (updateSuccess > 0 || updateFail > 0) {
+                        summary.append("\nUPDATE EXISTING:\n");
+                        summary.append("✓ Berhasil: ").append(updateSuccess).append("\n");
+                        if (updateFail > 0) summary.append("✗ Gagal: ").append(updateFail).append("\n");
+                    }
+                    
+                    if (validationErrors.length() > 0) {
+                        summary.append("\nDETAIL KEGAGALAN (Pemegang Belum Tercatat):\n");
+                        // Limit logs if too many
+                        if (validationErrors.length() > 500) {
+                             summary.append(validationErrors.substring(0, 500)).append("\n...dan lainnya.");
+                        } else {
+                             summary.append(validationErrors);
+                        }
+                    }
+                    
+                    return summary.toString();
                 }
-            }
+            };
             
-            // Show result summary
-            StringBuilder summary = new StringBuilder("Import selesai!\n\n");
-            if (addSuccess > 0 || addFail > 0) {
-                summary.append("TAMBAH BARU:\n");
-                summary.append("✓ Berhasil: ").append(addSuccess).append("\n");
-                if (addFail > 0) summary.append("✗ Gagal: ").append(addFail).append("\n");
-            }
-            if (updateSuccess > 0 || updateFail > 0) {
-                summary.append("\nUPDATE EXISTING:\n");
-                summary.append("✓ Berhasil: ").append(updateSuccess).append("\n");
-                if (updateFail > 0) summary.append("✗ Gagal: ").append(updateFail).append("\n");
-            }
+            importTask.setOnSucceeded(ev -> {
+                MainShellView.hideLoading();
+                String summary = importTask.getValue();
+                
+                // Determine if we show Success or Warning based on failures
+                // Logic based on string content is brittle, so maybe just show Success for now as previous logic did
+                // Or check the summary string? A bit hacky but works for now to match logic
+                if (summary.contains("✗ Gagal")) { // If failure symbol exists
+                     MainShellView.showWarning(summary);
+                } else {
+                     MainShellView.showSuccess(summary);
+                }
+                
+                modalStage.close();
+                refreshTable();
+                MainShellView.invalidateDataViews(); // Refresh Dashboard, Recapitulation, Employee
+            });
             
-            if (addFail > 0 || updateFail > 0) {
-                showAlert(summary.toString());
-            } else {
-                showSuccessAlert(summary.toString());
-            }
+            importTask.setOnFailed(ev -> {
+                MainShellView.hideLoading();
+                MainShellView.showError("Gagal mengimport data: " + ev.getSource().getException().getMessage());
+                ev.getSource().getException().printStackTrace();
+            });
             
-            modalStage.close();
-            refreshTable();
-            MainShellView.invalidateDataViews(); // Refresh Dashboard, Recapitulation, Employee
+            new Thread(importTask).start();
         });
         
         footerBox.getChildren().addAll(cancelButton, updateButton);
@@ -1851,7 +1919,7 @@ public class AssetManagementView extends VBox {
         ObservableList<Asset> selectedItems = paginatedTable.getTable().getSelectionModel().getSelectedItems();
         
         if (selectedItems == null || selectedItems.isEmpty()) {
-            showAlert("Pilih aset yang akan dihapus terlebih dahulu.\n\nTip: Gunakan Ctrl+Klik untuk memilih beberapa aset.");
+            MainShellView.showWarning("Pilih aset yang akan dihapus terlebih dahulu.\n\nTip: Gunakan Ctrl+Klik untuk memilih beberapa aset.");
             return;
         }
 
@@ -1884,29 +1952,23 @@ public class AssetManagementView extends VBox {
             MainShellView.hideLoading();
             int result = deleteBatchTask.getValue();
             if (result >= 0) {
-                showSuccessAlert("Berhasil menghapus " + result + " aset.");
+                MainShellView.showSuccess("Berhasil menghapus " + result + " aset.");
                 refreshTable(); // Refresh UI with fresh data
             } else {
-                showAlert("Gagal menghapus aset. Silakan coba lagi.");
+                MainShellView.showError("Gagal menghapus aset. Silakan coba lagi.");
             }
         });
 
         deleteBatchTask.setOnFailed(ev -> {
             MainShellView.hideLoading();
             ev.getSource().getException().printStackTrace();
-            showAlert("Terjadi kesalahan saat menghapus aset.");
+            MainShellView.showError("Terjadi kesalahan saat menghapus aset.");
         });
 
         new Thread(deleteBatchTask).start();
     }
 
-    private void showSuccessAlert(String message) {
-        Alert alert = new Alert(Alert.AlertType.INFORMATION);
-        alert.setTitle("Berhasil");
-        alert.setHeaderText(null);
-        alert.setContentText(message);
-        alert.showAndWait();
-    }
+
 
     private void navigateToEmployee(String nip) {
         // Find parent MainShellView and navigate to Employee Management
@@ -1920,7 +1982,7 @@ public class AssetManagementView extends VBox {
             mainShell.navigateToPageWithSearch(MainPage.EMPLOYEE_MANAGEMENT, nip);
         } else {
             // Fallback: just show info with employee NIP
-            showAlert("Pegawai dengan NIP: " + nip + "\n\nNavigasi ke Manajemen Pegawai untuk melihat detail.");
+            MainShellView.showInfo("Pegawai dengan NIP: " + nip + "\n\nNavigasi ke Manajemen Pegawai untuk melihat detail.");
         }
     }
 }

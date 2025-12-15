@@ -159,6 +159,7 @@ public class AssetRequestView extends VBox {
 
     private void showAssetRequestModal(String tipe, AssetRequest editableRequest) {
         Stage modalStage = new Stage();
+        modalStage.initOwner(com.siata.client.MainApplication.getPrimaryStage());
         modalStage.initModality(Modality.APPLICATION_MODAL);
         modalStage.initStyle(StageStyle.TRANSPARENT);
         modalStage.setTitle(editableRequest == null

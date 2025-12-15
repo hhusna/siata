@@ -332,6 +332,7 @@ public class AssetApprovalView extends VBox {
 
     private void showApprovalDialog(AssetRequest request) {
         Stage modalStage = new Stage();
+        modalStage.initOwner(com.siata.client.MainApplication.getPrimaryStage());
         modalStage.initModality(Modality.APPLICATION_MODAL);
         modalStage.initStyle(StageStyle.TRANSPARENT);
         modalStage.setTitle("Proses Persetujuan Aset");

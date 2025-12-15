@@ -271,6 +271,7 @@ public class EmployeeManagementView extends VBox {
 
     private void showImportModal() {
         Stage modalStage = new Stage();
+        modalStage.initOwner(com.siata.client.MainApplication.getPrimaryStage());
         modalStage.initModality(Modality.APPLICATION_MODAL);
         modalStage.initStyle(StageStyle.TRANSPARENT);
         modalStage.setTitle("Import Data Pegawai");
@@ -712,6 +713,7 @@ public class EmployeeManagementView extends VBox {
 
     private void showEmployeeForm(Employee editableEmployee) {
         Stage modalStage = new Stage();
+        modalStage.initOwner(com.siata.client.MainApplication.getPrimaryStage());
         modalStage.initModality(Modality.APPLICATION_MODAL);
         modalStage.initStyle(StageStyle.TRANSPARENT);
         modalStage.setTitle(editableEmployee == null ? "Tambah Pegawai Baru" : "Edit Pegawai");
@@ -997,6 +999,7 @@ public class EmployeeManagementView extends VBox {
 
     private void showEmployeeAssets(Employee employee) {
         Stage modalStage = new Stage();
+        modalStage.initOwner(com.siata.client.MainApplication.getPrimaryStage());
         modalStage.initModality(Modality.APPLICATION_MODAL);
         modalStage.initStyle(StageStyle.TRANSPARENT);
         modalStage.setTitle("Aset yang Dimiliki");
@@ -1202,20 +1205,7 @@ public class EmployeeManagementView extends VBox {
         if (warningAlert.showAndWait().orElse(cancelBtn) != forceDeleteBtn) {
             return;
         }
-        
-        // Force delete - cleanup assets for all employees with assets
-        for (Employee emp : employeesWithAssets) {
-            List<Asset> empAssets = allAssets.stream()
-                .filter(a -> emp.getNip().equals(a.getKeterangan()))
-                .toList();
-            for (Asset asset : empAssets) {
-                asset.setKeterangan(""); // Clear pemegang
-                asset.setSubdir("");     // Clear subdir
-                asset.setDipakai("FALSE"); // Set dipakai to false
-                dataService.updateAsset(asset);
-            }
-        }
-        dataService.clearAssetCache();
+        // Proceed to background task (logic moved below)
     } else {
         // No employees with assets - simple confirmation
         Alert confirmAlert = new Alert(Alert.AlertType.CONFIRMATION);
@@ -1246,11 +1236,36 @@ public class EmployeeManagementView extends VBox {
     }
     
     // Show loading and run in background
-    MainShellView.showLoading("Menghapus " + nipList.size() + " pegawai...");
+    MainShellView.showLoading("Memproses penghapusan...");
     
+    // Capture data for background thread
+    List<Employee> fEmployeesWithAssets = new ArrayList<>(employeesWithAssets);
+    // Be careful with allAssets if it's an ObservableList or modified concurrently. 
+    // DataService.getAssets() returns a copy ArrayList, so it is safe.
+    List<Asset> fAllAssets = new ArrayList<>(allAssets);
+
     javafx.concurrent.Task<Integer> deleteTask = new javafx.concurrent.Task<>() {
         @Override
-        protected Integer call() {
+        protected Integer call() throws Exception {
+            // 1. Force delete - cleanup assets for all employees with assets
+            if (!fEmployeesWithAssets.isEmpty()) {
+                updateMessage("Melepas aset dari pegawai...");
+                for (Employee emp : fEmployeesWithAssets) {
+                    List<Asset> empAssets = fAllAssets.stream()
+                        .filter(a -> emp.getNip().equals(a.getKeterangan()))
+                        .toList();
+                    for (Asset asset : empAssets) {
+                        asset.setKeterangan(""); // Clear pemegang
+                        asset.setSubdir("");     // Clear subdir
+                        asset.setDipakai("FALSE"); // Set dipakai to false
+                        dataService.updateAsset(asset);
+                    }
+                }
+                dataService.clearAssetCache();
+            }
+            
+            // 2. Delete Employees
+            updateMessage("Menghapus data pegawai...");
             return pegawaiApi.batchDeletePegawai(nipList);
         }
     };
@@ -1271,6 +1286,7 @@ public class EmployeeManagementView extends VBox {
     deleteTask.setOnFailed(ev -> {
         MainShellView.hideLoading();
         MainShellView.showError("Error saat menghapus: " + deleteTask.getException().getMessage());
+        deleteTask.getException().printStackTrace();
     });
     
     new Thread(deleteTask).start();
