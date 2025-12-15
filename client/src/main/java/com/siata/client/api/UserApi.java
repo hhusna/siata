@@ -83,6 +83,13 @@ public class UserApi {
                 LoginSession.setRole(loginResponse.getRole());
                 LoginSession.setOriginalRole(loginResponse.getRole()); // Store original role from backend
                 LoginSession.setUsername(loginResponse.getUsername());
+                
+                // DEBUG: Print all stored values
+                System.out.println("=== DEBUG LoginSession ===");
+                System.out.println("Role: " + LoginSession.getRole());
+                System.out.println("OriginalRole: " + LoginSession.getOriginalRole());
+                System.out.println("isOriginallyDev: " + LoginSession.isOriginallyDev());
+                System.out.println("========================");
 
             }
 

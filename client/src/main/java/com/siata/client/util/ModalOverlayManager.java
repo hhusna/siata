@@ -76,7 +76,7 @@ public class ModalOverlayManager {
 
         // Show overlay with fade animation
         overlayBackground.setMouseTransparent(false);
-        FadeTransition fadeIn = new FadeTransition(Duration.millis(200), overlayBackground);
+        FadeTransition fadeIn = new FadeTransition(Duration.millis(120), overlayBackground);
         fadeIn.setFromValue(0);
         fadeIn.setToValue(1);
         fadeIn.play();
@@ -101,7 +101,7 @@ public class ModalOverlayManager {
         overlayCount = 0;
 
         // Hide overlay with fade animation
-        FadeTransition fadeOut = new FadeTransition(Duration.millis(200), overlayBackground);
+        FadeTransition fadeOut = new FadeTransition(Duration.millis(120), overlayBackground);
         fadeOut.setFromValue(overlayBackground.getOpacity());
         fadeOut.setToValue(0);
         fadeOut.setOnFinished(e -> overlayBackground.setMouseTransparent(true));

@@ -196,21 +196,24 @@ public class PegawaiApi {
             payload.setNip(nip);
             if (payload.getStatus() == null) payload.setStatus("AKTIF");
 
+            // Using batch endpoint instead of PUT because PUT endpoint doesn't copy status field
             ObjectMapper mapper = new ObjectMapper();
-            String requestBodyJson = mapper.writeValueAsString(payload);
+            // Wrap single pegawai in a list for batch endpoint
+            java.util.List<PegawaiDto> batchList = java.util.Collections.singletonList(payload);
+            String requestBodyJson = mapper.writeValueAsString(batchList);
 
             HttpClient client = HttpClient.newBuilder()
                     .connectTimeout(Duration.ofSeconds(10))
                     .build();
 
-            // URL endpoint PUT: /api/pegawai/{nip}
-            String targetUrl = ApiConfig.getPegawaiUrl() + "/" + nip;
+            // Use batch endpoint which properly saves all fields including status
+            String targetUrl = ApiConfig.getPegawaiUrl() + "/batch";
 
             HttpRequest request = HttpRequest.newBuilder()
                     .uri(URI.create(targetUrl))
                     .header("Content-Type", "application/json")
                     .header("Authorization", "Bearer " + jwt)
-                    .PUT(HttpRequest.BodyPublishers.ofString(requestBodyJson)) // Menggunakan Method PUT
+                    .POST(HttpRequest.BodyPublishers.ofString(requestBodyJson))
                     .build();
 
             HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());

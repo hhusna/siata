@@ -13,7 +13,7 @@ public class ApiConfig {
      * - Development: http://localhost:8080
      * - Production: https://your-domain.com
      */
-    private static final String BASE_URL = "http://api.siada.tech";
+    private static final String BASE_URL = "http://localhost:8080";
     
     /**
      * Get the base URL for API requests.
@@ -67,5 +67,9 @@ public class ApiConfig {
     
     public static String getLaporanUrl() {
         return BASE_URL + "/api/laporan";
+    }
+
+    public static String getDataVersionUrl() {
+        return BASE_URL + "/api/data-version";
     }
 }

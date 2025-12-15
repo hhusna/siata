@@ -3,6 +3,7 @@ package com.siata.client.view;
 import com.siata.client.api.PegawaiApi;
 import com.siata.client.component.PaginatedTableView;
 import com.siata.client.dto.PegawaiDto;
+import com.siata.client.model.Asset;
 import com.siata.client.model.Employee;
 import com.siata.client.service.DataService;
 import com.siata.client.util.AnimationUtils;
@@ -54,7 +55,7 @@ public class EmployeeManagementView extends VBox {
         exportButton.getStyleClass().add("secondary-button");
         exportButton.setOnAction(e -> handleExport());
 
-        Button deleteSelectedBtn = new Button("🗑 Hapus Terpilih");
+        Button deleteSelectedBtn = new Button("🗑 Force Delete");
         deleteSelectedBtn.getStyleClass().add("secondary-button");
         deleteSelectedBtn.setStyle("-fx-text-fill: #dc2626;");
         deleteSelectedBtn.setOnAction(e -> handleBulkDelete());
@@ -196,7 +197,9 @@ public class EmployeeManagementView extends VBox {
                     Employee employee = getTableView().getItems().get(getIndex());
                     if (confirmDelete(employee)) {
                         dataService.deleteEmployee(employee);
+                        dataService.clearEmployeeCache(); // Invalidate employee cache
                         refreshTable();
+                        MainShellView.invalidateDataViews(); // Refresh Dashboard, Recapitulation
                     }
                 });
             }
@@ -430,7 +433,7 @@ public class EmployeeManagementView extends VBox {
                         previewData.add(new ImportRow(emp));
                     }
                 } catch (Exception ex) {
-                    showAlert("Gagal membaca file Excel: " + ex.getMessage());
+                    MainShellView.showError("Gagal membaca file Excel: " + ex.getMessage());
                 }
             }
         });
@@ -515,14 +518,14 @@ public class EmployeeManagementView extends VBox {
         updateButton.getStyleClass().add("primary-button");
         updateButton.setOnAction(e -> {
             if (resultData.isEmpty()) {
-                showAlert("Tidak ada data untuk disimpan.");
+                MainShellView.showWarning("Tidak ada data untuk disimpan.");
                 return;
             }
             
             // Check for duplicates (only for non-PPNPN with same NIP)
             long dupCount = resultData.stream().filter(r -> "Duplikat".equals(r.status)).count();
             if (dupCount > 0) {
-                showAlert("Masih ada " + dupCount + " data duplikat. Hapus duplikat terlebih dahulu.");
+                MainShellView.showWarning("Masih ada " + dupCount + " data duplikat. Hapus duplikat terlebih dahulu.");
                 return;
             }
             
@@ -552,14 +555,36 @@ public class EmployeeManagementView extends VBox {
                 })
                 .collect(Collectors.toList());
             
-            int result = pegawaiApi.batchAddPegawai(dtoList);
-            if (result >= 0) {
-                showSuccessAlert("Berhasil menyimpan " + result + " data pegawai.");
-                modalStage.close();
-                refreshTable();
-            } else {
-                showAlert("Gagal menyimpan data ke database.");
-            }
+            // Show loading overlay and run in background
+            MainShellView.showLoading("Mengimpor " + dtoList.size() + " pegawai...");
+            
+            javafx.concurrent.Task<Integer> importTask = new javafx.concurrent.Task<>() {
+                @Override
+                protected Integer call() {
+                    return pegawaiApi.batchAddPegawai(dtoList);
+                }
+            };
+            
+            importTask.setOnSucceeded(ev -> {
+                MainShellView.hideLoading();
+                int result = importTask.getValue();
+                if (result >= 0) {
+                    dataService.clearEmployeeCache();
+                    MainShellView.showSuccess("Berhasil menyimpan " + result + " data pegawai.");
+                    modalStage.close();
+                    refreshTable();
+                    MainShellView.invalidateDataViews();
+                } else {
+                    MainShellView.showError("Gagal menyimpan data ke database.");
+                }
+            });
+            
+            importTask.setOnFailed(ev -> {
+                MainShellView.hideLoading();
+                MainShellView.showError("Error saat mengimpor data: " + importTask.getException().getMessage());
+            });
+            
+            new Thread(importTask).start();
         });
         
         footerBox.getChildren().addAll(cancelButton, updateButton);
@@ -657,9 +682,9 @@ public class EmployeeManagementView extends VBox {
             try {
                 List<Employee> allEmployees = dataService.getEmployees();
                 ExcelHelper.exportToExcel(allEmployees, file);
-                showSuccessAlert("Data berhasil diekspor ke:\n" + file.getAbsolutePath());
+                MainShellView.showSuccess("Data berhasil diekspor ke:\n" + file.getAbsolutePath());
             } catch (Exception e) {
-                showAlert("Gagal mengekspor data: " + e.getMessage());
+                MainShellView.showError("Gagal mengekspor data: " + e.getMessage());
             }
         }
     }
@@ -676,9 +701,9 @@ public class EmployeeManagementView extends VBox {
         if (file != null) {
             try {
                 ExcelHelper.createTemplate(file);
-                showSuccessAlert("Template berhasil disimpan ke:\n" + file.getAbsolutePath());
+                MainShellView.showSuccess("Template berhasil disimpan ke:\n" + file.getAbsolutePath());
             } catch (Exception e) {
-                showAlert("Gagal membuat template: " + e.getMessage());
+                MainShellView.showError("Gagal membuat template: " + e.getMessage());
             }
         }
     }
@@ -725,6 +750,9 @@ public class EmployeeManagementView extends VBox {
         Label nipLabel = new Label("NIP (Opsional)");
         nipLabel.getStyleClass().add("form-label");
         
+        CheckBox notAsnCheckbox = new CheckBox("Bukan ASN");
+        notAsnCheckbox.setStyle("-fx-font-size: 12px; -fx-text-fill: #666;");
+        
         // Store original NIP for edit case
         final String originalNip = editableEmployee != null ? editableEmployee.getNip() : null;
         final boolean wasOriginallyPpnpn = editableEmployee != null && editableEmployee.isPpnpn();
@@ -733,6 +761,9 @@ public class EmployeeManagementView extends VBox {
             // For PPNPN employees, show empty field; for others, show NIP
             if (!wasOriginallyPpnpn) {
                 nipField.setText(editableEmployee.getNip());
+                notAsnCheckbox.setSelected(false);
+            } else {
+                notAsnCheckbox.setSelected(true);
             }
             // NIP field is now editable (removed setDisable(true))
         }
@@ -782,96 +813,134 @@ public class EmployeeManagementView extends VBox {
             String unit = unitCombo.getValue();
             String status = statusCombo.getValue();
 
-            // Determine if this is PPNPN (empty NIP input)
+            // Determine if this is PPNPN based on Checkbox
+            boolean isNotAsn = notAsnCheckbox.isSelected();
             boolean isNipEmpty = (nipInput == null || nipInput.trim().isEmpty());
             
             // For edit mode: if NIP is empty, use original NIP (no change)
             String finalNip;
             boolean isPpnpn;
             
-            if (editableEmployee != null && isNipEmpty) {
-                // Keep original NIP when editing and field is left empty
-                finalNip = originalNip;
-                isPpnpn = wasOriginallyPpnpn;
-            } else if (isNipEmpty) {
-                // New employee with empty NIP = PPNPN
-                finalNip = null;
+            if (isNotAsn) {
+                // Relaxed Validation for Non-ASN
+                if (!isNipEmpty && !nipInput.matches("\\d+")) {
+                    MainShellView.showWarning("NIP/ID harus berupa angka");
+                    return;
+                }
+                // No length check for Non-ASN
+                
+                if (editableEmployee != null && isNipEmpty) {
+                    finalNip = originalNip; // Keep existing if empty
+                } else if (isNipEmpty) {
+                    finalNip = null; // Auto-generate if new and empty
+                } else {
+                    finalNip = nipInput;
+                }
                 isPpnpn = true;
             } else {
-                // Validate NIP format
-                if (!nipInput.matches("\\d+")) {
-                    showAlert("NIP harus berupa angka");
+                // Strict Validation for ASN
+                if (editableEmployee != null && isNipEmpty) {
+                     // Keep original NIP when editing and field is left empty
+                     finalNip = originalNip;
+                     isPpnpn = wasOriginallyPpnpn; // Should mostly be false here if checkbox unchecked
+                } else if (isNipEmpty) {
+                    // Cannot be empty if ASN
+                    MainShellView.showWarning("NIP wajib diisi untuk ASN");
                     return;
+                } else {
+                     // Validate NIP format
+                    if (!nipInput.matches("\\d+")) {
+                        MainShellView.showWarning("NIP harus berupa angka");
+                        return;
+                    }
+                    if (nipInput.length() != 18) {
+                        MainShellView.showWarning("NIP harus 18 digit");
+                        return;
+                    }
+                    finalNip = nipInput;
+                    isPpnpn = false;
                 }
-                if (nipInput.length() != 18) {
-                    showAlert("NIP harus 18 digit");
-                    return;
-                }
-                finalNip = nipInput;
-                isPpnpn = false;
             }
 
             if (nama == null || nama.trim().isEmpty()) {
-                showAlert("Nama tidak boleh kosong");
+                MainShellView.showWarning("Nama tidak boleh kosong");
                 return;
             }
             if (unit == null || unit.trim().isEmpty()) {
-                showAlert("Pilih subdirektorat");
+                MainShellView.showWarning("Pilih subdirektorat");
                 return;
             }
             if (status == null || status.trim().isEmpty()) {
-                showAlert("Pilih status pegawai");
+                MainShellView.showWarning("Pilih status pegawai");
                 return;
             }
 
             // Validasi nama minimal 3 karakter
             if (nama.length() < 3) {
-                showAlert("Nama minimal 3 karakter");
+                MainShellView.showWarning("Nama minimal 3 karakter");
                 return;
             }
 
-            boolean success;
+            // Show loading overlay
+            MainShellView.showLoading(editableEmployee == null ? "Menambahkan pegawai..." : "Memperbarui pegawai...");
+            
+            // Prepare DTO
+            final PegawaiDto dto = new PegawaiDto();
             if (editableEmployee == null) {
                 // Add new
-                PegawaiDto dto = new PegawaiDto();
                 if (isPpnpn) {
-                    // Generate unique ID for PPNPN
                     dto.setNip(System.currentTimeMillis());
                     dto.setIsPpnpn(true);
                 } else {
                     dto.setNip(Long.parseLong(finalNip));
                     dto.setIsPpnpn(false);
                 }
-                dto.setNama(nama);
-                dto.setNamaSubdir(unit);
-                dto.setStatus(status);
-                success = pegawaiApi.addPegawai(dto);
             } else {
-                // Edit existing employee
-                PegawaiDto dto = new PegawaiDto();
-                
-                // Use finalNip (could be original or new)
+                // Edit existing
                 try {
                     dto.setNip(Long.parseLong(finalNip));
                 } catch (NumberFormatException ex) {
                     dto.setNip(0L);
                 }
-                
-                dto.setNama(nama);
-                dto.setNamaSubdir(unit);
-                dto.setStatus(status);
                 dto.setIsPpnpn(isPpnpn);
-                
-                success = pegawaiApi.updatePegawai(originalNip, dto);
             }
-
-            if (success) {
-                showSuccessAlert(editableEmployee == null ? "Pegawai berhasil ditambahkan" : "Data pegawai berhasil diperbarui");
-                modalStage.close();
-                refreshTable();
-            } else {
-                showAlert("Gagal menyimpan data pegawai");
-            }
+            dto.setNama(nama);
+            dto.setNamaSubdir(unit);
+            dto.setStatus(status);
+            
+            final boolean isNewEmployee = (editableEmployee == null);
+            final String origNip = originalNip;
+            
+            javafx.concurrent.Task<Boolean> saveTask = new javafx.concurrent.Task<>() {
+                @Override
+                protected Boolean call() {
+                    if (isNewEmployee) {
+                        return pegawaiApi.addPegawai(dto);
+                    } else {
+                        return pegawaiApi.updatePegawai(origNip, dto);
+                    }
+                }
+            };
+            
+            saveTask.setOnSucceeded(ev -> {
+                MainShellView.hideLoading();
+                if (saveTask.getValue()) {
+                    dataService.clearEmployeeCache();
+                    MainShellView.showSuccess(isNewEmployee ? "Pegawai berhasil ditambahkan" : "Data pegawai berhasil diperbarui");
+                    modalStage.close();
+                    refreshTable();
+                    MainShellView.invalidateDataViews();
+                } else {
+                    MainShellView.showError("Gagal menyimpan data pegawai");
+                }
+            });
+            
+            saveTask.setOnFailed(ev -> {
+                MainShellView.hideLoading();
+                MainShellView.showError("Error: " + saveTask.getException().getMessage());
+            });
+            
+            new Thread(saveTask).start();
         });
         
         buttonBox.getChildren().addAll(cancelButton, saveButton);
@@ -893,7 +962,7 @@ public class EmployeeManagementView extends VBox {
         
         // Left column: NIP and Unit
         VBox nipBox = new VBox(8);
-        nipBox.getChildren().addAll(nipLabel, nipField);
+        nipBox.getChildren().addAll(nipLabel, nipField, notAsnCheckbox);
         
         VBox unitBox = new VBox(8);
         unitBox.getChildren().addAll(unitLabel, unitCombo);
@@ -987,34 +1056,59 @@ public class EmployeeManagementView extends VBox {
     }
 
     private boolean confirmDelete(Employee employee) {
-        // Check if employee has any active assets (not marked for deletion)
-        List<String> activeAssets = dataService.getAssets().stream()
-            .filter(asset -> employee.getNip().equals(asset.getKeterangan()))
-            .map(asset -> asset.getJenisAset() + " " + asset.getMerkBarang() + " (" + asset.getKodeAset() + ")")
-            .toList();
+    // Check if employee has any active assets (not marked for deletion)
+    List<Asset> employeeAssets = dataService.getAssets().stream()
+        .filter(asset -> employee.getNip().equals(asset.getKeterangan()))
+        .toList();
+    
+    if (!employeeAssets.isEmpty()) {
+        // Show warning with force delete option
+        Alert warningAlert = new Alert(Alert.AlertType.CONFIRMATION);
+        warningAlert.setTitle("Pegawai Memiliki Aset");
+        warningAlert.setHeaderText("Pegawai Masih Memiliki " + employeeAssets.size() + " Aset");
         
-        if (!activeAssets.isEmpty()) {
-            // Show warning - cannot delete
-            Alert warningAlert = new Alert(Alert.AlertType.WARNING);
-            warningAlert.setTitle("Tidak Dapat Menghapus Pegawai");
-            warningAlert.setHeaderText("Pegawai Masih Memiliki Aset Aktif");
-            warningAlert.setContentText(
-                "Pegawai \"" + employee.getNamaLengkap() + "\" masih memiliki " + activeAssets.size() + " aset aktif:\n\n" +
-                String.join("\n", activeAssets.subList(0, Math.min(5, activeAssets.size()))) +
-                (activeAssets.size() > 5 ? "\n... dan " + (activeAssets.size() - 5) + " lainnya" : "") +
-                "\n\nHarap pindahkan aset ke pegawai lain atau tandai aset untuk penghapusan terlebih dahulu."
-            );
-            warningAlert.showAndWait();
-            return false;
+        StringBuilder message = new StringBuilder();
+        message.append("Pegawai \"").append(employee.getNamaLengkap()).append("\" masih memiliki ").append(employeeAssets.size()).append(" aset:\n\n");
+        for (int i = 0; i < Math.min(5, employeeAssets.size()); i++) {
+            Asset a = employeeAssets.get(i);
+            message.append("• ").append(a.getJenisAset()).append(" ").append(a.getMerkBarang()).append(" (").append(a.getKodeAset()).append(")\n");
         }
+        if (employeeAssets.size() > 5) {
+            message.append("• ... dan ").append(employeeAssets.size() - 5).append(" lainnya\n");
+        }
+        message.append("\n⚠️ Jika tetap ingin menghapus pegawai ini, aset-aset tersebut akan:\n");
+        message.append("• Pemegang dihapus\n");
+        message.append("• Subdirektorat dihapus\n");
+        message.append("• Status dipegang menjadi TIDAK\n\n");
+        message.append("Lanjutkan hapus paksa?");
         
-        // No active assets, proceed with normal confirmation
-        Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
-        alert.setTitle("Konfirmasi Penghapusan");
-        alert.setHeaderText("Hapus Pegawai");
-        alert.setContentText("Apakah Anda yakin ingin menghapus pegawai " + employee.getNamaLengkap() + "?");
-        return alert.showAndWait().orElse(ButtonType.CANCEL) == ButtonType.OK;
+        warningAlert.setContentText(message.toString());
+        
+        ButtonType forceDeleteBtn = new ButtonType("Hapus Paksa", ButtonBar.ButtonData.YES);
+        ButtonType cancelBtn = new ButtonType("Batal", ButtonBar.ButtonData.CANCEL_CLOSE);
+        warningAlert.getButtonTypes().setAll(forceDeleteBtn, cancelBtn);
+        
+        if (warningAlert.showAndWait().orElse(cancelBtn) == forceDeleteBtn) {
+            // Force delete - cleanup assets first
+            for (Asset asset : employeeAssets) {
+                asset.setKeterangan(""); // Clear pemegang
+                asset.setSubdir("");     // Clear subdir
+                asset.setDipakai("FALSE"); // Set dipakai to false
+                dataService.updateAsset(asset);
+            }
+            dataService.clearAssetCache(); // Ensure cache is refreshed
+            return true; // Proceed with employee deletion
+        }
+        return false;
     }
+    
+    // No active assets, proceed with normal confirmation
+    Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
+    alert.setTitle("Konfirmasi Penghapusan");
+    alert.setHeaderText("Hapus Pegawai");
+    alert.setContentText("Apakah Anda yakin ingin menghapus pegawai " + employee.getNamaLengkap() + "?");
+    return alert.showAndWait().orElse(ButtonType.CANCEL) == ButtonType.OK;
+}
 
     private void refreshTable() {
         paginatedTable.setItems(dataService.getEmployees());
@@ -1056,14 +1150,74 @@ public class EmployeeManagementView extends VBox {
     }
 
     private void handleBulkDelete() {
-        ObservableList<Employee> selectedItems = paginatedTable.getTable().getSelectionModel().getSelectedItems();
+    ObservableList<Employee> selectedItems = paginatedTable.getTable().getSelectionModel().getSelectedItems();
+    
+    if (selectedItems == null || selectedItems.isEmpty()) {
+        MainShellView.showWarning("Pilih pegawai yang akan dihapus terlebih dahulu.\n\nTip: Gunakan Ctrl+Klik untuk memilih beberapa pegawai.");
+        return;
+    }
+    
+    // Check which employees have assets
+    List<Asset> allAssets = dataService.getAssets();
+    Map<String, Long> assetCountByNip = new HashMap<>();
+    for (Asset asset : allAssets) {
+        String nip = asset.getKeterangan();
+        if (nip != null && !nip.isBlank()) {
+            assetCountByNip.merge(nip, 1L, Long::sum);
+        }
+    }
+    
+    List<Employee> employeesWithAssets = selectedItems.stream()
+        .filter(emp -> assetCountByNip.getOrDefault(emp.getNip(), 0L) > 0)
+        .toList();
+    
+    List<Employee> employeesWithoutAssets = selectedItems.stream()
+        .filter(emp -> assetCountByNip.getOrDefault(emp.getNip(), 0L) == 0)
+        .toList();
+    
+    // Show warning if there are employees with assets
+    if (!employeesWithAssets.isEmpty()) {
+        StringBuilder warning = new StringBuilder();
+        warning.append("⚠️ ").append(employeesWithAssets.size()).append(" pegawai yang dipilih masih memiliki aset aktif.\n");
+        // for loop removed as requested to simplify message
+        warning.append("\n⚠️ Jika tetap ingin menghapus, aset-aset tersebut akan:\n");
+        warning.append("• Pemegang dihapus\n");
+        warning.append("• Subdirektorat dihapus\n");
+        warning.append("• Status dipegang menjadi TIDAK\n\n");
         
-        if (selectedItems == null || selectedItems.isEmpty()) {
-            showAlert("Pilih pegawai yang akan dihapus terlebih dahulu.\n\nTip: Gunakan Ctrl+Klik untuk memilih beberapa pegawai.");
+        if (!employeesWithoutAssets.isEmpty()) {
+            warning.append(employeesWithoutAssets.size()).append(" pegawai lainnya tanpa aset juga akan dihapus.\n\n");
+        }
+        warning.append("Lanjutkan hapus paksa?");
+        
+        Alert warningAlert = new Alert(Alert.AlertType.CONFIRMATION);
+        warningAlert.setTitle("Pegawai Memiliki Aset");
+        warningAlert.setHeaderText("Beberapa Pegawai Akan Dihapus Memiliki Aset");
+        warningAlert.setContentText(warning.toString());
+        
+        ButtonType forceDeleteBtn = new ButtonType("Hapus Paksa", ButtonBar.ButtonData.YES);
+        ButtonType cancelBtn = new ButtonType("Batal", ButtonBar.ButtonData.CANCEL_CLOSE);
+        warningAlert.getButtonTypes().setAll(forceDeleteBtn, cancelBtn);
+        
+        if (warningAlert.showAndWait().orElse(cancelBtn) != forceDeleteBtn) {
             return;
         }
         
-        // Confirmation dialog
+        // Force delete - cleanup assets for all employees with assets
+        for (Employee emp : employeesWithAssets) {
+            List<Asset> empAssets = allAssets.stream()
+                .filter(a -> emp.getNip().equals(a.getKeterangan()))
+                .toList();
+            for (Asset asset : empAssets) {
+                asset.setKeterangan(""); // Clear pemegang
+                asset.setSubdir("");     // Clear subdir
+                asset.setDipakai("FALSE"); // Set dipakai to false
+                dataService.updateAsset(asset);
+            }
+        }
+        dataService.clearAssetCache();
+    } else {
+        // No employees with assets - simple confirmation
         Alert confirmAlert = new Alert(Alert.AlertType.CONFIRMATION);
         confirmAlert.setTitle("Konfirmasi Hapus");
         confirmAlert.setHeaderText("Hapus " + selectedItems.size() + " Pegawai");
@@ -1072,50 +1226,56 @@ public class EmployeeManagementView extends VBox {
         if (confirmAlert.showAndWait().orElse(ButtonType.CANCEL) != ButtonType.OK) {
             return;
         }
-        
-        // Collect NIPs to delete
-        List<Long> nipList = selectedItems.stream()
-            .map(emp -> {
-                try {
-                    return Long.parseLong(emp.getNip());
-                } catch (NumberFormatException e) {
-                    return null;
-                }
-            })
-            .filter(nip -> nip != null)
-            .collect(Collectors.toList());
-        
-        if (nipList.isEmpty()) {
-            showAlert("Tidak ada NIP valid untuk dihapus.");
-            return;
+    }
+    
+    // Collect NIPs to delete (all selected employees)
+    List<Long> nipList = selectedItems.stream()
+        .map(emp -> {
+            try {
+                return Long.parseLong(emp.getNip());
+            } catch (NumberFormatException e) {
+                return null;
+            }
+        })
+        .filter(nip -> nip != null)
+        .collect(Collectors.toList());
+    
+    if (nipList.isEmpty()) {
+        MainShellView.showWarning("Tidak ada NIP valid untuk dihapus.");
+        return;
+    }
+    
+    // Show loading and run in background
+    MainShellView.showLoading("Menghapus " + nipList.size() + " pegawai...");
+    
+    javafx.concurrent.Task<Integer> deleteTask = new javafx.concurrent.Task<>() {
+        @Override
+        protected Integer call() {
+            return pegawaiApi.batchDeletePegawai(nipList);
         }
-        
-        // Call API
-        int result = pegawaiApi.batchDeletePegawai(nipList);
-        
+    };
+    
+    deleteTask.setOnSucceeded(ev -> {
+        MainShellView.hideLoading();
+        int result = deleteTask.getValue();
         if (result >= 0) {
-            showSuccessAlert("Berhasil menghapus " + result + " pegawai.");
+            dataService.clearEmployeeCache();
+            MainShellView.showSuccess("Berhasil menghapus " + result + " pegawai.");
             refreshTable();
+            MainShellView.invalidateDataViews();
         } else {
-            showAlert("Gagal menghapus pegawai. Silakan coba lagi.");
+            MainShellView.showError("Gagal menghapus pegawai. Silakan coba lagi.");
         }
-    }
+    });
+    
+    deleteTask.setOnFailed(ev -> {
+        MainShellView.hideLoading();
+        MainShellView.showError("Error saat menghapus: " + deleteTask.getException().getMessage());
+    });
+    
+    new Thread(deleteTask).start();
+}
 
-    private void showAlert(String message) {
-        Alert alert = new Alert(Alert.AlertType.WARNING);
-        alert.setTitle("Peringatan");
-        alert.setHeaderText(null);
-        alert.setContentText(message);
-        alert.showAndWait();
-    }
-
-    private void showSuccessAlert(String message) {
-        Alert alert = new Alert(Alert.AlertType.INFORMATION);
-        alert.setTitle("Sukses");
-        alert.setHeaderText(null);
-        alert.setContentText(message);
-        alert.showAndWait();
-    }
 
     /**
      * Search and highlight an employee by NIP.

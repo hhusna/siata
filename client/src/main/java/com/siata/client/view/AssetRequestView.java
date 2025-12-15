@@ -743,10 +743,6 @@ public class AssetRequestView extends VBox {
     }
 
     private void showAlert(String message) {
-        Alert alert = new Alert(Alert.AlertType.WARNING);
-        alert.setTitle("Peringatan");
-        alert.setHeaderText(null);
-        alert.setContentText(message);
-        alert.showAndWait();
+       MainShellView.showWarning(message);
     }
 }

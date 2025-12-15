@@ -55,6 +55,15 @@ public class DataService {
     private long assetsCacheTimestamp = 0;
     private static final long ASSETS_CACHE_TTL = 30000; // 30 seconds
 
+    // Cache for All Assets Including Deleted (for recapitulation)
+    private List<Asset> cachedAllAssetsIncludingDeleted = null;
+    private long allAssetsCacheTimestamp = 0;
+
+    // Cache for Employees
+    private List<Employee> cachedEmployeesList = null;
+    private long employeesCacheTimestamp = 0;
+    private static final long EMPLOYEES_CACHE_TTL = 30000; // 30 seconds
+
     public List<Asset> getAssets() {
         return getAssets(false);
     }
@@ -100,13 +109,26 @@ public class DataService {
     public void clearAssetCache() {
         cachedAssets = null;
         assetsCacheTimestamp = 0;
+        // Also clear all-assets cache since they share the same API data
+        cachedAllAssetsIncludingDeleted = null;
+        allAssetsCacheTimestamp = 0;
     }
 
     /**
      * Mendapatkan semua aset TERMASUK yang berstatus "Tandai Dihapus"
      * Digunakan untuk perhitungan rekapitulasi yang akurat
+     * Now uses caching for better performance
      */
     public List<Asset> getAllAssetsIncludingDeleted() {
+        return getAllAssetsIncludingDeleted(false);
+    }
+
+    public List<Asset> getAllAssetsIncludingDeleted(boolean forceRefresh) {
+        long now = System.currentTimeMillis();
+        if (!forceRefresh && cachedAllAssetsIncludingDeleted != null && (now - allAssetsCacheTimestamp < ASSETS_CACHE_TTL)) {
+            return new ArrayList<>(cachedAllAssetsIncludingDeleted);
+        }
+
         List<Asset> listAsset = new ArrayList<>();
         for (AssetDto assetDto : assetApi.getAsset()) {
             Asset assetValue = new Asset();
@@ -132,7 +154,10 @@ public class DataService {
             listAsset.add(assetValue);
         }
 
-        return listAsset;
+        cachedAllAssetsIncludingDeleted = listAsset;
+        allAssetsCacheTimestamp = now;
+
+        return new ArrayList<>(listAsset);
     }
 
     public int getAssetBySubdir(String Subdir) {
@@ -436,6 +461,15 @@ public class DataService {
     }
 
     public List<Employee> getEmployees() {
+        return getEmployees(false);
+    }
+
+    public List<Employee> getEmployees(boolean forceRefresh) {
+        long now = System.currentTimeMillis();
+        if (!forceRefresh && cachedEmployeesList != null && (now - employeesCacheTimestamp < EMPLOYEES_CACHE_TTL)) {
+            return new ArrayList<>(cachedEmployeesList);
+        }
+
         PegawaiDto[] pegawaiDto = pegawaiApi.getPegawai();
         List<Employee> employeeList = new ArrayList<>();
         for (PegawaiDto dto : pegawaiDto) {
@@ -445,7 +479,24 @@ public class DataService {
             emp.setPpnpn(dto.getIsPpnpn() != null && dto.getIsPpnpn());
             employeeList.add(emp);
         }
-        return employeeList;
+
+        cachedEmployeesList = employeeList;
+        employeesCacheTimestamp = now;
+
+        return new ArrayList<>(employeeList);
+    }
+
+    public void clearEmployeeCache() {
+        cachedEmployeesList = null;
+        employeesCacheTimestamp = 0;
+    }
+
+    /**
+     * Clears all caches. Call this after bulk operations like import.
+     */
+    public void clearAllCaches() {
+        clearAssetCache();
+        clearEmployeeCache();
     }
 
     public void addEmployee(Employee employee) {

@@ -117,11 +117,31 @@ public class RecapitulationView extends VBox {
      * Dipanggil ketika user kembali ke menu rekapitulasi atau setelah ada perubahan data
      */
     public void refreshData() {
-        // Reload cached data
-        loadAndCacheData();
-        // Clear children dan rebuild view dengan data terbaru
-        getChildren().clear();
-        buildView();
+        // Show loading overlay
+        MainShellView.showLoading("Memuat rekapitulasi...");
+        
+        javafx.concurrent.Task<Void> task = new javafx.concurrent.Task<>() {
+            @Override
+            protected Void call() {
+                // Reload cached data in background
+                loadAndCacheData();
+                return null;
+            }
+        };
+        
+        task.setOnSucceeded(e -> {
+            MainShellView.hideLoading();
+            // Clear children dan rebuild view dengan data terbaru
+            getChildren().clear();
+            buildView();
+        });
+        
+        task.setOnFailed(e -> {
+            MainShellView.hideLoading();
+            e.getSource().getException().printStackTrace();
+        });
+        
+        new Thread(task).start();
     }
 
     // Carousel state
