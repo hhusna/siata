@@ -67,9 +67,21 @@ public class AssetApprovalView extends VBox {
                 List<AssetRequest> permohonan = dataService.getPermohonanAset();
                 List<AssetRequest> pengajuan = dataService.getPengajuanAset();
                 
+                String currentUserRole = LoginSession.getRole();
+                boolean isTMA = "TIM_MANAJEMEN_ASET".equals(currentUserRole);
+
+                // Filter logic based on hierarchy
+                List<AssetRequest> filteredPermohonan = permohonan.stream()
+                    .filter(req -> isVisibleToRole(req, currentUserRole, isTMA))
+                    .collect(java.util.stream.Collectors.toList());
+
+                List<AssetRequest> filteredPengajuan = pengajuan.stream()
+                    .filter(req -> isVisibleToRole(req, currentUserRole, isTMA))
+                    .collect(java.util.stream.Collectors.toList());
+
                 javafx.application.Platform.runLater(() -> {
-                    permohonanList.setAll(permohonan);
-                    pengajuanList.setAll(pengajuan);
+                    permohonanList.setAll(filteredPermohonan);
+                    pengajuanList.setAll(filteredPengajuan);
                     
                     getChildren().clear();
                     buildView();
@@ -125,6 +137,7 @@ public class AssetApprovalView extends VBox {
 
         TableColumn<AssetRequest, String> jenisCol = new TableColumn<>("Jenis Aset");
         jenisCol.setCellValueFactory(new PropertyValueFactory<>("jenisAset"));
+        jenisCol.setCellFactory(com.siata.client.util.AssetTypeUiUtils.createAssetTypeCellFactory());
 
         TableColumn<AssetRequest, String> jumlahCol = new TableColumn<>("Jumlah");
         jumlahCol.setCellValueFactory(cellData ->
@@ -559,9 +572,20 @@ public class AssetApprovalView extends VBox {
                         return;
                     }
                     
-                    // Process selected actions
                     int approveCount = 0;
                     int rejectCount = 0;
+                    for (java.util.Map<String, Object> fields : selectedActions) {
+                        if ((Boolean) fields.get("isApprove")) approveCount++;
+                        else rejectCount++;
+                    }
+
+                    // Wait for all actions to complete
+                    java.util.concurrent.atomic.AtomicInteger completedCount = new java.util.concurrent.atomic.AtomicInteger(0);
+                    int totalActions = selectedActions.size();
+                    
+                    final int approvedCount = approveCount;
+                    final int rejectedCount = rejectCount;
+                    
                     for (java.util.Map<String, Object> fields : selectedActions) {
                         String role = (String) fields.get("role");
                         boolean isApprove = (Boolean) fields.get("isApprove");
@@ -571,36 +595,28 @@ public class AssetApprovalView extends VBox {
                         String nomorSurat = nomorField.getText();
                         String catatan = catatanField.getText();
                         
-                        // Determine status based on action and role
                         String newStatus = isApprove ? "Disetujui " + role : "Ditolak " + role;
                         
-                        if (isApprove) approveCount++;
-                        else rejectCount++;
-                        
-                        // Call API for each action
+                        // Call API
                         dataService.updateAssetRequestStatus(request.getId(), request.getTipe(), newStatus, catatan, nomorSurat, success -> {
-                            // Handled after loop
+                            if (completedCount.incrementAndGet() == totalActions) {
+                                // All done
+                                Platform.runLater(() -> {
+                                    refreshTables(); // This clears cache
+                                    
+                                    String msg = "";
+                                    if (approvedCount > 0) msg += approvedCount + " persetujuan";
+                                    if (rejectedCount > 0) {
+                                        if (!msg.isEmpty()) msg += " dan ";
+                                        msg += rejectedCount + " penolakan";
+                                    }
+                                    showNotification("Sukses", msg + " berhasil disimpan.");
+                                });
+                            }
                         });
                     }
                     
                     modalStage.close();
-                    
-                    // Refresh after a short delay
-                    final int approves = approveCount;
-                    final int rejects = rejectCount;
-                    new Thread(() -> {
-                        try { Thread.sleep(500); } catch (InterruptedException ex) {}
-                        Platform.runLater(() -> {
-                            refreshTables();
-                            String msg = "";
-                            if (approves > 0) msg += approves + " persetujuan";
-                            if (rejects > 0) {
-                                if (!msg.isEmpty()) msg += " dan ";
-                                msg += rejects + " penolakan";
-                            }
-                            showNotification("Sukses", msg + " berhasil disimpan!");
-                        });
-                    }).start();
                 });
                 
                 buttonBox.getChildren().addAll(btnCancel, btnSave);
@@ -1127,7 +1143,7 @@ public class AssetApprovalView extends VBox {
                 
                 // Add delegation indicator if delegated by Tim Manajemen Aset
                 if (log.isDelegated()) {
-                    Label delegatedLabel = new Label("↳ diwakilkan oleh " + log.getNamaPegawai() + " (Tim Manajemen Aset)");
+                    Label delegatedLabel = new Label("↳ diwakilkan oleh " + log.getNamaPegawai() + " (" + log.getActualApproverRole() + ")");
                     delegatedLabel.setStyle("-fx-font-size: 11px; -fx-text-fill: #6366f1; -fx-font-style: italic;");
                     infoBox.getChildren().add(delegatedLabel);
                 }
@@ -1159,7 +1175,7 @@ public class AssetApprovalView extends VBox {
                 
                 // Add delegation indicator if delegated by Tim Manajemen Aset
                 if (log.isDelegated()) {
-                    Label delegatedLabel = new Label("↳ diwakilkan oleh " + log.getNamaPegawai() + " (Tim Manajemen Aset)");
+                    Label delegatedLabel = new Label("↳ diwakilkan oleh " + log.getNamaPegawai() + " (" + log.getActualApproverRole() + ")");
                     delegatedLabel.setStyle("-fx-font-size: 11px; -fx-text-fill: #6366f1; -fx-font-style: italic;");
                     infoBox.getChildren().add(delegatedLabel);
                 }
@@ -1205,11 +1221,23 @@ public class AssetApprovalView extends VBox {
                 List<AssetRequest> permohonan = dataService.getPermohonanAset();
                 List<AssetRequest> pengajuan = dataService.getPengajuanAset();
                 
+                String currentUserRole = LoginSession.getRole();
+                boolean isTMA = "TIM_MANAJEMEN_ASET".equals(currentUserRole);
+
+                // Filter logic based on hierarchy
+                List<AssetRequest> filteredPermohonan = permohonan.stream()
+                    .filter(req -> isVisibleToRole(req, currentUserRole, isTMA))
+                    .collect(java.util.stream.Collectors.toList());
+
+                List<AssetRequest> filteredPengajuan = pengajuan.stream()
+                    .filter(req -> isVisibleToRole(req, currentUserRole, isTMA))
+                    .collect(java.util.stream.Collectors.toList());
+
                 javafx.application.Platform.runLater(() -> {
                     // Update UI on JavaFX thread
                     approvalLogsCache.clear(); // Clear cache
-                    permohonanList.setAll(permohonan);
-                    pengajuanList.setAll(pengajuan);
+                    permohonanList.setAll(filteredPermohonan);
+                    pengajuanList.setAll(filteredPengajuan);
                 });
                 return null;
             }
@@ -1233,6 +1261,47 @@ public class AssetApprovalView extends VBox {
         // Replace keputusan column di kedua table
         permohonanTable.getColumns().set(7, keputusanColPermohonan);
         pengajuanTable.getColumns().set(7, keputusanColPengajuan);
+    }
+    private boolean isVisibleToRole(AssetRequest req, String role, boolean isTMA) {
+        if (isTMA) return true; // TMA sees everything
+        
+        String status = req.getStatus();
+        if (status == null) return false;
+        
+        // Normalize status for easier checking
+        String statusLower = status.toLowerCase();
+        
+        if ("PPBJ".equals(role)) {
+            // PPBJ sees Pending (start) and EVERYTHING downstream
+            // User: "PPBJ BISA MELIHAT ASET YANG PENDING, DISETUJUI PPBJ, DITOLAK PPBJ, DISETUJUI/DITOLAK PPK, DISETUJUI/DITOLAK DIREKTUR"
+            return "pending".equals(statusLower) || 
+                   statusLower.contains("ppbj") || 
+                   statusLower.contains("ppk") || 
+                   statusLower.contains("direktur");
+        }
+        
+        if ("PPK".equals(role)) {
+            // PPK sees ONLY what passed PPBJ (Disetujui PPBJ) or reached PPK level
+            // User: "PPK BISA MELIHAT ASET YANG DISETUJUI PPBJ, DISETUJUI/DITOLAK PPK, DISETUJUI/DITOLAK DIREKTUR"
+            // Excludes: Pending, Ditolak PPBJ
+            
+            // Note: "Disetujui PPBJ" is the entry point for PPK
+            return (statusLower.contains("disetujui ppbj")) || // Incoming from PPBJ
+                   statusLower.contains("ppk") ||             // Handled by PPK
+                   statusLower.contains("direktur");          // Handled by Direktur
+        }
+        
+        if ("DIREKTUR".equals(role)) {
+            // Direktur sees ONLY what passed PPK (Disetujui PPK) or reached Direktur level
+            // User: "DIREKTUR BISA MELIHAT ASET YANG DISETUJUI PPK, DISETUJUI/DITOLAK DIREKTUR"
+            // Excludes: Pending, Disetujui/Ditolak PPBJ, Ditolak PPK
+            
+            // Note: "Disetujui PPK" is the entry point for Direktur
+            return (statusLower.contains("disetujui ppk")) || // Incoming from PPK
+                   statusLower.contains("direktur");          // Handled by Direktur
+        }
+        
+        return false;
     }
 }
 

@@ -164,7 +164,8 @@ public class DataService {
         List<Asset> assetList = getAssets();
         int count = 0;
         for (Asset asset : assetList) {
-            if (asset.getSubdir().equals(Subdir)) {
+            String assetSubdir = asset.getSubdir();
+            if (assetSubdir != null && assetSubdir.equals(Subdir)) {
                 count++;
             }
         }

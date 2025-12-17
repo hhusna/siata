@@ -54,6 +54,8 @@ public class MainShellView extends BorderPane {
     private final Label pageTitle = new Label();
     private final Label pageSubtitle = new Label();
     private BorderPane sidebar;
+    private VBox mainLayoutContainer; // Container for Header + Content
+    private ScrollPane mainScrollPane; // The standard scrollpane wrapper
     private VBox brandingBox;
     private Label collapsedBrandingLabel;
     private Button logoutButton;
@@ -80,12 +82,14 @@ public class MainShellView extends BorderPane {
         sidebar = (BorderPane) buildSidebar();
         
         // Create right side container with header on top and content below
-        VBox rightSide = new VBox();
-        rightSide.getChildren().addAll(buildHeader(), buildContentContainer());
-        VBox.setVgrow(rightSide.getChildren().get(1), Priority.ALWAYS);
+        mainLayoutContainer = new VBox();
+        mainScrollPane = (ScrollPane) buildContentContainer();
+        
+        mainLayoutContainer.getChildren().addAll(buildHeader(), mainScrollPane);
+        VBox.setVgrow(mainScrollPane, Priority.ALWAYS);
         
         setLeft(sidebar);
-        setCenter(rightSide);
+        setCenter(mainLayoutContainer);
 
         // Create global loading overlay (Stage based)
         // loadingStage will be created lazily when needed
@@ -558,8 +562,12 @@ public class MainShellView extends BorderPane {
         contentContainer.setPadding(new Insets(24));
         contentContainer.getStyleClass().add("dashboard-content");
 
+        contentContainer.setMaxHeight(Double.MAX_VALUE); // Explicitly allow unbounded growth
+
         ScrollPane scrollPane = new ScrollPane(contentContainer);
         scrollPane.setFitToWidth(true);
+        scrollPane.setFitToHeight(true); // Allow content to fill height
+        scrollPane.setMaxHeight(Double.MAX_VALUE); // Unbounded scrollpane
         scrollPane.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
         scrollPane.getStyleClass().add("dashboard-scroll");
         return scrollPane;
@@ -650,12 +658,50 @@ public class MainShellView extends BorderPane {
             // For lighter pages, load synchronously
             Node content = resolveContent(page);
             
-            // Only refresh Dashboard which has its own smart cache check
+            // Refresh Dashboard which has its own smart cache check
             if (page == MainPage.DASHBOARD && content instanceof DashboardContentView) {
-                ((DashboardContentView) content).refreshDashboard(false); // Check cache dulu
+                ((DashboardContentView) content).refreshDashboard(false);
             }
             
-            contentContainer.getChildren().setAll(content);
+            // Handle layout switching: Direct View vs ScrollPane Wrapper
+            if (page == MainPage.ASSET_MANAGEMENT || page == MainPage.EMPLOYEE_MANAGEMENT) {
+                // For Tables: Bypass ScrollPane to allow full height growth
+                // Replace the component at index 1 (0 is header)
+                if (mainLayoutContainer.getChildren().size() > 1) {
+                    mainLayoutContainer.getChildren().set(1, content);
+                } else {
+                    mainLayoutContainer.getChildren().add(content);
+                }
+                
+                // Configure content for full growth
+                VBox.setVgrow(content, Priority.ALWAYS);
+                if (content instanceof javafx.scene.layout.Region) {
+                    ((javafx.scene.layout.Region) content).setMaxHeight(Double.MAX_VALUE);
+                }
+                
+                // Add padding if needed within the view itself, but here we keep it edge-to-edge or use view's padding
+                // Asset/Employee views have their own padding in tableContainer
+            } else {
+                // For Dashboard/Others: Use ScrollPane wrapper
+                // Ensure ScrollPane is at index 1
+                boolean scrollPaneIsActive = mainLayoutContainer.getChildren().size() > 1 
+                                           && mainLayoutContainer.getChildren().get(1) == mainScrollPane;
+                                           
+                if (!scrollPaneIsActive) {
+                    if (mainLayoutContainer.getChildren().size() > 1) {
+                         mainLayoutContainer.getChildren().set(1, mainScrollPane);
+                    } else {
+                         mainLayoutContainer.getChildren().add(mainScrollPane);
+                    }
+                    VBox.setVgrow(mainScrollPane, Priority.ALWAYS);
+                }
+                
+                // Reset padding for standard views
+                contentContainer.setPadding(new javafx.geometry.Insets(24));
+                contentContainer.getChildren().setAll(content);
+                VBox.setVgrow(content, Priority.ALWAYS);
+            }
+
             AnimationUtils.pageTransitionIn(content);
             activePage = page;
         }

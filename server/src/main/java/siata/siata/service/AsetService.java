@@ -28,6 +28,9 @@ public class AsetService {
     @Autowired
     private PenghapusanAsetRepository penghapusanAsetRepository;
 
+    @Autowired
+    private DataVersionService dataVersionService;
+
     @Cacheable(value = "asetList", unless = "#result == null || #result.isEmpty()")
     public List<Aset> getAllAset() {
         return asetRepository.findAllWithPegawai();
@@ -74,6 +77,9 @@ public class AsetService {
         String isiLog = (isNew ? "Membuat aset baru: " : "Memperbarui aset: ") + savedAset.getKodeAset() + " No. " + savedAset.getNoAset() + " (" + savedAset.getJenisAset() + ")";
         logRiwayatService.saveLog(new LogRiwayat(userPegawai, savedAset, jenisLog, isiLog));
 
+        // Increment data version for polling
+        dataVersionService.incrementVersion();
+
         return savedAset;
     }
 
@@ -89,6 +95,10 @@ public class AsetService {
             } catch (Exception e) {
                 System.err.println("Failed to save asset in batch: " + aset.getKodeAset() + " - " + e.getMessage());
             }
+        }
+        // Increment data version for polling (once for batch)
+        if (savedCount > 0) {
+            dataVersionService.incrementVersion();
         }
         return savedCount;
     }
@@ -118,24 +128,28 @@ public class AsetService {
         // 3. Log penghapusan
         String isiLog = "Memindahkan aset ke penghapusan: " + aset.getKodeAset() + " (" + aset.getJenisAset() + ") - Status: " + statusAsli + ", Kondisi: " + kondisiAsli;
         logRiwayatService.saveLog(new LogRiwayat(userPegawai, aset, "SOFT_DELETE_ASET", isiLog));
+
+        // Increment data version for polling
+        dataVersionService.incrementVersion();
     }
 
     // Otomatisasi Status Aset (dijalankan setiap hari jam 1 pagi)
-    @Scheduled(cron = "0 0 1 * * ?")
-    @CacheEvict(value = {"asetList", "asetSearch", "dashboardStats"}, allEntries = true)
-    public void updateStatusAsetSiapLelang() {
-        LocalDate tanggalBatas = LocalDate.now().minusYears(4);
-        List<Aset> asetUntukDilelang = asetRepository.findAsetSiapLelang(tanggalBatas);
-
-        for (Aset aset : asetUntukDilelang) {
-            aset.setStatusPemakaian("Siap Dilelang");
-            asetRepository.save(aset);
-
-            // Log otomatisasi (pegawai = null karena ini sistem)
-            String isiLog = "Sistem otomatis mengubah status aset " + aset.getKodeAset() + " menjadi Siap Dilelang.";
-            logRiwayatService.saveLog(new LogRiwayat(null, aset, "AUTO_LELANG", isiLog));
-        }
-    }
+    // Otomatisasi Status Aset (dijalankan setiap hari jam 1 pagi) - DINONAKTIFKAN
+    // @Scheduled(cron = "0 0 1 * * ?")
+    // @CacheEvict(value = {"asetList", "asetSearch", "dashboardStats"}, allEntries = true)
+    // public void updateStatusAsetSiapLelang() {
+    //     LocalDate tanggalBatas = LocalDate.now().minusYears(4);
+    //     List<Aset> asetUntukDilelang = asetRepository.findAsetSiapLelang(tanggalBatas);
+    //
+    //     for (Aset aset : asetUntukDilelang) {
+    //         aset.setStatusPemakaian("Siap Dilelang");
+    //         asetRepository.save(aset);
+    //
+    //         // Log otomatisasi (pegawai = null karena ini sistem)
+    //         String isiLog = "Sistem otomatis mengubah status aset " + aset.getKodeAset() + " menjadi Siap Dilelang.";
+    //         logRiwayatService.saveLog(new LogRiwayat(null, aset, "AUTO_LELANG", isiLog));
+    //     }
+    // }
 
     // Ini adalah HAPUS permanen (jika diperlukan admin)
     @CacheEvict(value = {"asetList", "asetSearch", "dashboardStats"}, allEntries = true)
@@ -147,6 +161,9 @@ public class AsetService {
         logRiwayatService.saveLog(new LogRiwayat(userPegawai, aset, "HARD_DELETE_ASET", isiLog));
 
         asetRepository.deleteById(id);
+
+        // Increment data version for polling
+        dataVersionService.incrementVersion();
     }
 
     /**
@@ -261,6 +278,9 @@ public class AsetService {
                 ? deletedCodes.substring(0, 100) + "..." 
                 : deletedCodes.toString());
             logRiwayatService.saveLog(new LogRiwayat(userPegawai, (Aset) null, "BATCH_DELETE_ASET", isiLog));
+
+            // Increment data version for polling
+            dataVersionService.incrementVersion();
         }
         
         return deletedCount;
@@ -283,6 +303,9 @@ public class AsetService {
         // Log action
         String isiLog = "Mengembalikan aset dari daftar penghapusan: " + aset.getKodeAset() + " (" + aset.getJenisAset() + ")";
         logRiwayatService.saveLog(new LogRiwayat(userPegawai, aset, "UNDO_DELETE_ASET", isiLog));
+
+        // Increment data version for polling
+        dataVersionService.incrementVersion();
     }
 
     /**
@@ -302,5 +325,8 @@ public class AsetService {
         
         // Actually delete from database
         asetRepository.deleteById(id);
+
+        // Increment data version for polling
+        dataVersionService.incrementVersion();
     }
 }

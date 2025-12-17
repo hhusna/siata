@@ -485,9 +485,13 @@ public class LoginView extends HBox {
             @Override
             protected Boolean call() throws Exception {
                 try {
-                    userApi.login(usernameField.getText(), passwordField.getText());
-                    LoginSession.setPegawaiDto(userApi.getPegawaionSession());
-                    return LoginSession.getJwt() != null;
+                    boolean success = userApi.login(usernameField.getText(), passwordField.getText());
+                    if (success) {
+                        LoginSession.setPegawaiDto(userApi.getPegawaionSession());
+                        // Double check JWT is present
+                        return LoginSession.getJwt() != null;
+                    }
+                    return false;
                 } catch (Exception e) {
                     e.printStackTrace();
                     return false;

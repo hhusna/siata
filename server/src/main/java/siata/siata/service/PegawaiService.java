@@ -23,6 +23,9 @@ public class PegawaiService {
     @Autowired
     private LogRiwayatService logRiwayatService;
 
+    @Autowired
+    private DataVersionService dataVersionService;
+
     public List<Pegawai> getAllPegawai() {
         return pegawaiRepository.findAll();
     }
@@ -63,6 +66,9 @@ public class PegawaiService {
         String isiLog = (isNew ? "Membuat data pegawai baru: " : "Memperbarui data pegawai: ") + savedPegawai.getNama();
         logRiwayatService.saveLog(new LogRiwayat(userPegawai, jenisLog, isiLog));
 
+        // Increment data version for polling
+        dataVersionService.incrementVersion();
+
         return savedPegawai;
     }
 
@@ -76,6 +82,9 @@ public class PegawaiService {
         logRiwayatService.saveLog(new LogRiwayat(userPegawai, "DELETE_PEGAWAI", isiLog));
 
         pegawaiRepository.deleteById(nip);
+
+        // Increment data version for polling
+        dataVersionService.incrementVersion();
     }
 
     public List<Pegawai> batchSavePegawai(List<Pegawai> pegawaiList, Pegawai userPegawai) {
@@ -114,7 +123,12 @@ public class PegawaiService {
         // Single log entry for batch operation
         String isiLog = "Import batch pegawai: " + newCount + " baru, " + updateCount + " diperbarui";
         logRiwayatService.saveLog(new LogRiwayat(userPegawai, "BATCH_IMPORT_PEGAWAI", isiLog));
-        
+
+        // Increment data version for polling
+        if (!savedList.isEmpty()) {
+            dataVersionService.incrementVersion();
+        }
+
         return savedList;
     }
 
@@ -143,6 +157,9 @@ public class PegawaiService {
                 ? deletedNames.substring(0, 100) + "..." 
                 : deletedNames.toString());
             logRiwayatService.saveLog(new LogRiwayat(userPegawai, "BATCH_DELETE_PEGAWAI", isiLog));
+
+            // Increment data version for polling
+            dataVersionService.incrementVersion();
         }
         
         return deletedCount;

@@ -59,12 +59,15 @@ public class AssetRemovalView extends VBox {
 
         TableColumn<Asset, String> jenisCol = new TableColumn<>("Jenis");
         jenisCol.setCellValueFactory(new PropertyValueFactory<>("jenisAset"));
+        jenisCol.setCellFactory(com.siata.client.util.AssetTypeUiUtils.createAssetTypeCellFactory());
 
         TableColumn<Asset, String> kondisiCol = new TableColumn<>("Kondisi");
         kondisiCol.setCellValueFactory(new PropertyValueFactory<>("kondisi"));
+        kondisiCol.setCellFactory(com.siata.client.util.StatusUiUtils.createKondisiCellFactory());
 
         TableColumn<Asset, String> SubdirCol = new TableColumn<>("Subdirektorat");
         SubdirCol.setCellValueFactory(new PropertyValueFactory<>("Subdir"));
+        SubdirCol.setCellFactory(com.siata.client.util.SubdirUiUtils.createSubdirCellFactory());
 
         TableColumn<Asset, String> tanggalCol = new TableColumn<>("Tanggal Perolehan");
         tanggalCol.setCellValueFactory(cellData -> {
@@ -174,6 +177,7 @@ public class AssetRemovalView extends VBox {
                     dataService.clearAssetCache();
                     MainShellView.showSuccess("Aset berhasil dikembalikan ke Manajemen Aset.");
                     refreshTable();
+                    MainShellView.invalidateDataViews(); // Refresh view lain
                 } else {
                     MainShellView.showError("Gagal mengembalikan aset. Silakan coba lagi.");
                 }
@@ -231,6 +235,7 @@ public class AssetRemovalView extends VBox {
                         if (task.getValue()) {
                             MainShellView.showSuccess("Aset telah dihapus permanen dari database.");
                             refreshTable();
+                            MainShellView.invalidateDataViews(); // Refresh view lain
                         } else {
                             MainShellView.showError("Gagal menghapus aset. Silakan coba lagi.");
                         }

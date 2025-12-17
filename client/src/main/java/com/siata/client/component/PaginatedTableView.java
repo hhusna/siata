@@ -41,6 +41,8 @@ public class PaginatedTableView<T> extends VBox {
         
         setSpacing(12);
         VBox.setVgrow(table, Priority.ALWAYS);
+        setMaxHeight(Double.MAX_VALUE);
+        table.setMaxHeight(Double.MAX_VALUE);
         
         getChildren().addAll(table, createPaginationControls());
     }

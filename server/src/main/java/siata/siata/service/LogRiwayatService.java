@@ -127,7 +127,7 @@ public class LogRiwayatService {
     private String extractRole(String roleString) {
         if (roleString == null) return "";
         
-        if (roleString.contains("TIM_MANAJEMEN_ASET")) return "Tim Manajemen Aset";
+        if (roleString.contains("TIM_MANAJEMEN_ASET") || roleString.contains("TIM_ASET") || roleString.contains("ADMIN")) return "Tim Manajemen Aset";
         if (roleString.contains("PPK")) return "PPK";
         if (roleString.contains("PPBJ")) return "PPBJ";
         if (roleString.contains("DIREKTUR")) return "Direktur";

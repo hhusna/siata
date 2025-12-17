@@ -523,6 +523,10 @@
     -fx-alignment: CENTER_LEFT;
 }
 
+.data-table .table-cell {
+    -fx-padding: 4px 8px; /* Compact padding */
+}
+
 .data-table .table-row-cell {
     -fx-border-color: transparent;
     -fx-border-width: 0;

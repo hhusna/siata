@@ -125,9 +125,11 @@ public class AssetRequestView extends VBox {
 
         TableColumn<AssetRequest, String> unitCol = new TableColumn<>("Subdir");
         unitCol.setCellValueFactory(new PropertyValueFactory<>("unit"));
+        unitCol.setCellFactory(com.siata.client.util.SubdirUiUtils.createSubdirCellFactory());
 
         TableColumn<AssetRequest, String> jenisAsetCol = new TableColumn<>("Jenis Aset");
         jenisAsetCol.setCellValueFactory(new PropertyValueFactory<>("jenisAset"));
+        jenisAsetCol.setCellFactory(com.siata.client.util.AssetTypeUiUtils.createAssetTypeCellFactory());
 
         TableColumn<AssetRequest, String> jumlahCol = new TableColumn<>("Jumlah");
         jumlahCol.setCellValueFactory(cellData ->

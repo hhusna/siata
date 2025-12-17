@@ -54,7 +54,8 @@ public class User implements UserDetails {
     // Implementasi UserDetails
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
-        return List.of(new SimpleGrantedAuthority("ROLE_" + role));
+        // Use getEffectiveRole() so simulation mode works correctly
+        return List.of(new SimpleGrantedAuthority("ROLE_" + getEffectiveRole()));
     }
 
     @Override

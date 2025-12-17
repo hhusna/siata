@@ -35,37 +35,16 @@ public class RateLimitingConfig implements Filter {
     @Override
     public void doFilter(ServletRequest servletRequest, ServletResponse servletResponse, FilterChain filterChain)
             throws IOException, ServletException {
+        // Rate limiting dinonaktifkan sesuai request
+        filterChain.doFilter(servletRequest, servletResponse);
+        
+        /* Logika rate limiting sebelumnya di-skip
         HttpServletRequest httpServletRequest = (HttpServletRequest) servletRequest;
         HttpServletResponse httpServletResponse = (HttpServletResponse) servletResponse;
         
         String clientIpAddress = getClientIP(httpServletRequest);
-        String requestURI = httpServletRequest.getRequestURI();
-        String method = httpServletRequest.getMethod();
-        
-        // Skip rate limiting untuk localhost/development
-        if (isLocalhost(clientIpAddress)) {
-            filterChain.doFilter(servletRequest, servletResponse);
-            return;
-        }
-        
-        // Tentukan limit berdasarkan endpoint dan method
-        int limit = determineLimit(requestURI, method);
-        
-        try {
-            int requests = requestCountsPerIpAddress.get(clientIpAddress);
-            
-            if (requests >= limit) {
-                httpServletResponse.setStatus(HttpStatus.TOO_MANY_REQUESTS.value());
-                httpServletResponse.getWriter().write("Terlalu banyak request. Silakan coba lagi dalam 1 menit.");
-                return;
-            }
-            
-            requestCountsPerIpAddress.put(clientIpAddress, requests + 1);
-            filterChain.doFilter(servletRequest, servletResponse);
-            
-        } catch (ExecutionException e) {
-            throw new ServletException(e);
-        }
+        ...
+        */
     }
 
     private int determineLimit(String requestURI, String method) {

@@ -121,23 +121,7 @@ public class EmployeeManagementView extends VBox {
         
         TableColumn<Employee, String> unitCol = new TableColumn<>("Subdir");
         unitCol.setCellValueFactory(new PropertyValueFactory<>("unit"));
-        unitCol.setCellFactory(column -> new TableCell<Employee, String>() {
-            @Override
-            protected void updateItem(String item, boolean empty) {
-                super.updateItem(item, empty);
-                if (empty || item == null) {
-                    setText(null);
-                    setStyle("");
-                } else {
-                    setText(item);
-                    if ("PINDAH".equalsIgnoreCase(item)) {
-                        setStyle("-fx-text-fill: #dc2626; -fx-font-weight: bold;");
-                    } else {
-                        setStyle("");
-                    }
-                }
-            }
-        });
+        unitCol.setCellFactory(com.siata.client.util.SubdirUiUtils.createSubdirCellFactory());
         
         // Pre-compute asset count per employee NIP for performance
         java.util.Map<String, Long> assetCountByNip = new java.util.HashMap<>();
@@ -219,23 +203,7 @@ public class EmployeeManagementView extends VBox {
         // Status column with color styling
         TableColumn<Employee, String> statusCol = new TableColumn<>("Status");
         statusCol.setCellValueFactory(new PropertyValueFactory<>("status"));
-        statusCol.setCellFactory(column -> new TableCell<Employee, String>() {
-            @Override
-            protected void updateItem(String item, boolean empty) {
-                super.updateItem(item, empty);
-                if (empty || item == null) {
-                    setText(null);
-                    setStyle("");
-                } else {
-                    setText(item);
-                    if ("NONAKTIF".equalsIgnoreCase(item)) {
-                        setStyle("-fx-text-fill: #dc2626; -fx-font-weight: bold;");
-                    } else {
-                        setStyle("-fx-text-fill: #16a34a; -fx-font-weight: bold;");
-                    }
-                }
-            }
-        });
+        statusCol.setCellFactory(com.siata.client.util.StatusUiUtils.createStatusCellFactory());
         
         table.getColumns().setAll(List.of(nipCol, namaCol, unitCol, statusCol, asetCol, aksiCol));
 
@@ -245,6 +213,16 @@ public class EmployeeManagementView extends VBox {
         VBox.setVgrow(paginatedTable, Priority.ALWAYS);
         tableContainer.getChildren().addAll(filterBar, paginatedTable);
 
+        VBox.setVgrow(tableContainer, Priority.ALWAYS); // Grow to fill window
+        VBox.setVgrow(tableContainer, Priority.ALWAYS); // Grow to fill window
+        tableContainer.setMaxHeight(Double.MAX_VALUE); // Explicitly allow unbounded growth
+        
+        // Hardcode min-height to Window Height - Offset to force expansion
+        javafx.stage.Stage primaryStage = com.siata.client.MainApplication.getPrimaryStage();
+        if (primaryStage != null) {
+            tableContainer.minHeightProperty().bind(primaryStage.heightProperty().subtract(180));
+        }
+        
         getChildren().addAll(tableContainer);
     }
 

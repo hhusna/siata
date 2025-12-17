@@ -13,7 +13,7 @@ public class ApiConfig {
      * - Development: http://localhost:8080
      * - Production: https://your-domain.com
      */
-    private static final String BASE_URL = "http://localhost:8080";
+    private static final String BASE_URL = "http://api.siada.tech";
     
     /**
      * Get the base URL for API requests.
