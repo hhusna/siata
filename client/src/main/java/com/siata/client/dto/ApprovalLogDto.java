@@ -27,6 +27,17 @@ public class ApprovalLogDto {
 
     public ApprovalLogDto() {}
 
+    public ApprovalLogDto(String namaPegawai, String role, String status, LocalDateTime timestamp, 
+                          String catatan, String lampiran, String actualApproverRole) {
+        this.namaPegawai = namaPegawai;
+        this.role = role;
+        this.status = status;
+        this.timestamp = timestamp;
+        this.catatan = catatan;
+        this.lampiran = lampiran;
+        this.actualApproverRole = actualApproverRole;
+    }
+
     public String getNamaPegawai() {
         return namaPegawai;
     }
@@ -87,8 +98,9 @@ public class ApprovalLogDto {
      * Check if this approval was delegated (made by Tim Manajemen Aset on behalf of another role)
      */
     public boolean isDelegated() {
+        // Delegated ONLY if the actual approver is "Tim Manajemen Aset" AND target role is different
         return actualApproverRole != null && 
                "Tim Manajemen Aset".equals(actualApproverRole) && 
-               !actualApproverRole.equals(role);
+               role != null && !actualApproverRole.equals(role);
     }
 }

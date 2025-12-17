@@ -26,6 +26,9 @@ import javafx.stage.Modality;
 import javafx.stage.Stage;
 import javafx.stage.StageStyle;
 import javafx.util.StringConverter;
+import javafx.concurrent.Task;
+import javafx.scene.control.Tooltip; // Explicit import
+import javafx.scene.layout.GridPane; // Explicit import
 
 import java.io.File;
 import java.math.BigDecimal;
@@ -47,6 +50,8 @@ public class AssetManagementView extends VBox {
     // Column references for visibility toggle
     private final java.util.Map<String, TableColumn<Asset, ?>> columnMap = new java.util.LinkedHashMap<>();
     private final java.util.Map<String, CheckBox> columnCheckBoxes = new java.util.LinkedHashMap<>();
+    // Map for NIP to Name lookup, refreshed in refreshTable
+    private final java.util.Map<String, String> nipToNameMap = new java.util.HashMap<>();
 
     public AssetManagementView() {
         setSpacing(20);
@@ -71,7 +76,7 @@ public class AssetManagementView extends VBox {
         exportButton.getStyleClass().add("secondary-button");
         exportButton.setOnAction(e -> handleExport());
 
-        Button deleteSelectedBtn = new Button("🗑 Hapus Terpilih");
+        Button deleteSelectedBtn = new Button("🗑 Force Delete");
         deleteSelectedBtn.getStyleClass().add("secondary-button");
         deleteSelectedBtn.setStyle("-fx-text-fill: #dc2626;");
         deleteSelectedBtn.setOnAction(e -> handleBulkDelete());
@@ -97,29 +102,19 @@ public class AssetManagementView extends VBox {
         statusCombo.setPrefWidth(150);
         statusCombo.getStyleClass().add("filter-combo-box");
         
-        // Filter Kesiapan Lelang - hanya untuk TIM_MANAJEMEN_ASET
-        ComboBox<String> kesiapanLelangCombo = new ComboBox<>();
-        kesiapanLelangCombo.getItems().addAll("Semua Kesiapan", "Siap", "Belum");
-        kesiapanLelangCombo.setValue("Semua Kesiapan");
-        kesiapanLelangCombo.setPrefWidth(150);
-        kesiapanLelangCombo.getStyleClass().add("filter-combo-box");
+
         
         TextField searchField = new TextField();
         searchField.setPromptText("Cari berdasarkan ID, nama, atau jenis aset...");
         searchField.setPrefWidth(200);
-        searchField.textProperty().addListener((obs, oldVal, newVal) -> filterTable(newVal, jenisCombo.getValue(), statusCombo.getValue(), kesiapanLelangCombo.getValue()));
+        searchField.textProperty().addListener((obs, oldVal, newVal) -> filterTable(newVal, jenisCombo.getValue(), statusCombo.getValue()));
         searchField.getStyleClass().add("filter-combo-box");
         
-        jenisCombo.setOnAction(e -> filterTable(searchField.getText(), jenisCombo.getValue(), statusCombo.getValue(), kesiapanLelangCombo.getValue()));
-        statusCombo.setOnAction(e -> filterTable(searchField.getText(), jenisCombo.getValue(), statusCombo.getValue(), kesiapanLelangCombo.getValue()));
-        kesiapanLelangCombo.setOnAction(e -> filterTable(searchField.getText(), jenisCombo.getValue(), statusCombo.getValue(), kesiapanLelangCombo.getValue()));
+        jenisCombo.setOnAction(e -> filterTable(searchField.getText(), jenisCombo.getValue(), statusCombo.getValue()));
+        statusCombo.setOnAction(e -> filterTable(searchField.getText(), jenisCombo.getValue(), statusCombo.getValue()));
         
-        // Tambahkan filter ke filterBar berdasarkan role
-        if ("TIM_MANAJEMEN_ASET".equals(com.siata.client.session.LoginSession.getRole())) {
-            filterBar.getChildren().addAll(searchField, jenisCombo, statusCombo, kesiapanLelangCombo);
-        } else {
-            filterBar.getChildren().addAll(searchField, jenisCombo, statusCombo);
-        }
+        // Tambahkan filter ke filterBar
+        filterBar.getChildren().addAll(searchField, jenisCombo, statusCombo);
 
         // Paginated Table with multi-selection
         paginatedTable = new PaginatedTableView<>();
@@ -139,15 +134,14 @@ public class AssetManagementView extends VBox {
         
         TableColumn<Asset, String> jenisCol = new TableColumn<>("Jenis");
         jenisCol.setCellValueFactory(new PropertyValueFactory<>("jenisAset"));
+        jenisCol.setCellFactory(com.siata.client.util.AssetTypeUiUtils.createAssetTypeCellFactory());
         
         TableColumn<Asset, String> merkCol = new TableColumn<>("Merk Barang");
         merkCol.setCellValueFactory(new PropertyValueFactory<>("merkBarang"));
+        merkCol.setVisible(false);
         
         // Build employee NIP to Name map for display
-        java.util.Map<String, String> nipToNameMap = new java.util.HashMap<>();
-        for (Employee emp : dataService.getEmployees()) {
-            nipToNameMap.put(emp.getNip(), emp.getNamaLengkap());
-        }
+        // nipToNameMap is now a class field refreshed in refreshTable()
 
         TableColumn<Asset, String> keteranganCol = new TableColumn<>("Pemegang");
         keteranganCol.setCellValueFactory(new PropertyValueFactory<>("keterangan"));
@@ -170,7 +164,11 @@ public class AssetManagementView extends VBox {
                     Label nameLabel = new Label(employeeName);
                     nameLabel.setStyle("-fx-font-weight: 700; -fx-text-fill: #1e293b; -fx-font-size: 13px;");
                     
-                    Label nipLabel = new Label(nip);
+                    String nipText = nip;
+                    if (nip.length() != 18) {
+                        nipText = "No NIP";
+                    }
+                    Label nipLabel = new Label(nipText);
                     nipLabel.setStyle("-fx-font-size: 11px; -fx-text-fill: #94a3b8;");
                     
                     container.getChildren().addAll(nameLabel, nipLabel);
@@ -188,6 +186,7 @@ public class AssetManagementView extends VBox {
         
         TableColumn<Asset, String> SubdirCol = new TableColumn<>("Subdir");
         SubdirCol.setCellValueFactory(new PropertyValueFactory<>("Subdir"));
+        SubdirCol.setCellFactory(com.siata.client.util.SubdirUiUtils.createSubdirCellFactory());
         
         TableColumn<Asset, String> tanggalCol = new TableColumn<>("Tanggal Perolehan");
         tanggalCol.setCellValueFactory(cellData -> {
@@ -209,9 +208,11 @@ public class AssetManagementView extends VBox {
         
         TableColumn<Asset, String> kondisiCol = new TableColumn<>("Kondisi");
         kondisiCol.setCellValueFactory(new PropertyValueFactory<>("kondisi"));
+        kondisiCol.setCellFactory(com.siata.client.util.StatusUiUtils.createKondisiCellFactory());
         
         TableColumn<Asset, String> statusCol = new TableColumn<>("Status");
         statusCol.setCellValueFactory(new PropertyValueFactory<>("status"));
+        statusCol.setCellFactory(com.siata.client.util.StatusUiUtils.createStatusCellFactory());
         
         // Kolom Dipakai (String: TRUE/FALSE -> YA/TIDAK)
         TableColumn<Asset, String> dipakaiCol = new TableColumn<>("Dipakai");
@@ -261,23 +262,8 @@ public class AssetManagementView extends VBox {
         // Kolom Tua (Computed - formerly Siap Lelang)
         TableColumn<Asset, String> tuaCol = new TableColumn<>("Tua");
         tuaCol.setCellValueFactory(new PropertyValueFactory<>("tuaString"));
-        tuaCol.setCellFactory(column -> new TableCell<Asset, String>() {
-            @Override
-            protected void updateItem(String item, boolean empty) {
-                super.updateItem(item, empty);
-                if (empty || item == null) {
-                    setText(null);
-                    setStyle("");
-                } else {
-                    setText(item);
-                    if ("Ya".equals(item)) {
-                        setStyle("-fx-text-fill: #dc2626; -fx-font-weight: bold;"); // Red for old
-                    } else {
-                        setStyle("-fx-text-fill: #6b7280;");
-                    }
-                }
-            }
-        });
+        tuaCol.setCellFactory(com.siata.client.util.StatusUiUtils.createTuaCellFactory());
+
 
         // Kolom Akan Tua (Computed - formerly Akan Siap Lelang)
         TableColumn<Asset, String> akanTuaCol = new TableColumn<>("Akan Tua");
@@ -325,45 +311,59 @@ public class AssetManagementView extends VBox {
         
         TableColumn<Asset, Void> aksiCol = new TableColumn<>("Aksi");
         aksiCol.setCellFactory(column -> new TableCell<Asset, Void>() {
+            private final Button detailButton = createIconButton("👁");
             private final Button editButton = createIconButton("✏");
             private final Button deleteButton = createIconButton("🗑");
-            private final HBox actionBox = new HBox(6, editButton, deleteButton);
+            private final HBox actionBox = new HBox(6, detailButton, editButton, deleteButton);
             
             {
                 actionBox.setAlignment(Pos.CENTER);
+                
+                detailButton.setTooltip(new Tooltip("Lihat Detail"));
+                editButton.setTooltip(new Tooltip("Edit"));
+                deleteButton.setTooltip(new Tooltip("Hapus"));
+                
+                detailButton.setOnAction(e -> {
+                    Asset asset = getTableView().getItems().get(getIndex());
+                    AssetManagementView.this.showAssetDetail(asset);
+                });
+                
                 editButton.setOnAction(e -> {
                     Asset asset = getTableView().getItems().get(getIndex());
                     showAssetForm(asset);
                 });
+                
                 deleteButton.setOnAction(e -> {
                     Asset asset = getTableView().getItems().get(getIndex());
-                    // Validasi: Aset Aktif tidak bisa dihapus
-                    if ("Aktif".equals(asset.getStatus())) {
-                        showAlert("Aset dengan status Aktif tidak dapat dihapus. Ubah status menjadi Non Aktif terlebih dahulu.");
-                        return;
-                    }
                     if (confirmDelete(asset)) {
-                        javafx.concurrent.Task<Void> deleteTask = new javafx.concurrent.Task<>() {
-                            @Override
-                            protected Void call() throws Exception {
-                                dataService.deleteAsset(asset);
-                                return null;
-                            }
-                        };
-
-                        deleteTask.setOnSucceeded(ev -> {
-                            refreshTable(); // Now async
-                            showSuccessAlert("Aset berhasil dipindahkan ke daftar penghapusan.");
-                        });
-
-                        deleteTask.setOnFailed(ev -> {
-                            ev.getSource().getException().printStackTrace();
-                            showAlert("Gagal menghapus aset.");
-                        });
-
-                        new Thread(deleteTask).start();
+                        performDelete(asset);
                     }
                 });
+            }
+
+            private void performDelete(Asset asset) {
+                Task<Boolean> deleteTask = new Task<>() {
+                    @Override
+                    protected Boolean call() throws Exception {
+                        return assetApi.deleteAssetById(asset.getIdAset());
+                    }
+                };
+                
+                deleteTask.setOnSucceeded(ev -> {
+                    if (deleteTask.getValue()) {
+                        MainShellView.showSuccess("Aset berhasil dipindahkan ke daftar penghapusan.");
+                        refreshTable();
+                        MainShellView.invalidateDataViews();
+                    } else {
+                        MainShellView.showError("Gagal menghapus aset.");
+                    }
+                });
+                
+                deleteTask.setOnFailed(ev -> {
+                    MainShellView.showError("Terjadi kesalahan: " + ev.getSource().getException().getMessage());
+                });
+                
+                new Thread(deleteTask).start();
             }
             
             @Override
@@ -376,6 +376,7 @@ public class AssetManagementView extends VBox {
                 }
             }
         });
+
         aksiCol.setPrefWidth(140);
         
         // Tambahkan kolom ke tabel berdasarkan role
@@ -422,6 +423,15 @@ public class AssetManagementView extends VBox {
         VBox.setVgrow(paginatedTable, Priority.ALWAYS);
         tableContainer.getChildren().addAll(filterBar, paginatedTable);
 
+        VBox.setVgrow(tableContainer, Priority.ALWAYS); // Ensure container grows with view
+        tableContainer.setMaxHeight(Double.MAX_VALUE); // Explicitly allow unbounded growth
+        
+        // Hardcode min-height to Window Height - Offset (Header + Padding) to force expansion
+        javafx.stage.Stage primaryStage = com.siata.client.MainApplication.getPrimaryStage();
+        if (primaryStage != null) {
+            tableContainer.minHeightProperty().bind(primaryStage.heightProperty().subtract(180));
+        }
+        
         getChildren().addAll(tableContainer);
     }
 
@@ -442,6 +452,7 @@ public class AssetManagementView extends VBox {
     
     private void showColumnConfigPopup(Button anchorButton) {
         Stage popupStage = new Stage();
+        popupStage.initOwner(com.siata.client.MainApplication.getPrimaryStage());
         popupStage.initStyle(StageStyle.UNDECORATED);
         popupStage.initModality(Modality.NONE);
         
@@ -592,6 +603,7 @@ public class AssetManagementView extends VBox {
 
     private void showAssetForm(Asset editableAsset) {
         Stage modalStage = new Stage();
+        modalStage.initOwner(com.siata.client.MainApplication.getPrimaryStage());
         modalStage.initModality(Modality.APPLICATION_MODAL);
         modalStage.initStyle(StageStyle.TRANSPARENT);
         modalStage.setTitle(editableAsset == null ? "Tambah Aset Baru" : "Edit Aset");
@@ -647,38 +659,16 @@ public class AssetManagementView extends VBox {
         autoGenerateCheck.selectedProperty().addListener((obs, oldVal, newVal) -> {
             if (newVal) {
                 noAsetField.setDisable(true);
-                // Call API if kode aset is present
-                String kode = kodeField.getText();
-                if (kode != null && !kode.isEmpty()) {
-                    javafx.concurrent.Task<Integer> task = new javafx.concurrent.Task<>() {
-                        @Override
-                        protected Integer call() throws Exception {
-                            return assetApi.getNextNoAset(kode);
-                        }
-                    };
-                    task.setOnSucceeded(ev -> noAsetField.setText(String.valueOf(task.getValue())));
-                    task.setOnFailed(ev -> ev.getSource().getException().printStackTrace());
-                    new Thread(task).start();
-                }
+                noAsetField.setText(""); // Clear field, DataService will handle sync with ID
             } else {
                 noAsetField.setDisable(false);
             }
         });
         
-        // Refresh number if code changes and auto is checked
-        kodeField.textProperty().addListener((obs, oldVal, newVal) -> {
-            if (autoGenerateCheck.isSelected() && newVal != null && !newVal.isEmpty()) {
-                 javafx.concurrent.Task<Integer> task = new javafx.concurrent.Task<>() {
-                    @Override
-                    protected Integer call() throws Exception {
-                        return assetApi.getNextNoAset(newVal);
-                    }
-                };
-                task.setOnSucceeded(ev -> noAsetField.setText(String.valueOf(task.getValue())));
-                task.setOnFailed(ev -> ev.getSource().getException().printStackTrace());
-                new Thread(task).start();
-            }
-        });
+        // Refresh number if code changes and auto is checked - REMOVED, we use ID now
+        /* 
+        kodeField.textProperty().addListener((obs, oldVal, newVal) -> { ... });
+        */
 
         if (editableAsset != null) {
             if (editableAsset.getNoAset() != null) {
@@ -940,16 +930,116 @@ public class AssetManagementView extends VBox {
             // Get NIP from selected employee or empty
             String pemegangNip = selectedEmployee[0] != null ? selectedEmployee[0].getNip() : "";
             // Auto-calculate "Dipakai" status
-            // IF (Subdir OR Pegawai) is present -> TRUE, Else -> FALSE
             String subdirVal = SubdirCombo.getValue();
             boolean isUsed = (subdirVal != null && !subdirVal.isEmpty()) || (pemegangNip != null && !pemegangNip.isEmpty());
             String dipakaiVal = isUsed ? "TRUE" : "FALSE";
             
-            if (saveAsset(editableAsset, kodeField.getText(), noAsetField.getText(), jenisCombo.getValue(),
-                    merkField.getText(), pemegangNip, SubdirCombo.getValue(),
-                    tanggalPicker.getValue(), rupiahField.getText(), kondisiCombo.getValue(), statusCombo.getValue(), dipakaiVal)) {
-                modalStage.close();
+            // Collect all values
+            final String kode = kodeField.getText();
+            final String noAsetStr = noAsetField.getText();
+            final String jenis = jenisCombo.getValue();
+            final String merk = merkField.getText();
+            final String nip = pemegangNip;
+            final String subdir = SubdirCombo.getValue();
+            final LocalDate tanggal = tanggalPicker.getValue();
+            final String rupiah = rupiahField.getText();
+            final String kond = kondisiCombo.getValue();
+            final String stat = statusCombo.getValue();
+            final String dipakai = dipakaiVal;
+            
+            // === VALIDATION ON UI THREAD ===
+            if (kode == null || kode.trim().isEmpty() || kode.length() != 10 || !kode.matches("\\d+")) {
+                MainShellView.showWarning("Kode Aset harus terdiri dari 10 digit angka!");
+                return;
             }
+            if (jenis == null) {
+                MainShellView.showWarning("Pilih Jenis Aset!");
+                return;
+            }
+            if (rupiah == null || rupiah.trim().isEmpty()) {
+                MainShellView.showWarning("Masukkan nilai rupiah aset!");
+                return;
+            }
+            
+            // Parse noAset
+            final Integer noAset;
+            if (noAsetStr != null && !noAsetStr.trim().isEmpty()) {
+                try {
+                    noAset = Integer.parseInt(noAsetStr.trim());
+                } catch (NumberFormatException ex) {
+                    MainShellView.showWarning("No Aset harus berupa angka!");
+                    return;
+                }
+            } else {
+                noAset = null;
+            }
+            
+            // Parse rupiah
+            String cleanRupiah = rupiah;
+            if (cleanRupiah.contains(".")) {
+                cleanRupiah = cleanRupiah.substring(0, cleanRupiah.indexOf("."));
+            }
+            if (cleanRupiah.contains(",")) {
+                cleanRupiah = cleanRupiah.substring(0, cleanRupiah.indexOf(","));
+            }
+            cleanRupiah = cleanRupiah.replaceAll("[^\\d]", "");
+            if (cleanRupiah.isEmpty()) cleanRupiah = "0";
+            final BigDecimal nilaiRupiah = new BigDecimal(cleanRupiah);
+            
+            // Prepare asset object
+            final Asset assetToSave;
+            final boolean isNew = (editableAsset == null);
+            if (isNew) {
+                assetToSave = new Asset(kode, jenis, merk, nip, subdir, tanggal, nilaiRupiah, kond, stat);
+                if (noAset != null) assetToSave.setNoAset(noAset);
+                assetToSave.setDipakai(dipakai);
+            } else {
+                editableAsset.setKodeAset(kode);
+                editableAsset.setNoAset(noAset);
+                editableAsset.setJenisAset(jenis);
+                editableAsset.setMerkBarang(merk);
+                editableAsset.setKeterangan(nip);
+                editableAsset.setSubdir(subdir);
+                editableAsset.setTanggalPerolehan(tanggal);
+                editableAsset.setNilaiRupiah(nilaiRupiah);
+                editableAsset.setKondisi(kond);
+                editableAsset.setStatus(stat);
+                editableAsset.setDipakai(dipakai);
+                assetToSave = editableAsset;
+            }
+            
+            // === API CALL ON BACKGROUND THREAD ===
+            MainShellView.showLoading(isNew ? "Menambahkan aset..." : "Memperbarui aset...");
+            
+            javafx.concurrent.Task<Boolean> saveTask = new javafx.concurrent.Task<>() {
+                @Override
+                protected Boolean call() {
+                    if (isNew) {
+                        return dataService.addAsset(assetToSave);
+                    } else {
+                        return dataService.updateAsset(assetToSave);
+                    }
+                }
+            };
+            
+            saveTask.setOnSucceeded(ev -> {
+                MainShellView.hideLoading();
+                if (saveTask.getValue()) {
+                    MainShellView.showSuccess(isNew ? "Aset berhasil ditambahkan!" : "Aset berhasil diperbarui!");
+                    refreshTable();
+                    MainShellView.invalidateDataViews();
+                    modalStage.close();
+                } else {
+                    MainShellView.showError(isNew ? "Gagal menambah aset! Kemungkinan duplikat Kode+No Aset." : "Gagal memperbarui aset!");
+                }
+            });
+            
+            saveTask.setOnFailed(ev -> {
+                MainShellView.hideLoading();
+                MainShellView.showError("Gagal menyimpan aset: " + saveTask.getException().getMessage());
+            });
+            
+            new Thread(saveTask).start();
         });
 
         buttonBox.getChildren().addAll(cancelButton, saveButton);
@@ -1023,17 +1113,17 @@ public class AssetManagementView extends VBox {
                               String rupiahStr, String kondisi, String status, String dipakai) {
         // Validation
         if (kodeAset == null || kodeAset.trim().isEmpty() || kodeAset.length() != 10 || !kodeAset.matches("\\d+")) {
-            showAlert("Kode Aset harus terdiri dari 10 digit angka!");
+            MainShellView.showWarning("Kode Aset harus terdiri dari 10 digit angka!");
             return false;
         }
         
         if (jenisAset == null) {
-            showAlert("Pilih Jenis Aset!");
+            MainShellView.showWarning("Pilih Jenis Aset!");
             return false;
         }
 
         if (rupiahStr == null || rupiahStr.trim().isEmpty()) {
-            showAlert("Masukkan nilai rupiah aset!");
+            MainShellView.showWarning("Masukkan nilai rupiah aset!");
             return false;
         }
 
@@ -1042,14 +1132,26 @@ public class AssetManagementView extends VBox {
             try {
                 noAset = Integer.parseInt(noAsetStr.trim());
             } catch (NumberFormatException e) {
-                showAlert("No Aset harus berupa angka!");
+                MainShellView.showWarning("No Aset harus berupa angka!");
                 return false;
             }
         }
         
         try {
-            // Remove non-numeric chars for currency parsing
-            String cleanRupiah = rupiahStr.replaceAll("[^\\d]", "");
+            // Remove decimal part first (e.g., ".00" at the end), then remove non-numeric chars
+            String cleanRupiah = rupiahStr;
+            // If contains decimal point, take only the integer part
+            if (cleanRupiah.contains(".")) {
+                cleanRupiah = cleanRupiah.substring(0, cleanRupiah.indexOf("."));
+            }
+            if (cleanRupiah.contains(",")) {
+                cleanRupiah = cleanRupiah.substring(0, cleanRupiah.indexOf(","));
+            }
+            // Now remove any remaining non-digit characters (e.g., currency symbols, spaces)
+            cleanRupiah = cleanRupiah.replaceAll("[^\\d]", "");
+            if (cleanRupiah.isEmpty()) {
+                cleanRupiah = "0";
+            }
             BigDecimal nilaiRupiah = new BigDecimal(cleanRupiah);
             
             if (editableAsset == null) {
@@ -1061,11 +1163,12 @@ public class AssetManagementView extends VBox {
                 asset.setDipakai(dipakai); // Set Dipakai
                 
                 if (dataService.addAsset(asset)) {
-                    showSuccessAlert("Aset berhasil ditambahkan!");
+                    MainShellView.showSuccess("Aset berhasil ditambahkan!");
                     refreshTable();
+                    MainShellView.invalidateDataViews(); // Refresh Dashboard, Recapitulation, Employee
                     return true;
                 } else {
-                    showAlert("Gagal menambah aset! Kemungkinan duplikat Kode+No Aset.");
+                    MainShellView.showError("Gagal menambah aset! Kemungkinan duplikat Kode+No Aset.");
                     return false;
                 }
             } else {
@@ -1083,17 +1186,19 @@ public class AssetManagementView extends VBox {
                 editableAsset.setDipakai(dipakai); // Set Dipakai
                 
                 if (dataService.updateAsset(editableAsset)) {
-                    showSuccessAlert("Aset berhasil diperbarui!");
+                    MainShellView.showSuccess("Aset berhasil diperbarui!");
                     refreshTable();
+                    MainShellView.invalidateDataViews(); // Refresh Dashboard, Recapitulation, Employee
                     return true;
                 } else {
-                    showAlert("Gagal memperbarui aset!");
+                    MainShellView.showError("Gagal memperbarui aset!");
                     return false;
                 }
             }
         } catch (Exception e) {
             e.printStackTrace();
-            showAlert("Gagal menyimpan aset: " + e.getMessage());
+            e.printStackTrace();
+            MainShellView.showError("Gagal menyimpan aset: " + e.getMessage());
         }
         
         return false;
@@ -1101,27 +1206,46 @@ public class AssetManagementView extends VBox {
 
 
     public void refreshTable() {
-        javafx.concurrent.Task<List<Asset>> task = new javafx.concurrent.Task<>() {
+        javafx.concurrent.Task<Object[]> task = new javafx.concurrent.Task<>() {
             @Override
-            protected List<Asset> call() throws Exception {
+            protected Object[] call() throws Exception {
                 // Fetch data (will use cache if valid)
-                return dataService.getAssets();
+                List<Asset> assets = dataService.getAssets();
+                List<Employee> employees = dataService.getEmployees();
+                
+                // Build map
+                java.util.Map<String, String> map = new java.util.HashMap<>();
+                for (Employee emp : employees) {
+                    map.put(emp.getNip(), emp.getNamaLengkap());
+                }
+                
+                return new Object[]{assets, map};
             }
         };
         
         task.setOnSucceeded(e -> {
-            paginatedTable.setItems(task.getValue());
+            Object[] result = task.getValue();
+            List<Asset> assets = (List<Asset>) result[0];
+            java.util.Map<String, String> map = (java.util.Map<String, String>) result[1];
+            
+            // Update local map
+            nipToNameMap.clear();
+            nipToNameMap.putAll(map);
+            
+            paginatedTable.setItems(assets);
+            // Force refresh columns to apply new map?
+            paginatedTable.getTable().refresh();
         });
         
         task.setOnFailed(e -> {
             e.getSource().getException().printStackTrace();
-            showAlert("Gagal memuat data aset.");
+            MainShellView.showError("Gagal memuat data aset.");
         });
         
         new Thread(task).start();
     }
 
-    private void filterTable(String searchText, String jenisFilter, String statusFilter, String kesiapanLelangFilter) {
+    private void filterTable(String searchText, String jenisFilter, String statusFilter) {
         List<Asset> allAssets = dataService.getAssets();
         
         List<Asset> filtered = allAssets.stream()
@@ -1153,15 +1277,6 @@ public class AssetManagementView extends VBox {
                     }
                 }
                 
-                // Kesiapan Lelang filter - hanya untuk TIM_MANAJEMEN_ASET (case insensitive)
-                if ("TIM_MANAJEMEN_ASET".equals(com.siata.client.session.LoginSession.getRole())) {
-                    if (kesiapanLelangFilter != null && !kesiapanLelangFilter.equals("Semua Kesiapan")) {
-                        if (!asset.getKesiapanLelang().equalsIgnoreCase(kesiapanLelangFilter)) {
-                            return false;
-                        }
-                    }
-                }
-                
                 return true;
             })
             .toList();
@@ -1170,6 +1285,24 @@ public class AssetManagementView extends VBox {
     }
 
     private boolean confirmDelete(Asset asset) {
+        // Validate: only non-active assets can be moved to deletion list
+        String status = asset.getStatus();
+        boolean isActive = status == null || 
+                          "AKTIF".equalsIgnoreCase(status.replace(" ", "")) ||
+                          "AKTIF".equalsIgnoreCase(status);
+        
+        if (isActive) {
+            Alert warningAlert = new Alert(Alert.AlertType.WARNING);
+            warningAlert.setTitle("Tidak Dapat Menghapus");
+            warningAlert.setHeaderText("Aset Masih Aktif");
+            warningAlert.setContentText(
+                "Aset \"" + asset.getNamaAset() + "\" tidak dapat dipindahkan ke penghapusan karena masih berstatus AKTIF.\n\n" +
+                "Ubah status aset menjadi NONAKTIF terlebih dahulu sebelum memindahkan ke daftar penghapusan."
+            );
+            warningAlert.showAndWait();
+            return false;
+        }
+        
         Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
         alert.setTitle("Pindahkan ke Penghapusan Aset");
         alert.setHeaderText("Pindahkan Aset ke Daftar Penghapusan");
@@ -1181,13 +1314,7 @@ public class AssetManagementView extends VBox {
         return alert.showAndWait().orElse(ButtonType.CANCEL) == ButtonType.OK;
     }
 
-    private void showAlert(String message) {
-        Alert alert = new Alert(Alert.AlertType.WARNING);
-        alert.setTitle("Peringatan");
-        alert.setHeaderText(null);
-        alert.setContentText(message);
-        alert.showAndWait();
-    }
+
 
     private void cleanDuplicates() {
         Alert confirmAlert = new Alert(Alert.AlertType.CONFIRMATION);
@@ -1252,6 +1379,7 @@ public class AssetManagementView extends VBox {
     // ==================== IMPORT MODAL ====================
     private void showImportModal() {
         Stage modalStage = new Stage();
+        modalStage.initOwner(com.siata.client.MainApplication.getPrimaryStage());
         modalStage.initModality(Modality.APPLICATION_MODAL);
         modalStage.initStyle(StageStyle.TRANSPARENT);
         modalStage.setTitle("Import Data Aset");
@@ -1436,7 +1564,7 @@ public class AssetManagementView extends VBox {
                         previewData.add(new ImportRow(a));
                     }
                 } catch (Exception ex) {
-                    showAlert("Gagal membaca file Excel: " + ex.getMessage());
+                    MainShellView.showError("Gagal membaca file Excel: " + ex.getMessage());
                 }
             }
         });
@@ -1497,7 +1625,7 @@ public class AssetManagementView extends VBox {
             }
             resultData.removeAll(toRemove);
             updateAssetResultStatuses(resultData);
-            showSuccessAlert("Berhasil menghapus " + toRemove.size() + " data duplikat.");
+            MainShellView.showSuccess("Berhasil menghapus " + toRemove.size() + " data duplikat.");
         });
         
         resultButtons.getChildren().addAll(removeDuplicatesBtn);
@@ -1525,14 +1653,14 @@ public class AssetManagementView extends VBox {
                 .toList();
             
             if (newItems.isEmpty() && existingItems.isEmpty()) {
-                showAlert("Tidak ada data untuk diproses.");
+                MainShellView.showWarning("Tidak ada data untuk diproses.");
                 return;
             }
             
             // Check for duplicates (within import, not existing in DB)
             long dupCount = resultData.stream().filter(r -> "Duplikat".equals(r.status)).count();
             if (dupCount > 0) {
-                showAlert("Masih ada " + dupCount + " data duplikat dalam import. Hapus duplikat terlebih dahulu.");
+                MainShellView.showWarning("Masih ada " + dupCount + " data duplikat dalam import. Hapus duplikat terlebih dahulu.");
                 return;
             }
             
@@ -1553,71 +1681,160 @@ public class AssetManagementView extends VBox {
                 }
             }
             
-            int addSuccess = 0;
-            int addFail = 0;
-            int updateSuccess = 0;
-            int updateFail = 0;
+            // Capture variables for background thread
+            List<ImportRow> fNewItems = new ArrayList<>(newItems);
+            List<ImportRow> fExistingItems = new ArrayList<>(existingItems);
             
-            // Process NEW items (add) via BATCH
-            if (!newItems.isEmpty()) {
-                List<Asset> assetsToInsert = newItems.stream().map(r -> r.asset).collect(Collectors.toList());
-                try {
-                    // Use batch add for performance
-                    int count = dataService.batchAddAssets(assetsToInsert);
-                    addSuccess = count;
-                    addFail = assetsToInsert.size() - count;
-                } catch (Exception ex) {
-                    addFail += assetsToInsert.size();
-                    System.err.println("Error batch adding assets: " + ex.getMessage());
-                }
-            }
+            MainShellView.showLoading("Mengimport dan memproses data...");
             
-            // Process EXISTING items (update)
-            for (ImportRow row : existingItems) {
-                try {
-                    // Find matching asset by kodeAset + noAset
-                    Asset existingAsset = findExistingAsset(row.asset.getKodeAset(), row.asset.getNoAset());
-                    if (existingAsset != null) {
-                        // Copy ID to enable update
-                        row.asset.setIdAset(existingAsset.getIdAset());
-                        boolean result = dataService.updateAsset(row.asset);
-                        if (result) {
-                            updateSuccess++;
-                        } else {
-                            updateFail++;
+            Task<String> importTask = new Task<>() {
+                @Override
+                protected String call() throws Exception {
+                    int addSuccess = 0;
+                    int addFail = 0;
+                    int updateSuccess = 0;
+                    int updateFail = 0;
+                    
+                    // 1. Fetch valid employees for validation
+                    java.util.Map<String, String> validNips = dataService.getAllEmployeeNipNameMap();
+                    
+                    // 1b. Prepare for Auto-Generate No Aset
+                    List<Asset> allDbAssets = dataService.getAllAssetsIncludingDeleted(true);
+                    java.util.Map<String, Integer> maxNoAsetMap = new java.util.HashMap<>();
+                    for (Asset a : allDbAssets) {
+                        if (a.getKodeAset() != null && a.getNoAset() != null) {
+                            maxNoAsetMap.merge(a.getKodeAset(), a.getNoAset(), Integer::max);
                         }
-                    } else {
-                        // Fallback: try to add if not found (shouldn't happen)
-                        boolean result = dataService.addAsset(row.asset);
-                        if (result) addSuccess++; else addFail++;
                     }
-                } catch (Exception ex) {
-                    updateFail++;
-                    System.err.println("Error updating asset: " + ex.getMessage());
+
+                    // 2. Validate NEW items & Generate No Aset if needed
+                    List<Asset> assetsToInsert = new ArrayList<>();
+                    StringBuilder validationErrors = new StringBuilder();
+                    
+                    for (ImportRow row : fNewItems) {
+                        // Auto-Generate No Aset if empty/0
+                        if (row.asset.getNoAset() == null || row.asset.getNoAset() == 0) {
+                            String kode = row.asset.getKodeAset();
+                            if (kode != null) {
+                                int next = maxNoAsetMap.getOrDefault(kode, 0) + 1;
+                                row.asset.setNoAset(next);
+                                maxNoAsetMap.put(kode, next);
+                            }
+                        } else {
+                            // If explicit No Aset provided, update map to prevent collisions
+                            String kode = row.asset.getKodeAset();
+                            if (kode != null) {
+                                maxNoAsetMap.merge(kode, row.asset.getNoAset(), Integer::max);
+                            }
+                        }
+
+                        String nip = row.asset.getKeterangan();
+                        // If NIP is provided (not empty, not "0", not "-")
+                        if (nip != null && !nip.trim().isEmpty() && !"0".equals(nip.trim()) && !"-".equals(nip.trim())) {
+                            if (!validNips.containsKey(nip.trim())) {
+                                validationErrors.append("• Baru: ").append(row.asset.getKodeAset())
+                                    .append(" - NIP ").append(nip).append(" tidak ditemukan\n");
+                                addFail++;
+                                continue; // Skip this item
+                            }
+                        }
+                        assetsToInsert.add(row.asset);
+                    }
+                    
+                    // 3. Process Valid NEW items
+                    if (!assetsToInsert.isEmpty()) {
+                        try {
+                            int count = dataService.batchAddAssets(assetsToInsert);
+                            addSuccess = count;
+                            addFail += (assetsToInsert.size() - count);
+                        } catch (Exception ex) {
+                            addFail += assetsToInsert.size();
+                            System.err.println("Error batch adding assets: " + ex.getMessage());
+                        }
+                    }
+                    
+                    // 4. Process EXISTING items (Update)
+                    for (ImportRow row : fExistingItems) {
+                        try {
+                            // Validate NIP first
+                            String nip = row.asset.getKeterangan();
+                            if (nip != null && !nip.trim().isEmpty() && !"0".equals(nip.trim()) && !"-".equals(nip.trim())) {
+                                if (!validNips.containsKey(nip.trim())) {
+                                    validationErrors.append("• Update: ").append(row.asset.getKodeAset())
+                                        .append(" - NIP ").append(nip).append(" tidak ditemukan\n");
+                                    updateFail++;
+                                    continue; // Skip update
+                                }
+                            }
+                            
+                            // Proceed with update logic
+                            Asset existingAsset = findExistingAsset(row.asset.getKodeAset(), row.asset.getNoAset());
+                            if (existingAsset != null) {
+                                row.asset.setIdAset(existingAsset.getIdAset());
+                                boolean result = dataService.updateAsset(row.asset);
+                                if (result) updateSuccess++; else updateFail++;
+                            } else {
+                                boolean result = dataService.addAsset(row.asset);
+                                if (result) addSuccess++; else addFail++;
+                            }
+                        } catch (Exception ex) {
+                            updateFail++;
+                            System.err.println("Error updating asset: " + ex.getMessage());
+                        }
+                    }
+                    
+                    // 5. Build Result Summary
+                    StringBuilder summary = new StringBuilder("Import selesai!\n\n");
+                    if (addSuccess > 0 || addFail > 0) {
+                        summary.append("TAMBAH BARU:\n");
+                        summary.append("✓ Berhasil: ").append(addSuccess).append("\n");
+                        if (addFail > 0) summary.append("✗ Gagal: ").append(addFail).append("\n");
+                    }
+                    if (updateSuccess > 0 || updateFail > 0) {
+                        summary.append("\nUPDATE EXISTING:\n");
+                        summary.append("✓ Berhasil: ").append(updateSuccess).append("\n");
+                        if (updateFail > 0) summary.append("✗ Gagal: ").append(updateFail).append("\n");
+                    }
+                    
+                    if (validationErrors.length() > 0) {
+                        summary.append("\nDETAIL KEGAGALAN (Pemegang Belum Tercatat):\n");
+                        // Limit logs if too many
+                        if (validationErrors.length() > 500) {
+                             summary.append(validationErrors.substring(0, 500)).append("\n...dan lainnya.");
+                        } else {
+                             summary.append(validationErrors);
+                        }
+                    }
+                    
+                    return summary.toString();
                 }
-            }
+            };
             
-            // Show result summary
-            StringBuilder summary = new StringBuilder("Import selesai!\n\n");
-            if (addSuccess > 0 || addFail > 0) {
-                summary.append("TAMBAH BARU:\n");
-                summary.append("✓ Berhasil: ").append(addSuccess).append("\n");
-                if (addFail > 0) summary.append("✗ Gagal: ").append(addFail).append("\n");
-            }
-            if (updateSuccess > 0 || updateFail > 0) {
-                summary.append("\nUPDATE EXISTING:\n");
-                summary.append("✓ Berhasil: ").append(updateSuccess).append("\n");
-                if (updateFail > 0) summary.append("✗ Gagal: ").append(updateFail).append("\n");
-            }
+            importTask.setOnSucceeded(ev -> {
+                MainShellView.hideLoading();
+                String summary = importTask.getValue();
+                
+                // Determine if we show Success or Warning based on failures
+                // Logic based on string content is brittle, so maybe just show Success for now as previous logic did
+                // Or check the summary string? A bit hacky but works for now to match logic
+                if (summary.contains("✗ Gagal")) { // If failure symbol exists
+                     MainShellView.showWarning(summary);
+                } else {
+                     MainShellView.showSuccess(summary);
+                }
+                
+                modalStage.close();
+                refreshTable();
+                MainShellView.invalidateDataViews(); // Refresh Dashboard, Recapitulation, Employee
+            });
             
-            if (addFail > 0 || updateFail > 0) {
-                showAlert(summary.toString());
-            } else {
-                showSuccessAlert(summary.toString());
-            }
+            importTask.setOnFailed(ev -> {
+                MainShellView.hideLoading();
+                MainShellView.showError("Gagal mengimport data: " + ev.getSource().getException().getMessage());
+                ev.getSource().getException().printStackTrace();
+            });
             
-            modalStage.close();
-            refreshTable();
+            new Thread(importTask).start();
         });
         
         footerBox.getChildren().addAll(cancelButton, updateButton);
@@ -1688,9 +1905,9 @@ public class AssetManagementView extends VBox {
         if (file != null) {
             try {
                 AssetExcelHelper.createTemplate(file);
-                showSuccessAlert("Template berhasil disimpan di: " + file.getAbsolutePath());
+                MainShellView.showSuccess("Template berhasil disimpan di: " + file.getAbsolutePath());
             } catch (Exception e) {
-                showAlert("Gagal menyimpan template: " + e.getMessage());
+                MainShellView.showError("Gagal menyimpan template: " + e.getMessage());
             }
         }
     }
@@ -1707,9 +1924,9 @@ public class AssetManagementView extends VBox {
             try {
                 List<Asset> assets = dataService.getAssets();
                 AssetExcelHelper.exportToExcel(assets, file);
-                showSuccessAlert("Data berhasil diekspor ke: " + file.getAbsolutePath());
+                MainShellView.showSuccess("Data berhasil diekspor ke: " + file.getAbsolutePath());
             } catch (Exception e) {
-                showAlert("Gagal mengekspor data: " + e.getMessage());
+                MainShellView.showError("Gagal mengekspor data: " + e.getMessage());
             }
         }
     }
@@ -1718,14 +1935,15 @@ public class AssetManagementView extends VBox {
         ObservableList<Asset> selectedItems = paginatedTable.getTable().getSelectionModel().getSelectedItems();
         
         if (selectedItems == null || selectedItems.isEmpty()) {
-            showAlert("Pilih aset yang akan dihapus terlebih dahulu.\n\nTip: Gunakan Ctrl+Klik untuk memilih beberapa aset.");
+            MainShellView.showWarning("Pilih aset yang akan dihapus terlebih dahulu.\n\nTip: Gunakan Ctrl+Klik untuk memilih beberapa aset.");
             return;
         }
-        
+
+        // Force Delete allows deleting ALL selected assets regardless of status
         Alert confirmAlert = new Alert(Alert.AlertType.CONFIRMATION);
-        confirmAlert.setTitle("Konfirmasi Hapus");
+        confirmAlert.setTitle("Konfirmasi Force Delete");
         confirmAlert.setHeaderText("Hapus " + selectedItems.size() + " Aset");
-        confirmAlert.setContentText("Apakah Anda yakin ingin menghapus " + selectedItems.size() + " aset yang dipilih?\n\nAksi ini tidak dapat dibatalkan.");
+        confirmAlert.setContentText("Apakah Anda yakin ingin menghapus " + selectedItems.size() + " aset yang dipilih?\n\nAksi ini akan menghapus aset tanpa validasi status Non Aktif.\nAksi ini tidak dapat dibatalkan.");
         
         if (confirmAlert.showAndWait().orElse(ButtonType.CANCEL) != ButtonType.OK) {
             return;
@@ -1734,6 +1952,9 @@ public class AssetManagementView extends VBox {
         List<Long> idList = selectedItems.stream()
             .map(Asset::getIdAset)
             .collect(Collectors.toList());
+        
+        // Show loading overlay
+        MainShellView.showLoading("Menghapus " + idList.size() + " aset...");
         
         javafx.concurrent.Task<Integer> deleteBatchTask = new javafx.concurrent.Task<>() {
             @Override
@@ -1744,30 +1965,26 @@ public class AssetManagementView extends VBox {
         };
 
         deleteBatchTask.setOnSucceeded(ev -> {
+            MainShellView.hideLoading();
             int result = deleteBatchTask.getValue();
             if (result >= 0) {
-                showSuccessAlert("Berhasil menghapus " + result + " aset.");
+                MainShellView.showSuccess("Berhasil menghapus " + result + " aset.");
                 refreshTable(); // Refresh UI with fresh data
             } else {
-                showAlert("Gagal menghapus aset. Silakan coba lagi.");
+                MainShellView.showError("Gagal menghapus aset. Silakan coba lagi.");
             }
         });
 
         deleteBatchTask.setOnFailed(ev -> {
+            MainShellView.hideLoading();
             ev.getSource().getException().printStackTrace();
-            showAlert("Terjadi kesalahan saat menghapus aset.");
+            MainShellView.showError("Terjadi kesalahan saat menghapus aset.");
         });
 
         new Thread(deleteBatchTask).start();
     }
 
-    private void showSuccessAlert(String message) {
-        Alert alert = new Alert(Alert.AlertType.INFORMATION);
-        alert.setTitle("Berhasil");
-        alert.setHeaderText(null);
-        alert.setContentText(message);
-        alert.showAndWait();
-    }
+
 
     private void navigateToEmployee(String nip) {
         // Find parent MainShellView and navigate to Employee Management
@@ -1781,8 +1998,88 @@ public class AssetManagementView extends VBox {
             mainShell.navigateToPageWithSearch(MainPage.EMPLOYEE_MANAGEMENT, nip);
         } else {
             // Fallback: just show info with employee NIP
-            showAlert("Pegawai dengan NIP: " + nip + "\n\nNavigasi ke Manajemen Pegawai untuk melihat detail.");
+            MainShellView.showInfo("Pegawai dengan NIP: " + nip + "\n\nNavigasi ke Manajemen Pegawai untuk melihat detail.");
         }
+    }
+
+    private void showAssetDetail(Asset asset) {
+        Stage modalStage = new Stage();
+        modalStage.initOwner(com.siata.client.MainApplication.getPrimaryStage());
+        modalStage.initModality(Modality.APPLICATION_MODAL);
+        modalStage.initStyle(StageStyle.TRANSPARENT);
+        modalStage.setTitle("Detail Aset");
+
+        VBox modalContent = new VBox(0);
+        modalContent.setPrefWidth(600);
+        modalContent.setMaxHeight(700);
+        modalContent.getStyleClass().add("modal-content");
+
+        // Header
+        HBox headerBox = new HBox();
+        headerBox.setAlignment(Pos.CENTER_LEFT);
+        headerBox.setPadding(new Insets(24, 24, 16, 24));
+        
+        VBox titleBox = new VBox(4);
+        Label title = new Label("Detail Aset");
+        title.getStyleClass().add("modal-title");
+        Label subtitle = new Label("Informasi lengkap aset");
+        subtitle.getStyleClass().add("modal-subtitle");
+        titleBox.getChildren().addAll(title, subtitle);
+        
+        Region spacer = new Region();
+        HBox.setHgrow(spacer, Priority.ALWAYS);
+        
+        Button closeButton = new Button("✕");
+        closeButton.getStyleClass().add("modal-close-button");
+        closeButton.setOnAction(e -> modalStage.close());
+        
+        headerBox.getChildren().addAll(titleBox, spacer, closeButton);
+
+        // Content
+        GridPane grid = new GridPane();
+        grid.setHgap(16);
+        grid.setVgap(16);
+        grid.setPadding(new Insets(0, 24, 24, 24));
+
+        int row = 0;
+        addDetailRow(grid, "Nama Aset", asset.getNamaAset(), row++);
+        addDetailRow(grid, "Kode Aset", asset.getKodeAset(), row++);
+        addDetailRow(grid, "No Aset", asset.getNoAset() != null ? String.valueOf(asset.getNoAset()) : "-", row++);
+        addDetailRow(grid, "Jenis Aset", asset.getJenisAset(), row++);
+        addDetailRow(grid, "Merk Barang", asset.getMerkBarang(), row++);
+        addDetailRow(grid, "Tahun Perolehan", asset.getTanggalPerolehan() != null ? asset.getTanggalPerolehan().toString() : "-", row++);
+        addDetailRow(grid, "Nilai Rupiah", currencyFormat.format(asset.getNilaiRupiah()), row++);
+        addDetailRow(grid, "Pemegang", asset.getKeterangan(), row++);
+        addDetailRow(grid, "Subdirektorat", asset.getSubdir(), row++);
+        addDetailRow(grid, "Kondisi", asset.getKondisi(), row++);
+        addDetailRow(grid, "Status", asset.getStatus(), row++);
+        
+        addDetailRow(grid, "Tua", asset.getTuaString(), row++);
+
+        modalContent.getChildren().addAll(headerBox, grid);
+
+        Scene scene = new Scene(modalContent);
+        scene.setFill(null);
+        scene.getStylesheets().add(getClass().getResource("/styles.css").toExternalForm());
+        
+        modalStage.setScene(scene);
+        
+        // Animation
+        com.siata.client.util.AnimationUtils.setupModalAnimation(modalStage, modalContent);
+        
+        modalStage.show();
+    }
+
+    private void addDetailRow(GridPane grid, String label, String value, int row) {
+        Label lbl = new Label(label);
+        lbl.setStyle("-fx-font-weight: bold; -fx-text-fill: #64748b;");
+        
+        Label val = new Label(value != null ? value : "-");
+        val.setStyle("-fx-text-fill: #1e293b;");
+        val.setWrapText(true);
+        
+        grid.add(lbl, 0, row);
+        grid.add(val, 1, row);
     }
 }
 

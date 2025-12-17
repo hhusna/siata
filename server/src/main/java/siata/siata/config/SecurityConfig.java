@@ -39,12 +39,14 @@ public class SecurityConfig {
                 .csrf(csrf -> csrf.disable()) // Nonaktifkan CSRF
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)) // Gunakan stateless session
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/api/auth/**").permitAll() // Izinkan endpoint login & register
+                        .requestMatchers("/api/auth/login", "/api/auth/register").permitAll() // Izinkan endpoint login & register
+                        .requestMatchers("/api/auth/pegawai").authenticated() // Endpoint ini butuh user yg login
                         .requestMatchers("/public/**").permitAll() // Izinkan endpoint publik lainnya
                         .requestMatchers("/swagger-ui/**", "/v3/api-docs/**").permitAll()
                         // Izinkan endpoint baru untuk dashboard dan laporan
                         .requestMatchers("/api/dashboard/**").permitAll() // Sesuaikan role jika perlu
                         .requestMatchers("/api/laporan/**").permitAll() // Sesuaikan role jika perlu
+                        .requestMatchers("/api/data-version").permitAll() // Polling untuk deteksi perubahan data
 
                         .anyRequest().authenticated() // Wajibkan autentikasi untuk lainnya
                 )

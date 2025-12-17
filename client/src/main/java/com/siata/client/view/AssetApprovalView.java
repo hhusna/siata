@@ -67,9 +67,21 @@ public class AssetApprovalView extends VBox {
                 List<AssetRequest> permohonan = dataService.getPermohonanAset();
                 List<AssetRequest> pengajuan = dataService.getPengajuanAset();
                 
+                String currentUserRole = LoginSession.getRole();
+                boolean isTMA = "TIM_MANAJEMEN_ASET".equals(currentUserRole);
+
+                // Filter logic based on hierarchy
+                List<AssetRequest> filteredPermohonan = permohonan.stream()
+                    .filter(req -> isVisibleToRole(req, currentUserRole, isTMA))
+                    .collect(java.util.stream.Collectors.toList());
+
+                List<AssetRequest> filteredPengajuan = pengajuan.stream()
+                    .filter(req -> isVisibleToRole(req, currentUserRole, isTMA))
+                    .collect(java.util.stream.Collectors.toList());
+
                 javafx.application.Platform.runLater(() -> {
-                    permohonanList.setAll(permohonan);
-                    pengajuanList.setAll(pengajuan);
+                    permohonanList.setAll(filteredPermohonan);
+                    pengajuanList.setAll(filteredPengajuan);
                     
                     getChildren().clear();
                     buildView();
@@ -125,6 +137,7 @@ public class AssetApprovalView extends VBox {
 
         TableColumn<AssetRequest, String> jenisCol = new TableColumn<>("Jenis Aset");
         jenisCol.setCellValueFactory(new PropertyValueFactory<>("jenisAset"));
+        jenisCol.setCellFactory(com.siata.client.util.AssetTypeUiUtils.createAssetTypeCellFactory());
 
         TableColumn<AssetRequest, String> jumlahCol = new TableColumn<>("Jumlah");
         jumlahCol.setCellValueFactory(cellData ->
@@ -158,11 +171,13 @@ public class AssetApprovalView extends VBox {
     }
 
     private void showNotification(String title, String message) {
-        javafx.scene.control.Alert alert = new javafx.scene.control.Alert(javafx.scene.control.Alert.AlertType.INFORMATION);
-        alert.setTitle(title);
-        alert.setHeaderText(null);
-        alert.setContentText(message);
-        alert.show();
+        if ("Sukses".equals(title)) {
+            MainShellView.showSuccess(message);
+        } else if ("Error".equals(title)) {
+            MainShellView.showError(message);
+        } else {
+            MainShellView.showInfo(message);
+        }
     }
 
     private TableCell<AssetRequest, String> createStatusCell() {
@@ -259,36 +274,42 @@ public class AssetApprovalView extends VBox {
                 } else if ("DIREKTUR".equals(currentUserRole)) {
                     roleToCheck = "Direktur";
                 }
+                
+                // TIM_MANAJEMEN_ASET can act on behalf of all roles
+                boolean isTMA = "TIM_MANAJEMEN_ASET".equals(currentUserRole);
 
                 // Cek apakah user bisa melakukan aksi berdasarkan status workflow
                 if ("Pending".equalsIgnoreCase(status)) {
                     // Pending -> visible to PPBJ
-                    if ("PPBJ".equals(currentUserRole)) {
+                    if ("PPBJ".equals(currentUserRole) || isTMA) {
                         canAct = true;
                     }
                 } else if ("Disetujui PPBJ".equalsIgnoreCase(status) || status.contains("Disetujui PPBJ")) {
-                    // Disetujui PPBJ -> visible to PPK
-                    if ("PPK".equals(currentUserRole)) {
+                    // Disetujui PPBJ -> PPK/TMA can approve, PPBJ can view/edit
+                    if ("PPK".equals(currentUserRole) || isTMA) {
                         canAct = true;
-                    } else if ("PPBJ".equals(currentUserRole)) {
-                        // PPBJ bisa edit keputusannya sendiri jika belum lanjut (logic backend handle lock)
-                         // For simplicity UI, allow checking. Backend validation is mostly implied.
-                         isEditable = true;
+                    }
+                    if ("PPBJ".equals(currentUserRole)) {
+                        isEditable = true;
                     }
                 } else if ("Disetujui PPK".equalsIgnoreCase(status) || status.contains("Disetujui PPK")) {
-                    // Disetujui PPK -> visible to DIREKTUR
-                    if ("DIREKTUR".equals(currentUserRole)) {
+                    // Disetujui PPK -> DIREKTUR/TMA can approve, PPBJ and PPK can view/edit
+                    if ("DIREKTUR".equals(currentUserRole) || isTMA) {
                         canAct = true;
-                    } else if ("PPK".equals(currentUserRole)) {
+                    }
+                    if ("PPBJ".equals(currentUserRole) || "PPK".equals(currentUserRole)) {
                         isEditable = true;
                     }
                 } else if ("Disetujui Direktur".equalsIgnoreCase(status) || status.contains("Disetujui Direktur")) {
-                    if ("DIREKTUR".equals(currentUserRole)) {
+                    // Fully approved - PPBJ, PPK, and DIREKTUR can view/edit
+                    if ("PPBJ".equals(currentUserRole) || "PPK".equals(currentUserRole) || 
+                        "DIREKTUR".equals(currentUserRole) || isTMA) {
                         isEditable = true;
                     }
                 } else if (status.startsWith("Ditolak")) {
-                   // Jika ditolak, role yang menolak bisa edit
-                   if (status.contains(roleToCheck)) {
+                   // Jika ditolak, semua role yang terlibat bisa view/edit
+                   if ("PPBJ".equals(currentUserRole) || "PPK".equals(currentUserRole) || 
+                       "DIREKTUR".equals(currentUserRole) || isTMA) {
                        isEditable = true;
                    }
                 }
@@ -297,27 +318,26 @@ public class AssetApprovalView extends VBox {
                 // Kita anggap logic server filter sudah memastikan user hanya melihat yang relevan.
                 // Jadi jika request muncul di list, user "mungkin" bisa bertindak.
                 
-                // Simplifikasi: Karena getAllByRole sudah memfilter, maka:
-                // Tombol selalu muncul, tapi teksnya mungkin beda ("Persetujuan" vs "Edit")
-                // Atau disable jika locked.
+                // Determine button text and style based on action type
+                Button btnAction;
+                if (canAct) {
+                    // User can make new approval decision
+                    btnAction = new Button("Persetujuan");
+                    btnAction.setStyle("-fx-background-color: #3b82f6; -fx-text-fill: white; -fx-font-weight: bold;");
+                } else if (isEditable) {
+                    // User can view/edit existing approval
+                    btnAction = new Button("✏ Edit");
+                    btnAction.setStyle("-fx-background-color: #f59e0b; -fx-text-fill: white; -fx-font-weight: bold;");
+                } else {
+                    // User can only view (no action available)
+                    btnAction = new Button("👁 Lihat");
+                    btnAction.setStyle("-fx-background-color: #6b7280; -fx-text-fill: white; -fx-font-weight: bold;");
+                }
                 
-                // Kita gunakan logic "canAct" atau "isEditable" untuk enable button.
-                // Namun, user ingin "ganti tombol ... jadi tombol persetujuan".
+                btnAction.getStyleClass().add("action-button-approve");
+                btnAction.setOnAction(e -> showApprovalDialog(request));
                 
-                Button btnPersetujuan = new Button("Persetujuan");
-                btnPersetujuan.getStyleClass().add("action-button-approve"); // Reuse style green/blue
-                btnPersetujuan.setStyle("-fx-background-color: #3b82f6; -fx-text-fill: white; -fx-font-weight: bold;");
-                
-                // Icon (optional)
-                // btnPersetujuan.setGraphic(new Label("📝"));
-
-                btnPersetujuan.setOnAction(e -> showApprovalDialog(request));
-                
-                // Disable jika user tidak punya hak akses (misal admin lhat history)
-                // Untuk sekarang, kita asumsi list sudah difilter.
-                // Tapi untuk safety, kita disable jika status sudah final dan bukan user ybs.
-                
-                setGraphic(btnPersetujuan);
+                setGraphic(btnAction);
             }
         });
         return col;
@@ -325,6 +345,7 @@ public class AssetApprovalView extends VBox {
 
     private void showApprovalDialog(AssetRequest request) {
         Stage modalStage = new Stage();
+        modalStage.initOwner(com.siata.client.MainApplication.getPrimaryStage());
         modalStage.initModality(Modality.APPLICATION_MODAL);
         modalStage.initStyle(StageStyle.TRANSPARENT);
         modalStage.setTitle("Proses Persetujuan Aset");
@@ -405,7 +426,7 @@ public class AssetApprovalView extends VBox {
                 sepInfo.setPadding(new Insets(8, 0, 8, 0));
                 contentArea.getChildren().add(sepInfo);
                 
-                // Create approval fields for each pending role with checkboxes
+                // Create approval fields for each pending role with radio buttons for approve/reject
                 java.util.List<java.util.Map<String, Object>> roleFieldsList = new java.util.ArrayList<>();
                 
                 for (String pendingRole : pendingRoles) {
@@ -413,9 +434,28 @@ public class AssetApprovalView extends VBox {
                     roleBox.setPadding(new Insets(12));
                     roleBox.setStyle("-fx-background-color: #f8fafc; -fx-border-color: #e2e8f0; -fx-border-radius: 8; -fx-background-radius: 8;");
                     
-                    // Checkbox to enable this role's approval
-                    CheckBox cbRole = new CheckBox("Setujui atas nama " + pendingRole);
-                    cbRole.setStyle("-fx-font-size: 14px; -fx-font-weight: 700; -fx-text-fill: #2c3e50;");
+                    // Role header label
+                    Label lblRole = new Label("Atas nama " + pendingRole + ":");
+                    lblRole.setStyle("-fx-font-size: 14px; -fx-font-weight: 700; -fx-text-fill: #2c3e50;");
+                    
+                    // Radio buttons for action selection
+                    ToggleGroup actionGroup = new ToggleGroup();
+                    
+                    RadioButton rbNone = new RadioButton("Tidak ada aksi");
+                    rbNone.setToggleGroup(actionGroup);
+                    rbNone.setSelected(true);
+                    rbNone.setStyle("-fx-font-size: 12px; -fx-text-fill: #6b7280;");
+                    
+                    RadioButton rbApprove = new RadioButton("✓ Setujui");
+                    rbApprove.setToggleGroup(actionGroup);
+                    rbApprove.setStyle("-fx-font-size: 12px; -fx-text-fill: #16a34a; -fx-font-weight: 600;");
+                    
+                    RadioButton rbReject = new RadioButton("✗ Tolak");
+                    rbReject.setToggleGroup(actionGroup);
+                    rbReject.setStyle("-fx-font-size: 12px; -fx-text-fill: #dc2626; -fx-font-weight: 600;");
+                    
+                    HBox radioBox = new HBox(16);
+                    radioBox.getChildren().addAll(rbNone, rbApprove, rbReject);
                     
                     // Fields container (hidden by default)
                     VBox fieldsContainer = new VBox(8);
@@ -423,15 +463,15 @@ public class AssetApprovalView extends VBox {
                     fieldsContainer.setManaged(false);
                     
                     // Nomor Surat for this role
-                    Label lblNomorSurat = new Label("Nomor Surat " + pendingRole + " (wajib jika dicentang):");
+                    Label lblNomorSurat = new Label("Nomor Surat " + pendingRole + " (wajib):");
                     lblNomorSurat.setStyle("-fx-font-size: 12px; -fx-font-weight: 600; -fx-text-fill: #475569;");
                     
                     TextField txtNomorSurat = new TextField();
                     txtNomorSurat.setPromptText("Contoh: SURAT/" + pendingRole + "/2024/001");
                     txtNomorSurat.getStyleClass().add("form-input");
                     
-                    // Catatan for this role (optional)
-                    Label lblCatatan = new Label("Catatan (opsional):");
+                    // Catatan for this role (optional for approve, required for reject)
+                    Label lblCatatan = new Label("Catatan:");
                     lblCatatan.setStyle("-fx-font-size: 12px; -fx-font-weight: 600; -fx-text-fill: #475569;");
                     
                     TextField txtCatatan = new TextField();
@@ -440,24 +480,32 @@ public class AssetApprovalView extends VBox {
                     
                     fieldsContainer.getChildren().addAll(lblNomorSurat, txtNomorSurat, lblCatatan, txtCatatan);
                     
-                    // Toggle fields visibility based on checkbox
-                    cbRole.selectedProperty().addListener((obs, oldVal, newVal) -> {
-                        fieldsContainer.setVisible(newVal);
-                        fieldsContainer.setManaged(newVal);
-                        if (newVal) {
+                    // Toggle fields visibility and style based on radio selection
+                    actionGroup.selectedToggleProperty().addListener((obs, oldVal, newVal) -> {
+                        boolean showFields = newVal == rbApprove || newVal == rbReject;
+                        fieldsContainer.setVisible(showFields);
+                        fieldsContainer.setManaged(showFields);
+                        
+                        if (newVal == rbApprove) {
                             roleBox.setStyle("-fx-background-color: #f0fdf4; -fx-border-color: #16a34a; -fx-border-radius: 8; -fx-background-radius: 8;");
+                            lblCatatan.setText("Catatan (opsional):");
+                        } else if (newVal == rbReject) {
+                            roleBox.setStyle("-fx-background-color: #fef2f2; -fx-border-color: #dc2626; -fx-border-radius: 8; -fx-background-radius: 8;");
+                            lblCatatan.setText("Alasan Penolakan (wajib):");
                         } else {
                             roleBox.setStyle("-fx-background-color: #f8fafc; -fx-border-color: #e2e8f0; -fx-border-radius: 8; -fx-background-radius: 8;");
                         }
                     });
                     
-                    roleBox.getChildren().addAll(cbRole, fieldsContainer);
+                    roleBox.getChildren().addAll(lblRole, radioBox, fieldsContainer);
                     contentArea.getChildren().add(roleBox);
                     
                     // Store references
                     java.util.Map<String, Object> roleFields = new java.util.HashMap<>();
                     roleFields.put("role", pendingRole);
-                    roleFields.put("checkbox", cbRole);
+                    roleFields.put("actionGroup", actionGroup);
+                    roleFields.put("rbApprove", rbApprove);
+                    roleFields.put("rbReject", rbReject);
                     roleFields.put("nomorSurat", txtNomorSurat);
                     roleFields.put("catatan", txtCatatan);
                     roleFieldsList.add(roleFields);
@@ -472,69 +520,103 @@ public class AssetApprovalView extends VBox {
                 btnCancel.getStyleClass().add("secondary-button");
                 btnCancel.setOnAction(e -> modalStage.close());
                 
-                Button btnSave = new Button("Simpan Persetujuan");
+                Button btnSave = new Button("Simpan Keputusan");
                 btnSave.getStyleClass().add("primary-button");
-                btnSave.setStyle("-fx-background-color: #16a34a;");
+                btnSave.setStyle("-fx-background-color: #3b82f6;");
                 
                 btnSave.setOnAction(e -> {
-                    // Collect checked roles and validate
-                    java.util.List<java.util.Map<String, Object>> selectedRoles = new java.util.ArrayList<>();
+                    // Collect selected actions and validate
+                    java.util.List<java.util.Map<String, Object>> selectedActions = new java.util.ArrayList<>();
                     boolean allValid = true;
                     
                     for (java.util.Map<String, Object> fields : roleFieldsList) {
-                        CheckBox cb = (CheckBox) fields.get("checkbox");
+                        RadioButton rbApprove = (RadioButton) fields.get("rbApprove");
+                        RadioButton rbReject = (RadioButton) fields.get("rbReject");
                         TextField nomorField = (TextField) fields.get("nomorSurat");
+                        TextField catatanField = (TextField) fields.get("catatan");
                         
-                        if (cb.isSelected()) {
+                        boolean isApprove = rbApprove.isSelected();
+                        boolean isReject = rbReject.isSelected();
+                        
+                        if (isApprove || isReject) {
+                            // Validate nomor surat (required for both)
                             if (nomorField.getText() == null || nomorField.getText().trim().isEmpty()) {
                                 nomorField.setStyle("-fx-border-color: #dc2626; -fx-border-width: 2;");
                                 allValid = false;
                             } else {
                                 nomorField.setStyle("");
-                                selectedRoles.add(fields);
+                            }
+                            
+                            // Validate catatan for rejection (required)
+                            if (isReject && (catatanField.getText() == null || catatanField.getText().trim().isEmpty())) {
+                                catatanField.setStyle("-fx-border-color: #dc2626; -fx-border-width: 2;");
+                                allValid = false;
+                            } else {
+                                catatanField.setStyle("");
+                            }
+                            
+                            if (allValid) {
+                                fields.put("isApprove", isApprove);
+                                selectedActions.add(fields);
                             }
                         }
                     }
                     
-                    if (selectedRoles.isEmpty()) {
-                        showNotification("Peringatan", "Pilih minimal satu persetujuan!");
+                    if (selectedActions.isEmpty()) {
+                        showNotification("Peringatan", "Pilih minimal satu aksi (setuju atau tolak)!");
                         return;
                     }
                     
                     if (!allValid) {
-                        showNotification("Error", "Nomor surat wajib diisi untuk persetujuan yang dicentang!");
+                        showNotification("Error", "Lengkapi field yang diperlukan!");
                         return;
                     }
                     
-                    // Process selected approvals
-                    for (java.util.Map<String, Object> fields : selectedRoles) {
+                    int approveCount = 0;
+                    int rejectCount = 0;
+                    for (java.util.Map<String, Object> fields : selectedActions) {
+                        if ((Boolean) fields.get("isApprove")) approveCount++;
+                        else rejectCount++;
+                    }
+
+                    // Wait for all actions to complete
+                    java.util.concurrent.atomic.AtomicInteger completedCount = new java.util.concurrent.atomic.AtomicInteger(0);
+                    int totalActions = selectedActions.size();
+                    
+                    final int approvedCount = approveCount;
+                    final int rejectedCount = rejectCount;
+                    
+                    for (java.util.Map<String, Object> fields : selectedActions) {
                         String role = (String) fields.get("role");
+                        boolean isApprove = (Boolean) fields.get("isApprove");
                         TextField nomorField = (TextField) fields.get("nomorSurat");
                         TextField catatanField = (TextField) fields.get("catatan");
                         
                         String nomorSurat = nomorField.getText();
                         String catatan = catatanField.getText();
                         
-                        // Determine status based on role
-                        String newStatus = "Disetujui " + role;
+                        String newStatus = isApprove ? "Disetujui " + role : "Ditolak " + role;
                         
-                        // Call API for each approval
+                        // Call API
                         dataService.updateAssetRequestStatus(request.getId(), request.getTipe(), newStatus, catatan, nomorSurat, success -> {
-                            // Handled after loop
+                            if (completedCount.incrementAndGet() == totalActions) {
+                                // All done
+                                Platform.runLater(() -> {
+                                    refreshTables(); // This clears cache
+                                    
+                                    String msg = "";
+                                    if (approvedCount > 0) msg += approvedCount + " persetujuan";
+                                    if (rejectedCount > 0) {
+                                        if (!msg.isEmpty()) msg += " dan ";
+                                        msg += rejectedCount + " penolakan";
+                                    }
+                                    showNotification("Sukses", msg + " berhasil disimpan.");
+                                });
+                            }
                         });
                     }
                     
                     modalStage.close();
-                    
-                    // Refresh after a short delay
-                    int count = selectedRoles.size();
-                    new Thread(() -> {
-                        try { Thread.sleep(500); } catch (InterruptedException ex) {}
-                        Platform.runLater(() -> {
-                            refreshTables();
-                            showNotification("Sukses", count + " persetujuan berhasil disimpan!");
-                        });
-                    }).start();
                 });
                 
                 buttonBox.getChildren().addAll(btnCancel, btnSave);
@@ -1061,7 +1143,7 @@ public class AssetApprovalView extends VBox {
                 
                 // Add delegation indicator if delegated by Tim Manajemen Aset
                 if (log.isDelegated()) {
-                    Label delegatedLabel = new Label("↳ diwakilkan oleh " + log.getNamaPegawai() + " (Tim Manajemen Aset)");
+                    Label delegatedLabel = new Label("↳ diwakilkan oleh " + log.getNamaPegawai() + " (" + log.getActualApproverRole() + ")");
                     delegatedLabel.setStyle("-fx-font-size: 11px; -fx-text-fill: #6366f1; -fx-font-style: italic;");
                     infoBox.getChildren().add(delegatedLabel);
                 }
@@ -1093,7 +1175,7 @@ public class AssetApprovalView extends VBox {
                 
                 // Add delegation indicator if delegated by Tim Manajemen Aset
                 if (log.isDelegated()) {
-                    Label delegatedLabel = new Label("↳ diwakilkan oleh " + log.getNamaPegawai() + " (Tim Manajemen Aset)");
+                    Label delegatedLabel = new Label("↳ diwakilkan oleh " + log.getNamaPegawai() + " (" + log.getActualApproverRole() + ")");
                     delegatedLabel.setStyle("-fx-font-size: 11px; -fx-text-fill: #6366f1; -fx-font-style: italic;");
                     infoBox.getChildren().add(delegatedLabel);
                 }
@@ -1139,11 +1221,23 @@ public class AssetApprovalView extends VBox {
                 List<AssetRequest> permohonan = dataService.getPermohonanAset();
                 List<AssetRequest> pengajuan = dataService.getPengajuanAset();
                 
+                String currentUserRole = LoginSession.getRole();
+                boolean isTMA = "TIM_MANAJEMEN_ASET".equals(currentUserRole);
+
+                // Filter logic based on hierarchy
+                List<AssetRequest> filteredPermohonan = permohonan.stream()
+                    .filter(req -> isVisibleToRole(req, currentUserRole, isTMA))
+                    .collect(java.util.stream.Collectors.toList());
+
+                List<AssetRequest> filteredPengajuan = pengajuan.stream()
+                    .filter(req -> isVisibleToRole(req, currentUserRole, isTMA))
+                    .collect(java.util.stream.Collectors.toList());
+
                 javafx.application.Platform.runLater(() -> {
                     // Update UI on JavaFX thread
                     approvalLogsCache.clear(); // Clear cache
-                    permohonanList.setAll(permohonan);
-                    pengajuanList.setAll(pengajuan);
+                    permohonanList.setAll(filteredPermohonan);
+                    pengajuanList.setAll(filteredPengajuan);
                 });
                 return null;
             }
@@ -1167,6 +1261,47 @@ public class AssetApprovalView extends VBox {
         // Replace keputusan column di kedua table
         permohonanTable.getColumns().set(7, keputusanColPermohonan);
         pengajuanTable.getColumns().set(7, keputusanColPengajuan);
+    }
+    private boolean isVisibleToRole(AssetRequest req, String role, boolean isTMA) {
+        if (isTMA) return true; // TMA sees everything
+        
+        String status = req.getStatus();
+        if (status == null) return false;
+        
+        // Normalize status for easier checking
+        String statusLower = status.toLowerCase();
+        
+        if ("PPBJ".equals(role)) {
+            // PPBJ sees Pending (start) and EVERYTHING downstream
+            // User: "PPBJ BISA MELIHAT ASET YANG PENDING, DISETUJUI PPBJ, DITOLAK PPBJ, DISETUJUI/DITOLAK PPK, DISETUJUI/DITOLAK DIREKTUR"
+            return "pending".equals(statusLower) || 
+                   statusLower.contains("ppbj") || 
+                   statusLower.contains("ppk") || 
+                   statusLower.contains("direktur");
+        }
+        
+        if ("PPK".equals(role)) {
+            // PPK sees ONLY what passed PPBJ (Disetujui PPBJ) or reached PPK level
+            // User: "PPK BISA MELIHAT ASET YANG DISETUJUI PPBJ, DISETUJUI/DITOLAK PPK, DISETUJUI/DITOLAK DIREKTUR"
+            // Excludes: Pending, Ditolak PPBJ
+            
+            // Note: "Disetujui PPBJ" is the entry point for PPK
+            return (statusLower.contains("disetujui ppbj")) || // Incoming from PPBJ
+                   statusLower.contains("ppk") ||             // Handled by PPK
+                   statusLower.contains("direktur");          // Handled by Direktur
+        }
+        
+        if ("DIREKTUR".equals(role)) {
+            // Direktur sees ONLY what passed PPK (Disetujui PPK) or reached Direktur level
+            // User: "DIREKTUR BISA MELIHAT ASET YANG DISETUJUI PPK, DISETUJUI/DITOLAK DIREKTUR"
+            // Excludes: Pending, Disetujui/Ditolak PPBJ, Ditolak PPK
+            
+            // Note: "Disetujui PPK" is the entry point for Direktur
+            return (statusLower.contains("disetujui ppk")) || // Incoming from PPK
+                   statusLower.contains("direktur");          // Handled by Direktur
+        }
+        
+        return false;
     }
 }
 

@@ -21,6 +21,7 @@ import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
 import javafx.scene.control.Tooltip;
 import javafx.scene.control.ComboBox;
+import javafx.scene.control.TableCell;
 import javafx.scene.layout.*;
 import javafx.stage.Stage;
 
@@ -117,11 +118,31 @@ public class RecapitulationView extends VBox {
      * Dipanggil ketika user kembali ke menu rekapitulasi atau setelah ada perubahan data
      */
     public void refreshData() {
-        // Reload cached data
-        loadAndCacheData();
-        // Clear children dan rebuild view dengan data terbaru
-        getChildren().clear();
-        buildView();
+        // Show loading overlay
+        MainShellView.showLoading("Memuat rekapitulasi...");
+        
+        javafx.concurrent.Task<Void> task = new javafx.concurrent.Task<>() {
+            @Override
+            protected Void call() {
+                // Reload cached data in background
+                loadAndCacheData();
+                return null;
+            }
+        };
+        
+        task.setOnSucceeded(e -> {
+            MainShellView.hideLoading();
+            // Clear children dan rebuild view dengan data terbaru
+            getChildren().clear();
+            buildView();
+        });
+        
+        task.setOnFailed(e -> {
+            MainShellView.hideLoading();
+            e.getSource().getException().printStackTrace();
+        });
+        
+        new Thread(task).start();
     }
 
     // Carousel state
@@ -472,9 +493,21 @@ public class RecapitulationView extends VBox {
 
             if (jenisAssets.isEmpty()) continue;
 
-            long rusakBerat = jenisAssets.stream().filter(a -> "Rusak Berat".equalsIgnoreCase(a.getKondisi())).count();
-            long gudang = jenisAssets.stream().filter(a -> "Gudang".equalsIgnoreCase(a.getKondisi())).count();
-            long hilang = jenisAssets.stream().filter(a -> "Hilang".equalsIgnoreCase(a.getKondisi())).count();
+            long rusakBerat = jenisAssets.stream().filter(a -> {
+                if (a.getKondisi() == null) return false;
+                String k = a.getKondisi().trim().toLowerCase();
+                return k.equals("rusak berat") || k.equals("r. berat") || k.equals("r.berat");
+            }).count();
+            
+            long gudang = jenisAssets.stream().filter(a -> {
+                if (a.getSubdir() == null) return false;
+                return "gudang".equalsIgnoreCase(a.getSubdir().trim());
+            }).count();
+            
+            long hilang = jenisAssets.stream().filter(a -> {
+                if (a.getSubdir() == null) return false;
+                return "hilang".equalsIgnoreCase(a.getSubdir().trim());
+            }).count();
 
             Map<String, String> row = new HashMap<>();
             row.put("Jenis Aset", jenis);
@@ -552,7 +585,54 @@ public class RecapitulationView extends VBox {
                     new SimpleStringProperty(cellData.getValue().getOrDefault(colName, "0"))
             );
 
-            if (idx > 0) {
+            // Custom styling for specific columns
+            if (colName.equals("Sudah Dihapus") || colName.equals("Habis Pakai")) {
+                col.setCellFactory(c -> new TableCell<>() {
+                    @Override
+                    protected void updateItem(String item, boolean empty) {
+                        super.updateItem(item, empty);
+                        if (empty || item == null) {
+                            setText(null);
+                            setStyle("");
+                        } else {
+                            setText(item);
+                            // Light Red BG, Dark Red Text
+                            setStyle("-fx-alignment: CENTER-RIGHT; -fx-background-color: #fee2e2; -fx-text-fill: #991b1b; -fx-font-weight: bold;");
+                        }
+                    }
+                });
+            } else if (colName.equals("Akan Habis")) {
+                col.setCellFactory(c -> new TableCell<>() {
+                    @Override
+                    protected void updateItem(String item, boolean empty) {
+                        super.updateItem(item, empty);
+                        if (empty || item == null) {
+                            setText(null);
+                            setStyle("");
+                        } else {
+                            setText(item);
+                            // Light Orange BG, Dark Orange Text
+                            setStyle("-fx-alignment: CENTER-RIGHT; -fx-background-color: #ffedd5; -fx-text-fill: #9a3412; -fx-font-weight: bold;");
+                        }
+                    }
+                });
+            } else if (colName.equals("Bersih") || colName.equals("Total Bersih") || colName.equals("Total Dipakai")) {
+                col.setCellFactory(c -> new TableCell<>() {
+                    @Override
+                    protected void updateItem(String item, boolean empty) {
+                        super.updateItem(item, empty);
+                        if (empty || item == null) {
+                            setText(null);
+                            setStyle("");
+                        } else {
+                            setText(item);
+                            // Light Green BG, Dark Green Text
+                            setStyle("-fx-alignment: CENTER-RIGHT; -fx-background-color: #dcfce7; -fx-text-fill: #166534; -fx-font-weight: bold;");
+                        }
+                    }
+                });
+            } else if (idx > 0) {
+                // Default numbering columns
                 col.setStyle("-fx-alignment: CENTER-RIGHT;");
             }
 
@@ -560,7 +640,8 @@ public class RecapitulationView extends VBox {
         }
 
         int rowCount = data.size();
-        double fixedHeight = Math.max(150, (rowCount + 1.5) * 35);
+        // Increased height calculation: larger row height + extra padding for scrollbar/header
+        double fixedHeight = Math.max(200, (rowCount + 4) * 40);
         table.setPrefHeight(fixedHeight);
         table.setMinHeight(150);
         table.setMaxHeight(350);
@@ -583,20 +664,35 @@ public class RecapitulationView extends VBox {
             .filter(emp -> emp.isPpnpn())
             .collect(Collectors.groupingBy(Employee::getUnit, Collectors.counting()));
 
+        VBox container = new VBox(24); // Spacing between tables
+
+        // --- TABEL 1: REKAP PEGAWAI ---
+        ObservableList<Map<String, String>> dataPegawai = FXCollections.observableArrayList();
         for (String subdir : subdirs) {
-            List<Asset> subdirAssets = assetsBySubdir.getOrDefault(subdir.toLowerCase(), Collections.emptyList());
-            
-            Map<String, String> row = new HashMap<>();
-            row.put("Subdirektorat", subdir);
-            
             long asn = asnByUnit.getOrDefault(subdir, 0L);
             long ppnpn = ppnpnByUnit.getOrDefault(subdir, 0L);
+
+            Map<String, String> row = new HashMap<>();
+            row.put("Subdirektorat", subdir);
             row.put("ASN", String.valueOf(asn));
             row.put("PPNPN", String.valueOf(ppnpn));
             row.put("Total Pegawai", String.valueOf(asn + ppnpn));
+            dataPegawai.add(row);
+        }
 
+        Node tablePegawai = createDynamicTable("Rekapitulasi Pegawai per Subdirektorat", dataPegawai,
+                new String[]{"Subdirektorat", "ASN", "PPNPN", "Total Pegawai"},
+                new int[]{200, 100, 100, 150});
+
+        // --- TABEL 2: REKAP ASET ---
+        ObservableList<Map<String, String>> dataAset = FXCollections.observableArrayList();
+        for (String subdir : subdirs) {
+            List<Asset> subdirAssets = assetsBySubdir.getOrDefault(subdir.toLowerCase(), Collections.emptyList());
             Map<String, Long> subdirJenisCounts = subdirAssets.stream()
                     .collect(Collectors.groupingBy(a -> a.getJenisAset().toLowerCase(), Collectors.counting()));
+
+            Map<String, String> row = new HashMap<>();
+            row.put("Subdirektorat", subdir);
 
             long totalAset = 0;
             for (String jenis : displayTypes) {
@@ -605,22 +701,24 @@ public class RecapitulationView extends VBox {
                 totalAset += count;
             }
             row.put("Total Aset", String.valueOf(totalAset));
-            data.add(row);
+            dataAset.add(row);
         }
 
-        List<String> colList = new ArrayList<>();
-        colList.add("Subdirektorat");
-        colList.addAll(List.of("ASN", "PPNPN", "Total Pegawai"));
-        colList.addAll(displayTypes);
-        colList.add("Total Aset");
+        List<String> colListAset = new ArrayList<>();
+        colListAset.add("Subdirektorat");
+        colListAset.addAll(displayTypes);
+        colListAset.add("Total Aset");
 
-        int[] widths = new int[colList.size()];
-        widths[0] = 100;
-        widths[1] = 45; widths[2] = 55; widths[3] = 85;
-        for (int i = 4; i < widths.length; i++) widths[i] = 55;
+        int[] widthsAset = new int[colListAset.size()];
+        widthsAset[0] = 150; // Subdir
+        for (int i = 1; i < widthsAset.length - 1; i++) widthsAset[i] = 60; // Jenis
+        widthsAset[widthsAset.length - 1] = 80; // Total
 
-        return createDynamicTable("Rekapitulasi per Subdirektorat", data,
-                colList.toArray(new String[0]), widths);
+        Node tableAset = createDynamicTable("Rekapitulasi Aset per Subdirektorat", dataAset,
+                colListAset.toArray(new String[0]), widthsAset);
+
+        container.getChildren().addAll(tablePegawai, tableAset);
+        return container;
     }
 
     // === EMPLOYEE MATRIX TABLE (with search & styled name/NIP) ===
@@ -776,7 +874,8 @@ public class RecapitulationView extends VBox {
 
         // Use fixed height calculation instead of binding
         int rowCount = data.size();
-        double fixedHeight = Math.max(150, (rowCount + 1.5) * 35);
+        // Increased height calculation: larger row height + extra padding for scrollbar/header
+        double fixedHeight = Math.max(200, (rowCount + 4) * 40);
         table.setPrefHeight(fixedHeight);
         table.setMinHeight(150);
         table.setMaxHeight(600);
@@ -836,6 +935,8 @@ public class RecapitulationView extends VBox {
         VBox card = new VBox(12);
         card.getStyleClass().addAll("table-container", "chart-card");
         card.setPadding(new javafx.geometry.Insets(16));
+        card.setMinHeight(350); // Set minimum height to prevent cutting off
+
         
         java.time.LocalDate now = java.time.LocalDate.now();
         

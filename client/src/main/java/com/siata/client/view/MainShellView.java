@@ -2,12 +2,16 @@ package com.siata.client.view;
 
 import com.siata.client.MainApplication;
 import com.siata.client.component.CustomTitleBar;
+import com.siata.client.component.LoadingOverlay;
 import com.siata.client.session.LoginSession;
+import com.siata.client.service.PollingService;
 import com.siata.client.util.AnimationUtils;
 import javafx.animation.FadeTransition;
 import javafx.animation.KeyFrame;
 import javafx.animation.KeyValue;
 import javafx.animation.Timeline;
+import javafx.animation.TranslateTransition;
+import javafx.animation.PauseTransition;
 import javafx.application.Platform;
 import javafx.concurrent.Task;
 import javafx.geometry.Insets;
@@ -17,6 +21,7 @@ import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.control.ProgressIndicator;
 import javafx.scene.control.ScrollPane;
+import javafx.scene.control.Tooltip;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
@@ -25,6 +30,7 @@ import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
+import javafx.scene.shape.Circle;
 import javafx.util.Duration;
 
 import java.util.EnumMap;
@@ -48,12 +54,21 @@ public class MainShellView extends BorderPane {
     private final Label pageTitle = new Label();
     private final Label pageSubtitle = new Label();
     private BorderPane sidebar;
+    private VBox mainLayoutContainer; // Container for Header + Content
+    private ScrollPane mainScrollPane; // The standard scrollpane wrapper
     private VBox brandingBox;
     private Label collapsedBrandingLabel;
     private Button logoutButton;
     private boolean sidebarExpanded = true;
     private boolean isLoading = false;
     private boolean isAnimating = false;
+
+    // Global loading overlay stage
+    private static javafx.stage.Stage loadingStage;
+    
+    // Toast notification stage
+    private static javafx.stage.Stage toastStage;
+    private static VBox toastContainer;
 
     private Optional<Runnable> onLogout = Optional.empty();
     private MainPage activePage;
@@ -67,12 +82,17 @@ public class MainShellView extends BorderPane {
         sidebar = (BorderPane) buildSidebar();
         
         // Create right side container with header on top and content below
-        VBox rightSide = new VBox();
-        rightSide.getChildren().addAll(buildHeader(), buildContentContainer());
-        VBox.setVgrow(rightSide.getChildren().get(1), Priority.ALWAYS);
+        mainLayoutContainer = new VBox();
+        mainScrollPane = (ScrollPane) buildContentContainer();
+        
+        mainLayoutContainer.getChildren().addAll(buildHeader(), mainScrollPane);
+        VBox.setVgrow(mainScrollPane, Priority.ALWAYS);
         
         setLeft(sidebar);
-        setCenter(rightSide);
+        setCenter(mainLayoutContainer);
+
+        // Create global loading overlay (Stage based)
+        // loadingStage will be created lazily when needed
     }
 
     private Node buildSidebar() {
@@ -131,6 +151,14 @@ public class MainShellView extends BorderPane {
         // --- LOGIKA ROLE BASE DI SINI ---
         String role = LoginSession.getRole();
         if (role == null) role = ""; // Antisipasi null
+        
+        // DEBUG: Print role info when building sidebar
+        System.out.println("=== DEBUG MainShellView.buildSidebar() ===");
+        System.out.println("LoginSession.getRole(): " + LoginSession.getRole());
+        System.out.println("LoginSession.getOriginalRole(): " + LoginSession.getOriginalRole());
+        System.out.println("LoginSession.isOriginallyDev(): " + LoginSession.isOriginallyDev());
+        System.out.println("Building menu for role: " + role);
+        System.out.println("==========================================");
 
         // 2. Cek Role menggunakan If-Else
         if (role.equals("TIM_MANAJEMEN_ASET") || role.equals("DEV")) {
@@ -321,13 +349,16 @@ public class MainShellView extends BorderPane {
 
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
+
+        // Refresh button with red dot notification
+        StackPane refreshButtonContainer = createRefreshButton();
         
         // Window controls (minimize, maximize, close)
         javafx.stage.Stage stage = MainApplication.getPrimaryStage();
         HBox windowControls = CustomTitleBar.createWindowControls(stage);
 
-        // Header now contains menu, title, and window controls
-        header.getChildren().addAll(menuButton, titleBox, spacer, windowControls);
+        // Header now contains menu, title, refresh button, and window controls
+        header.getChildren().addAll(menuButton, titleBox, spacer, refreshButtonContainer, windowControls);
         
         // Make header draggable for window movement
         final double[] dragOffset = new double[2];
@@ -344,7 +375,92 @@ public class MainShellView extends BorderPane {
             }
         });
         
+        // Start polling service
+        PollingService.getInstance().startPolling();
+        
         return header;
+    }
+
+    /**
+     * Create refresh button with red dot notification.
+     * Red dot appears when PollingService detects new data on server.
+     */
+    private StackPane createRefreshButton() {
+        Button refreshButton = new Button("🔄");
+        refreshButton.getStyleClass().add("ghost-button");
+        refreshButton.setStyle("-fx-font-size: 16px;");
+        
+        Tooltip tooltip = new Tooltip("Refresh data");
+        tooltip.setShowDelay(Duration.millis(300));
+        refreshButton.setTooltip(tooltip);
+        
+        refreshButton.setOnAction(e -> {
+            // Acknowledge update (hide red dot)
+            PollingService.getInstance().acknowledgeUpdate();
+            
+            // Refresh current page
+            refreshCurrentPage();
+        });
+        
+        // Red dot notification
+        Circle redDot = new Circle(4);
+        redDot.setStyle("-fx-fill: #ef4444;");
+        redDot.setTranslateX(3);
+        redDot.setTranslateY(-3);
+        
+        // Bind visibility to PollingService.hasNewData
+        redDot.visibleProperty().bind(PollingService.getInstance().hasNewDataProperty());
+        
+        // Container
+        StackPane container = new StackPane(refreshButton, redDot);
+        StackPane.setAlignment(redDot, Pos.TOP_RIGHT);
+        
+        return container;
+    }
+
+    /**
+     * Refresh the current page data.
+     * Called when user clicks the refresh button.
+     */
+    private void refreshCurrentPage() {
+        if (activePage == null) return;
+        
+        // Clear caches
+        com.siata.client.service.DataService.getInstance().clearAllCaches();
+        
+        // Refresh based on current page
+        Node content = pageContent.get(activePage);
+        if (content != null) {
+            if (content instanceof DashboardContentView) {
+                ((DashboardContentView) content).refreshDashboard(true);
+            } else if (content instanceof RecapitulationView) {
+                ((RecapitulationView) content).refreshData();
+            } else if (content instanceof AssetManagementView) {
+                ((AssetManagementView) content).refreshTable();
+            } else if (content instanceof EmployeeManagementView) {
+                // Rebuild employee management view
+                pageContent.remove(MainPage.EMPLOYEE_MANAGEMENT);
+                switchPage(MainPage.EMPLOYEE_MANAGEMENT);
+                return;
+            } else if (content instanceof AssetApprovalView) {
+                ((AssetApprovalView) content).refreshTables();
+            } else if (content instanceof AssetRemovalView) {
+                ((AssetRemovalView) content).refreshTable();
+            } else if (content instanceof AssetRequestView) {
+                // Rebuild asset request view
+                pageContent.remove(MainPage.ASSET_REQUEST);
+                switchPage(MainPage.ASSET_REQUEST);
+                return;
+            } else if (content instanceof LogbookView) {
+                // Rebuild logbook view
+                pageContent.remove(MainPage.LOGBOOK);
+                switchPage(MainPage.LOGBOOK);
+                return;
+            }
+        }
+        
+        // Also mark stale views for rebuild
+        pageContent.remove(MainPage.RECAPITULATION);
     }
     
     private void showSwitchRolePopup(Button anchorButton) {
@@ -446,8 +562,12 @@ public class MainShellView extends BorderPane {
         contentContainer.setPadding(new Insets(24));
         contentContainer.getStyleClass().add("dashboard-content");
 
+        contentContainer.setMaxHeight(Double.MAX_VALUE); // Explicitly allow unbounded growth
+
         ScrollPane scrollPane = new ScrollPane(contentContainer);
         scrollPane.setFitToWidth(true);
+        scrollPane.setFitToHeight(true); // Allow content to fill height
+        scrollPane.setMaxHeight(Double.MAX_VALUE); // Unbounded scrollpane
         scrollPane.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
         scrollPane.getStyleClass().add("dashboard-scroll");
         return scrollPane;
@@ -508,17 +628,10 @@ public class MainShellView extends BorderPane {
             loadTask.setOnSucceeded(event -> {
                 Node newContent = loadTask.getValue();
                 
-                // Smart refresh - hanya refresh jika perlu
+                // Only refresh Dashboard which has its own smart cache check
+                // Other views use DataService cache - no refresh needed on navigation
                 if (page == MainPage.DASHBOARD && newContent instanceof DashboardContentView) {
                     ((DashboardContentView) newContent).refreshDashboard(false); // Check cache dulu
-                } else if (page == MainPage.RECAPITULATION && newContent instanceof RecapitulationView) {
-                    ((RecapitulationView) newContent).refreshData();
-                } else if (page == MainPage.ASSET_MANAGEMENT && newContent instanceof AssetManagementView) {
-                    ((AssetManagementView) newContent).refreshTable();
-                } else if (page == MainPage.ASSET_APPROVAL && newContent instanceof AssetApprovalView) {
-                    ((AssetApprovalView) newContent).refreshTables();
-                } else if (page == MainPage.ASSET_REMOVAL && newContent instanceof AssetRemovalView) {
-                    ((AssetRemovalView) newContent).refreshTable();
                 }
                 
                 // Set new content with initial low opacity
@@ -545,19 +658,50 @@ public class MainShellView extends BorderPane {
             // For lighter pages, load synchronously
             Node content = resolveContent(page);
             
+            // Refresh Dashboard which has its own smart cache check
             if (page == MainPage.DASHBOARD && content instanceof DashboardContentView) {
-                ((DashboardContentView) content).refreshDashboard(false); // Check cache dulu
-            } else if (page == MainPage.RECAPITULATION && content instanceof RecapitulationView) {
-                ((RecapitulationView) content).refreshData();
-            } else if (page == MainPage.ASSET_MANAGEMENT && content instanceof AssetManagementView) {
-                ((AssetManagementView) content).refreshTable();
-            } else if (page == MainPage.ASSET_APPROVAL && content instanceof AssetApprovalView) {
-                ((AssetApprovalView) content).refreshTables();
-            } else if (page == MainPage.ASSET_REMOVAL && content instanceof AssetRemovalView) {
-                ((AssetRemovalView) content).refreshTable();
+                ((DashboardContentView) content).refreshDashboard(false);
             }
             
-            contentContainer.getChildren().setAll(content);
+            // Handle layout switching: Direct View vs ScrollPane Wrapper
+            if (page == MainPage.ASSET_MANAGEMENT || page == MainPage.EMPLOYEE_MANAGEMENT) {
+                // For Tables: Bypass ScrollPane to allow full height growth
+                // Replace the component at index 1 (0 is header)
+                if (mainLayoutContainer.getChildren().size() > 1) {
+                    mainLayoutContainer.getChildren().set(1, content);
+                } else {
+                    mainLayoutContainer.getChildren().add(content);
+                }
+                
+                // Configure content for full growth
+                VBox.setVgrow(content, Priority.ALWAYS);
+                if (content instanceof javafx.scene.layout.Region) {
+                    ((javafx.scene.layout.Region) content).setMaxHeight(Double.MAX_VALUE);
+                }
+                
+                // Add padding if needed within the view itself, but here we keep it edge-to-edge or use view's padding
+                // Asset/Employee views have their own padding in tableContainer
+            } else {
+                // For Dashboard/Others: Use ScrollPane wrapper
+                // Ensure ScrollPane is at index 1
+                boolean scrollPaneIsActive = mainLayoutContainer.getChildren().size() > 1 
+                                           && mainLayoutContainer.getChildren().get(1) == mainScrollPane;
+                                           
+                if (!scrollPaneIsActive) {
+                    if (mainLayoutContainer.getChildren().size() > 1) {
+                         mainLayoutContainer.getChildren().set(1, mainScrollPane);
+                    } else {
+                         mainLayoutContainer.getChildren().add(mainScrollPane);
+                    }
+                    VBox.setVgrow(mainScrollPane, Priority.ALWAYS);
+                }
+                
+                // Reset padding for standard views
+                contentContainer.setPadding(new javafx.geometry.Insets(24));
+                contentContainer.getChildren().setAll(content);
+                VBox.setVgrow(content, Priority.ALWAYS);
+            }
+
             AnimationUtils.pageTransitionIn(content);
             activePage = page;
         }
@@ -571,6 +715,289 @@ public class MainShellView extends BorderPane {
             Node content = pageContent.get(MainPage.DASHBOARD);
             if (content instanceof DashboardContentView) {
                 ((DashboardContentView) content).markAsStale();
+            }
+        }
+    }
+    
+    /**
+     * Invalidate Employee Management view - call this after asset changes
+     * that affect employee asset counts (e.g., asset add, import, update holder)
+     */
+    public static void invalidateEmployeeView() {
+        // Get the MainShellView instance from the primary stage
+        javafx.stage.Stage stage = MainApplication.getPrimaryStage();
+        if (stage != null && stage.getScene() != null && stage.getScene().getRoot() != null) {
+            if (stage.getScene().getRoot() instanceof MainShellView mainShell) {
+                mainShell.pageContent.remove(MainPage.EMPLOYEE_MANAGEMENT);
+            }
+        }
+    }
+    
+    /**
+     * Invalidate all data-dependent views - call this after any data changes
+     * (asset add/edit/delete, employee add/edit/delete, import, etc.)
+     * Clears all DataService caches and rebuilds views on next navigation.
+     */
+    public static void invalidateDataViews() {
+        // Clear all DataService caches to ensure fresh data
+        com.siata.client.service.DataService.getInstance().clearAllCaches();
+        
+        // Update local version so we don't show red dot for our own changes
+        PollingService.getInstance().updateLocalVersion();
+        
+        javafx.stage.Stage stage = MainApplication.getPrimaryStage();
+        if (stage != null && stage.getScene() != null && stage.getScene().getRoot() != null) {
+            if (stage.getScene().getRoot() instanceof MainShellView mainShell) {
+                // Mark dashboard as stale
+                if (mainShell.pageContent.containsKey(MainPage.DASHBOARD)) {
+                    Node content = mainShell.pageContent.get(MainPage.DASHBOARD);
+                    if (content instanceof DashboardContentView) {
+                        ((DashboardContentView) content).markAsStale();
+                    }
+                }
+                // Remove recapitulation to force rebuild
+                mainShell.pageContent.remove(MainPage.RECAPITULATION);
+                // Remove employee management to force rebuild
+                mainShell.pageContent.remove(MainPage.EMPLOYEE_MANAGEMENT);
+            }
+        }
+    }
+
+    /**
+     * Show global loading overlay.
+     * Call this before starting heavy operations.
+     * @param message Optional message to show (e.g., "Mengimpor data...")
+     */
+    private static void ensureLoadingStage() {
+        if (loadingStage == null) {
+            loadingStage = new javafx.stage.Stage();
+            loadingStage.initStyle(javafx.stage.StageStyle.TRANSPARENT);
+            loadingStage.initModality(javafx.stage.Modality.APPLICATION_MODAL); // Blocks input
+            loadingStage.setAlwaysOnTop(true);
+            
+            LoadingOverlay overlay = new LoadingOverlay();
+            // Force overlay to fill screen/window? 
+            // Better: use a transparent scene with the overlay centered
+            
+            StackPane root = new StackPane(overlay);
+            root.setStyle("-fx-background-color: transparent;");
+            
+            javafx.scene.Scene scene = new javafx.scene.Scene(root);
+            scene.setFill(javafx.scene.paint.Color.TRANSPARENT);
+            loadingStage.setScene(scene);
+            
+            // Initial showing to size?
+            // Bind to primary stage to cover it
+            javafx.stage.Stage primary = MainApplication.getPrimaryStage();
+            if (primary != null) {
+                loadingStage.initOwner(primary);
+                // Sync size/position with owner using listeners (since properties are read-only)
+                javafx.beans.value.ChangeListener<Number> syncListener = (obs, old, val) -> {
+                    if (loadingStage.isShowing()) {
+                        loadingStage.setX(primary.getX());
+                        loadingStage.setY(primary.getY());
+                        loadingStage.setWidth(primary.getWidth());
+                        loadingStage.setHeight(primary.getHeight());
+                    }
+                };
+                
+                primary.xProperty().addListener(syncListener);
+                primary.yProperty().addListener(syncListener);
+                primary.widthProperty().addListener(syncListener);
+                primary.heightProperty().addListener(syncListener);
+                
+                // Initial sync
+                loadingStage.setOnShown(e -> {
+                     loadingStage.setX(primary.getX());
+                     loadingStage.setY(primary.getY());
+                     loadingStage.setWidth(primary.getWidth());
+                     loadingStage.setHeight(primary.getHeight());
+                });
+                
+                // Also pass message handling
+                root.setUserData(overlay); 
+            }
+        }
+    }
+
+    /**
+     * Show global loading overlay.
+     * Call this before starting heavy operations.
+     * @param message Optional message to show (e.g., "Mengimpor data...")
+     */
+    public static void showLoading(String message) {
+        javafx.application.Platform.runLater(() -> {
+            ensureLoadingStage();
+            if (loadingStage != null) {
+                if (loadingStage.getScene().getRoot().getUserData() instanceof LoadingOverlay overlay) {
+                    overlay.show(message);
+                }
+                loadingStage.show();
+                loadingStage.toFront();
+            }
+        });
+    }
+
+    /**
+     * Show global loading overlay with default message.
+     */
+    public static void showLoading() {
+        showLoading("Memuat...");
+    }
+
+    /**
+     * Hide global loading overlay.
+     * Call this after heavy operation completes.
+     */
+    public static void hideLoading() {
+        javafx.application.Platform.runLater(() -> {
+            if (loadingStage != null) {
+                loadingStage.hide();
+                if (loadingStage.getScene().getRoot().getUserData() instanceof LoadingOverlay overlay) {
+                    overlay.hide();
+                }
+            }
+        });
+    }
+
+    /**
+     * Show a successful toast notification
+     */
+    public static void showSuccess(String message) {
+        showToast("Berhasil", message, com.siata.client.component.Toast.Type.SUCCESS);
+    }
+
+    /**
+     * Show an error toast notification
+     */
+    public static void showError(String message) {
+        showToast("Error", message, com.siata.client.component.Toast.Type.ERROR);
+    }
+    
+    /**
+     * Show a warning toast notification
+     */
+    public static void showWarning(String message) {
+        showToast("Peringatan", message, com.siata.client.component.Toast.Type.WARNING);
+    }
+    
+    /**
+     * Show an info toast notification
+     */
+    public static void showInfo(String message) {
+        showToast("Info", message, com.siata.client.component.Toast.Type.INFO);
+    }
+
+    private static void updateToastPosition() {
+        if (toastStage != null && toastStage.isShowing()) {
+            javafx.stage.Stage primary = MainApplication.getPrimaryStage();
+            if (primary != null) {
+                // Position: Bottom-Right of the APPLICATION WINDOW
+                double padding = 20;
+                double x = primary.getX() + primary.getWidth() - toastStage.getWidth() - padding;
+                double y = primary.getY() + primary.getHeight() - toastStage.getHeight() - padding;
+                
+                toastStage.setX(x);
+                toastStage.setY(y);
+            }
+        }
+    }
+
+    private static void showToast(String title, String message, com.siata.client.component.Toast.Type type) {
+        javafx.application.Platform.runLater(() -> {
+            // Create container/stage if not exists
+            ensureToastStage();
+            
+            if (toastContainer != null) {
+                com.siata.client.component.Toast toast = new com.siata.client.component.Toast(title, message, type);
+                toast.setOpacity(0);
+                toast.setTranslateX(350); // Start off-screen right
+                
+                toastContainer.getChildren().add(0, toast); // Add to top
+                
+                // Show stage if not visible
+                if (!toastStage.isShowing()) {
+                    toastStage.show();
+                    updateToastPosition();
+                }
+                
+                // Ensure on top of other child windows (modals)
+                toastStage.toFront();
+                
+                // Resize stage to fit content
+                toastStage.sizeToScene();
+                
+                // Reposition
+                updateToastPosition();
+
+                // Animate In
+                FadeTransition fadeIn = new FadeTransition(Duration.millis(300), toast);
+                fadeIn.setFromValue(0);
+                fadeIn.setToValue(1);
+                
+                TranslateTransition slideIn = new TranslateTransition(Duration.millis(300), toast);
+                slideIn.setFromX(350);
+                slideIn.setToX(0);
+                
+                fadeIn.play();
+                slideIn.play();
+                
+                // Auto dismiss
+                PauseTransition delay = new PauseTransition(Duration.seconds(4));
+                delay.setOnFinished(e -> {
+                    // Animate Out
+                    FadeTransition fadeOut = new FadeTransition(Duration.millis(300), toast);
+                    fadeOut.setFromValue(1);
+                    fadeOut.setToValue(0);
+                    
+                    TranslateTransition slideOut = new TranslateTransition(Duration.millis(300), toast);
+                    slideOut.setFromX(0);
+                    slideOut.setToX(350);
+                    
+                    slideOut.setOnFinished(event -> {
+                        toastContainer.getChildren().remove(toast);
+                        if (toastContainer.getChildren().isEmpty()) {
+                            toastStage.hide();
+                        } else {
+                            toastStage.sizeToScene();
+                            updateToastPosition();
+                        }
+                    });
+                    
+                    fadeOut.play();
+                    slideOut.play();
+                });
+                delay.play();
+            }
+        });
+    }
+
+    private static void ensureToastStage() {
+        if (toastStage == null) {
+            toastStage = new javafx.stage.Stage();
+            toastStage.initStyle(javafx.stage.StageStyle.TRANSPARENT);
+            // toastStage.setAlwaysOnTop(true); // REMOVED: Causes toast to float over other apps
+            
+            toastContainer = new VBox(10);
+            toastContainer.setPadding(new Insets(10));
+            toastContainer.setStyle("-fx-background-color: transparent;");
+            toastContainer.setAlignment(Pos.BOTTOM_RIGHT);
+            
+            javafx.scene.Scene scene = new javafx.scene.Scene(toastContainer);
+            scene.setFill(javafx.scene.paint.Color.TRANSPARENT);
+            toastStage.setScene(scene);
+            
+            // Sync with primary stage movement & Minimization
+            javafx.stage.Stage primary = MainApplication.getPrimaryStage();
+            if (primary != null) {
+                // Set owner to primary -> minimizes with app, z-ordered with app
+                toastStage.initOwner(primary);
+                
+                javafx.beans.value.ChangeListener<Number> posListener = (obs, old, val) -> updateToastPosition();
+                primary.xProperty().addListener(posListener);
+                primary.yProperty().addListener(posListener);
+                primary.widthProperty().addListener(posListener);
+                primary.heightProperty().addListener(posListener);
             }
         }
     }

@@ -115,7 +115,8 @@ public class MainApplication extends Application {
         System.setProperty("prism.order", "d3d,sw");  // Prefer Direct3D rendering
         System.setProperty("prism.targetvram", "512m");
         System.setProperty("prism.vsync", "false");
-        System.setProperty("glass.win.uiScale", "100%");  // Prevent DPI scaling issues
+        // Allow JavaFX to use system DPI scaling (removed forced 100% which caused small fonts)
+        System.setProperty("prism.allowhidpi", "true");
         launch(args);
     }
 }

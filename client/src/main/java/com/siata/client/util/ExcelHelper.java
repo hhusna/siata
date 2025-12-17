@@ -150,10 +150,63 @@ public class ExcelHelper {
             }
 
             // Write to file
+            createHelpSheet(workbook);
             try (FileOutputStream fos = new FileOutputStream(file)) {
                 workbook.write(fos);
             }
         }
+    }
+
+    private static void createHelpSheet(Workbook workbook) {
+        Sheet sheet = workbook.createSheet("Petunjuk Pengisian");
+        
+        String[] headers = {"Kolom", "Keterangan/Format", "Contoh Valid"};
+        String[][] data = {
+            {"Nama", "Nama lengkap pegawai (Wajib)", "Budi Santoso"},
+            {"NIP", "NIP 18 digit (Angka). Kosongkan jika PPNPN/Honorer.", "198501012010011001"},
+            {"Subdirektorat", "Pilih: PPTAU, AUNB, AUNTB, KAU, SILAU, Tata Usaha, Direktur, PINDAH", "PPTAU"},
+            {"Status", "Status kepegawaian (AKTIF / NONAKTIF)", "AKTIF"}
+        };
+
+        // Header Style
+        CellStyle headerStyle = workbook.createCellStyle();
+        Font headerFont = workbook.createFont();
+        headerFont.setBold(true);
+        headerStyle.setFont(headerFont);
+        headerStyle.setFillForegroundColor(IndexedColors.LIGHT_YELLOW.getIndex());
+        headerStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND);
+        headerStyle.setBorderBottom(BorderStyle.THIN);
+        
+        Row headerRow = sheet.createRow(0);
+        for (int i = 0; i < headers.length; i++) {
+            Cell cell = headerRow.createCell(i);
+            cell.setCellValue(headers[i]);
+            cell.setCellStyle(headerStyle);
+        }
+
+        // Data Style
+        CellStyle dataStyle = workbook.createCellStyle();
+        dataStyle.setWrapText(true);
+        dataStyle.setVerticalAlignment(VerticalAlignment.TOP);
+        dataStyle.setBorderBottom(BorderStyle.THIN);
+        dataStyle.setBorderLeft(BorderStyle.THIN);
+        dataStyle.setBorderRight(BorderStyle.THIN);
+
+        int rowNum = 1;
+        for (String[] rowData : data) {
+            Row row = sheet.createRow(rowNum++);
+            for (int i = 0; i < rowData.length; i++) {
+                Cell cell = row.createCell(i);
+                cell.setCellValue(rowData[i]);
+                cell.setCellStyle(dataStyle);
+            }
+        }
+
+        // Auto-size columns
+        for (int i = 0; i < headers.length; i++) {
+            sheet.autoSizeColumn(i);
+        }
+        sheet.setColumnWidth(1, 10000); // Make Description wider
     }
 
     /**

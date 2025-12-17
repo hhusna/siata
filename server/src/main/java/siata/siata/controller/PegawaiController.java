@@ -15,7 +15,6 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/pegawai")
-@PreAuthorize("hasAnyRole('TIM_MANAJEMEN_ASET', 'DEV')")
 public class PegawaiController {
 
     @Autowired
@@ -26,7 +25,10 @@ public class PegawaiController {
         return user.getPegawai();
     }
 
+    // === READ OPERATIONS - All authenticated roles ===
+
     @GetMapping
+    @PreAuthorize("hasAnyRole('TIM_MANAJEMEN_ASET', 'PPBJ', 'PPK', 'DIREKTUR', 'DEV')")
     public List<Pegawai> getAllPegawai() {
         return pegawaiService.getAllPegawai();
     }
@@ -38,18 +40,23 @@ public class PegawaiController {
     }
 
     @GetMapping("/{nip}")
+    @PreAuthorize("hasAnyRole('TIM_MANAJEMEN_ASET', 'PPBJ', 'PPK', 'DIREKTUR', 'DEV')")
     public ResponseEntity<Pegawai> getPegawaiByNip(@PathVariable Long nip) {
         return pegawaiService.getPegawaiByNip(nip)
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
     }
 
+    // === WRITE OPERATIONS - Only TIM_MANAJEMEN_ASET and DEV ===
+
     @PostMapping
+    @PreAuthorize("hasAnyRole('TIM_MANAJEMEN_ASET', 'DEV')")
     public Pegawai createPegawai(@Valid @RequestBody Pegawai pegawai, Authentication authentication) {
         return pegawaiService.savePegawai(pegawai, getPegawaiFromAuth(authentication));
     }
 
     @PutMapping("/{nip}")
+    @PreAuthorize("hasAnyRole('TIM_MANAJEMEN_ASET', 'DEV')")
     public ResponseEntity<Pegawai> updatePegawai(@PathVariable Long nip, @Valid @RequestBody Pegawai pegawaiDetails, Authentication authentication) {
         return pegawaiService.getPegawaiByNip(nip)
                 .map(pegawai -> {
@@ -62,12 +69,14 @@ public class PegawaiController {
     }
 
     @DeleteMapping("/{nip}")
+    @PreAuthorize("hasAnyRole('TIM_MANAJEMEN_ASET', 'DEV')")
     public ResponseEntity<Void> deletePegawai(@PathVariable Long nip, Authentication authentication) {
         pegawaiService.deletePegawai(nip, getPegawaiFromAuth(authentication));
         return ResponseEntity.ok().build();
     }
 
     @PostMapping("/batch")
+    @PreAuthorize("hasAnyRole('TIM_MANAJEMEN_ASET', 'DEV')")
     public ResponseEntity<List<Pegawai>> batchCreatePegawai(@RequestBody List<Pegawai> pegawaiList, Authentication authentication) {
         System.out.println("=== BATCH ENDPOINT CALLED ===");
         System.out.println("User: " + (authentication != null ? authentication.getName() : "null"));
@@ -79,6 +88,7 @@ public class PegawaiController {
     }
 
     @DeleteMapping("/batch")
+    @PreAuthorize("hasAnyRole('TIM_MANAJEMEN_ASET', 'DEV')")
     public ResponseEntity<Integer> batchDeletePegawai(@RequestBody List<Long> nipList, Authentication authentication) {
         System.out.println("=== BATCH DELETE CALLED ===");
         System.out.println("NIPs to delete: " + nipList.size());

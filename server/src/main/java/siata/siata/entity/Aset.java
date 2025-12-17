@@ -2,6 +2,7 @@ package siata.siata.entity;
 
 import jakarta.persistence.*;
 import jakarta.validation.constraints.DecimalMin;
+import jakarta.validation.constraints.DecimalMax;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.NotBlank;
@@ -43,9 +44,10 @@ public class Aset {
     @Column(name = "tanggal_perolehan")
     private LocalDate tanggalPerolehan;
 
-    @Column(name = "harga_aset", precision = 15, scale = 2)
+    @Column(name = "harga_aset", precision = 20, scale = 2)
     @NotNull(message = "Harga aset tidak boleh kosong")
     @DecimalMin(value = "0.0", inclusive = true, message = "Harga aset tidak boleh negatif")
+    @DecimalMax(value = "99999999999999.99", message = "Harga aset terlalu besar")
     private BigDecimal hargaAset;
 
     @Column(name = "kondisi", length = 50)

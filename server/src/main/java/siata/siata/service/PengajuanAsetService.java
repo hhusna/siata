@@ -25,6 +25,9 @@ public class PengajuanAsetService {
     @Autowired
     private PegawaiRepository pegawaiRepository;
 
+    @Autowired
+    private DataVersionService dataVersionService;
+
     /**
      * Validasi apakah nama pengaju terdaftar di unit yang sesuai
      * @return error message jika tidak valid, null jika valid
@@ -107,6 +110,9 @@ public class PengajuanAsetService {
         String isiLog = (isNew ? "Membuat pengajuan baru: " : "Memperbarui pengajuan: ") + savedData.getJenisAset() + " (ID: " + savedData.getIdPengajuan() + ")";
         logRiwayatService.saveLog(new LogRiwayat(userPegawai, savedData, jenisLog, isiLog));
 
+        // Increment data version for polling
+        dataVersionService.incrementVersion();
+
         return savedData;
     }
 
@@ -122,6 +128,9 @@ public class PengajuanAsetService {
         log.setLampiran(lampiran);
         logRiwayatService.saveLog(log);
 
+        // Increment data version for polling
+        dataVersionService.incrementVersion();
+
         return savedData;
     }
 
@@ -133,5 +142,8 @@ public class PengajuanAsetService {
         logRiwayatService.saveLog(new LogRiwayat(userPegawai, data, "DELETE_PENGAJUAN", isiLog));
 
         repository.deleteById(id);
+
+        // Increment data version for polling
+        dataVersionService.incrementVersion();
     }
 }

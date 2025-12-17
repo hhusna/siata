@@ -55,6 +55,15 @@ public class DataService {
     private long assetsCacheTimestamp = 0;
     private static final long ASSETS_CACHE_TTL = 30000; // 30 seconds
 
+    // Cache for All Assets Including Deleted (for recapitulation)
+    private List<Asset> cachedAllAssetsIncludingDeleted = null;
+    private long allAssetsCacheTimestamp = 0;
+
+    // Cache for Employees
+    private List<Employee> cachedEmployeesList = null;
+    private long employeesCacheTimestamp = 0;
+    private static final long EMPLOYEES_CACHE_TTL = 30000; // 30 seconds
+
     public List<Asset> getAssets() {
         return getAssets(false);
     }
@@ -100,13 +109,26 @@ public class DataService {
     public void clearAssetCache() {
         cachedAssets = null;
         assetsCacheTimestamp = 0;
+        // Also clear all-assets cache since they share the same API data
+        cachedAllAssetsIncludingDeleted = null;
+        allAssetsCacheTimestamp = 0;
     }
 
     /**
      * Mendapatkan semua aset TERMASUK yang berstatus "Tandai Dihapus"
      * Digunakan untuk perhitungan rekapitulasi yang akurat
+     * Now uses caching for better performance
      */
     public List<Asset> getAllAssetsIncludingDeleted() {
+        return getAllAssetsIncludingDeleted(false);
+    }
+
+    public List<Asset> getAllAssetsIncludingDeleted(boolean forceRefresh) {
+        long now = System.currentTimeMillis();
+        if (!forceRefresh && cachedAllAssetsIncludingDeleted != null && (now - allAssetsCacheTimestamp < ASSETS_CACHE_TTL)) {
+            return new ArrayList<>(cachedAllAssetsIncludingDeleted);
+        }
+
         List<Asset> listAsset = new ArrayList<>();
         for (AssetDto assetDto : assetApi.getAsset()) {
             Asset assetValue = new Asset();
@@ -132,14 +154,18 @@ public class DataService {
             listAsset.add(assetValue);
         }
 
-        return listAsset;
+        cachedAllAssetsIncludingDeleted = listAsset;
+        allAssetsCacheTimestamp = now;
+
+        return new ArrayList<>(listAsset);
     }
 
     public int getAssetBySubdir(String Subdir) {
         List<Asset> assetList = getAssets();
         int count = 0;
         for (Asset asset : assetList) {
-            if (asset.getSubdir().equals(Subdir)) {
+            String assetSubdir = asset.getSubdir();
+            if (assetSubdir != null && assetSubdir.equals(Subdir)) {
                 count++;
             }
         }
@@ -208,11 +234,60 @@ public class DataService {
         long newId = assetApi.tambahAsset(assetToDto);
         if (newId != 0) {
             asset.setIdAset(newId); // Update ID local asset
+            
+            // LOGIC FIX: Jika No Aset 0/null (Auto Gen), set sama dengan ID Aset
+            if (asset.getNoAset() == null || asset.getNoAset() == 0) {
+                 asset.setNoAset((int) newId); // Sync ID -> No Aset
+                 
+                 // Update ke server agar disimpan
+                 try {
+                     AssetDto updatePayload = new AssetDto();
+                     // Copy fields from initial logic or just set necessary ones?
+                     // putAsset might require full object. Let's create from asset value again.
+                     updatePayload.setIdAset(newId);
+                     updatePayload.setNoAset((int) newId);
+                     
+                     // We need all other fields because PUT usually replaces.
+                     // Copying from `assetToDto` which we just sent.
+                     updatePayload.setKodeAset(assetToDto.getKodeAset());
+                     updatePayload.setJenisAset(assetToDto.getJenisAset());
+                     updatePayload.setMerkAset(assetToDto.getMerkAset());
+                     updatePayload.setTanggalPerolehan(assetToDto.getTanggalPerolehan());
+                     updatePayload.setHargaAset(assetToDto.getHargaAset());
+                     updatePayload.setKondisi(assetToDto.getKondisi());
+                     updatePayload.setStatusPemakaian(assetToDto.getStatusPemakaian());
+                     updatePayload.setDipakai(assetToDto.getDipakai());
+                     updatePayload.setPegawaiDto(assetToDto.getPegawaiDto());
+                     updatePayload.setSubdirektorat(assetToDto.getSubdirektorat());
+                     
+                     assetApi.putAsset(updatePayload);
+                     System.out.println("DataService: Sync No Aset = ID " + newId);
+                 } catch (Exception e) {
+                     e.printStackTrace();
+                     System.err.println("DataService: Gagal sync No Aset dengan ID.");
+                 }
+            }
+            
             clearAssetCache(); // Invalidate cache
             logActivity("admin", "Create", "Menambahkan aset baru", "Aset #" + asset.getKodeAset(), asset.getNamaAset());
             return true;
         }
         return false;
+    }
+
+    /**
+     * Get a map of all registered employees (NIP -> Name).
+     * Used for validating NIPs during import.
+     */
+    public java.util.Map<String, String> getAllEmployeeNipNameMap() {
+        java.util.Map<String, String> map = new java.util.HashMap<>();
+        PegawaiDto[] dtos = pegawaiApi.getPegawai();
+        if (dtos != null) {
+            for (PegawaiDto p : dtos) {
+                map.put(String.valueOf(p.getNip()), p.getNama());
+            }
+        }
+        return map;
     }
 
     public int batchAddAssets(List<Asset> assets) {
@@ -436,6 +511,15 @@ public class DataService {
     }
 
     public List<Employee> getEmployees() {
+        return getEmployees(false);
+    }
+
+    public List<Employee> getEmployees(boolean forceRefresh) {
+        long now = System.currentTimeMillis();
+        if (!forceRefresh && cachedEmployeesList != null && (now - employeesCacheTimestamp < EMPLOYEES_CACHE_TTL)) {
+            return new ArrayList<>(cachedEmployeesList);
+        }
+
         PegawaiDto[] pegawaiDto = pegawaiApi.getPegawai();
         List<Employee> employeeList = new ArrayList<>();
         for (PegawaiDto dto : pegawaiDto) {
@@ -445,7 +529,24 @@ public class DataService {
             emp.setPpnpn(dto.getIsPpnpn() != null && dto.getIsPpnpn());
             employeeList.add(emp);
         }
-        return employeeList;
+
+        cachedEmployeesList = employeeList;
+        employeesCacheTimestamp = now;
+
+        return new ArrayList<>(employeeList);
+    }
+
+    public void clearEmployeeCache() {
+        cachedEmployeesList = null;
+        employeesCacheTimestamp = 0;
+    }
+
+    /**
+     * Clears all caches. Call this after bulk operations like import.
+     */
+    public void clearAllCaches() {
+        clearAssetCache();
+        clearEmployeeCache();
     }
 
     public void addEmployee(Employee employee) {

@@ -25,6 +25,9 @@ public class PermohonanAsetService {
     @Autowired
     private PegawaiRepository pegawaiRepository;
 
+    @Autowired
+    private DataVersionService dataVersionService;
+
     /**
      * Validasi apakah NIP pemohon terdaftar di unit yang sesuai
      * @return error message jika tidak valid, null jika valid
@@ -110,6 +113,9 @@ public class PermohonanAsetService {
         String isiLog = (isNew ? "Membuat permohonan baru: " : "Memperbarui permohonan: ") + savedData.getJenisAset() + " (ID: " + savedData.getIdPermohonan() + ")";
         logRiwayatService.saveLog(new LogRiwayat(userPegawai, savedData, jenisLog, isiLog));
 
+        // Increment data version for polling
+        dataVersionService.incrementVersion();
+
         return savedData;
     }
 
@@ -125,6 +131,9 @@ public class PermohonanAsetService {
         log.setLampiran(lampiran);
         logRiwayatService.saveLog(log);
 
+        // Increment data version for polling
+        dataVersionService.incrementVersion();
+
         return savedData;
     }
 
@@ -136,5 +145,8 @@ public class PermohonanAsetService {
         logRiwayatService.saveLog(new LogRiwayat(userPegawai, data, "DELETE_PERMOHONAN", isiLog));
 
         repository.deleteById(id);
+
+        // Increment data version for polling
+        dataVersionService.incrementVersion();
     }
 }

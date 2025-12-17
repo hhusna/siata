@@ -180,7 +180,7 @@ public class Asset {
     }
 
     /**
-     * Computed: Tua (formerly siapLelang)
+     * Computed: Tua
      * Untuk semua jenis aset SELAIN Mobil dan Motor: 1 jika umur > 4 tahun DAN status = AKTIF
      * Mobil dan Motor selalu 0
      */
@@ -233,10 +233,24 @@ public class Asset {
 
     /**
      * Computed: Siap Lelang (NEW)
-     * 1 jika Tua = 1 DAN apakahDihapus = 1 (deleted = true)
+     * Validasi: umur > 4 tahun AND nonaktif AND dihapus
+     * 1 jika umur > 4 tahun DAN status NON AKTIF DAN deleted = true
      */
     public Integer getSiapLelang() {
-        return (getTua() == 1 && deleted) ? 1 : 0;
+        if (tanggalPerolehan == null || jenisAset == null || status == null) {
+            return 0;
+        }
+        // Mobil dan Motor selalu 0
+        String jenis = jenisAset.toLowerCase();
+        if (jenis.contains("mobil") || jenis.contains("motor")) {
+            return 0;
+        }
+        // Hitung usia
+        long usiaTahun = java.time.temporal.ChronoUnit.YEARS.between(tanggalPerolehan, LocalDate.now());
+        // Cek: umur > 4 tahun AND non-aktif AND deleted
+        boolean isOld = usiaTahun > 4;
+        boolean isNonActive = "NON AKTIF".equalsIgnoreCase(status) || "NONAKTIF".equalsIgnoreCase(status.replace(" ", ""));
+        return (isOld && isNonActive && deleted) ? 1 : 0;
     }
 
     public String getSiapLelangString() {

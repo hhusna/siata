@@ -50,7 +50,10 @@ public class UserApi {
         }
         return pegawaiDto;
     }
-    public void login(String username, String password) {
+    public boolean login(String username, String password) {
+        // Reset session data before attempting login
+        clearSession();
+        
         try {
             UserDto payload = new UserDto();
             payload.setUsername(username);
@@ -83,12 +86,33 @@ public class UserApi {
                 LoginSession.setRole(loginResponse.getRole());
                 LoginSession.setOriginalRole(loginResponse.getRole()); // Store original role from backend
                 LoginSession.setUsername(loginResponse.getUsername());
+                
+                // DEBUG: Print all stored values
+                System.out.println("=== DEBUG LoginSession ===");
+                System.out.println("Role: " + LoginSession.getRole());
+                System.out.println("OriginalRole: " + LoginSession.getOriginalRole());
+                System.out.println("isOriginallyDev: " + LoginSession.isOriginallyDev());
+                System.out.println("========================");
+                
+                return true;
 
+            } else {
+                System.out.println("Login gagal with status: " + response.statusCode());
+                return false;
             }
 
         } catch (Exception e) {
             e.printStackTrace();
+            return false;
         }
+    }
+    
+    private void clearSession() {
+        LoginSession.setJwt(null);
+        LoginSession.setRole(null);
+        LoginSession.setOriginalRole(null);
+        LoginSession.setUsername(null);
+        LoginSession.setPegawaiDto(null);
     }
 
     public boolean simulateRole(String newRole) {

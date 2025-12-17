@@ -278,10 +278,18 @@ public class LoginView extends HBox {
         usernameField.setPromptText("Username");
         HBox usernameBox = createInputFieldWithNode("👤", usernameField);
         
-        // Password field with icon
+        // Password field with icon and visibility toggle
         PasswordField passwordField = new PasswordField();
         passwordField.setPromptText("Password");
-        HBox passwordBox = createInputFieldWithNode("🔒", passwordField);
+        TextField passwordVisibleField = new TextField();
+        passwordVisibleField.setPromptText("Password");
+        passwordVisibleField.setVisible(false);
+        passwordVisibleField.setManaged(false);
+        
+        // Bind the text properties together
+        passwordVisibleField.textProperty().bindBidirectional(passwordField.textProperty());
+        
+        HBox passwordBox = createPasswordFieldWithToggle(passwordField, passwordVisibleField);
         
         // Enter key on username field moves to password field
         usernameField.setOnAction(event -> passwordField.requestFocus());
@@ -366,6 +374,83 @@ public class LoginView extends HBox {
         return box;
     }
     
+    private HBox createPasswordFieldWithToggle(PasswordField passwordField, TextField passwordVisibleField) {
+        HBox box = new HBox(12);
+        box.setAlignment(Pos.CENTER_LEFT);
+        box.setStyle(
+            "-fx-background-color: #f8fafc;" +
+            "-fx-border-color: #e2e8f0;" +
+            "-fx-border-radius: 8;" +
+            "-fx-background-radius: 8;" +
+            "-fx-padding: 8 16;"
+        );
+        
+        Label lockIcon = new Label("🔒");
+        lockIcon.setStyle("-fx-font-size: 16px; -fx-text-fill: #64748b;");
+        
+        // Style both fields
+        passwordField.setStyle(getInputStyle());
+        passwordVisibleField.setStyle(getInputStyle());
+        HBox.setHgrow(passwordField, Priority.ALWAYS);
+        HBox.setHgrow(passwordVisibleField, Priority.ALWAYS);
+        
+        // Container for stacking both fields
+        StackPane fieldContainer = new StackPane();
+        fieldContainer.getChildren().addAll(passwordVisibleField, passwordField);
+        HBox.setHgrow(fieldContainer, Priority.ALWAYS);
+        
+        // Eye toggle button
+        Label eyeIcon = new Label("👁");
+        eyeIcon.setStyle("-fx-font-size: 16px; -fx-text-fill: #94a3b8; -fx-cursor: hand;");
+        
+        final boolean[] isPasswordVisible = {false};
+        
+        eyeIcon.setOnMouseClicked(event -> {
+            isPasswordVisible[0] = !isPasswordVisible[0];
+            if (isPasswordVisible[0]) {
+                // Show password
+                passwordField.setVisible(false);
+                passwordField.setManaged(false);
+                passwordVisibleField.setVisible(true);
+                passwordVisibleField.setManaged(true);
+                eyeIcon.setText("👁‍🗨");
+                eyeIcon.setStyle("-fx-font-size: 16px; -fx-text-fill: #64748b; -fx-cursor: hand;");
+                passwordVisibleField.requestFocus();
+                passwordVisibleField.positionCaret(passwordVisibleField.getText().length());
+            } else {
+                // Hide password
+                passwordVisibleField.setVisible(false);
+                passwordVisibleField.setManaged(false);
+                passwordField.setVisible(true);
+                passwordField.setManaged(true);
+                eyeIcon.setText("👁");
+                eyeIcon.setStyle("-fx-font-size: 16px; -fx-text-fill: #94a3b8; -fx-cursor: hand;");
+                passwordField.requestFocus();
+                passwordField.positionCaret(passwordField.getText().length());
+            }
+        });
+        
+        // Hover effect for eye icon
+        eyeIcon.setOnMouseEntered(e -> {
+            if (isPasswordVisible[0]) {
+                eyeIcon.setStyle("-fx-font-size: 16px; -fx-text-fill: #1e293b; -fx-cursor: hand;");
+            } else {
+                eyeIcon.setStyle("-fx-font-size: 16px; -fx-text-fill: #64748b; -fx-cursor: hand;");
+            }
+        });
+        eyeIcon.setOnMouseExited(e -> {
+            if (isPasswordVisible[0]) {
+                eyeIcon.setStyle("-fx-font-size: 16px; -fx-text-fill: #64748b; -fx-cursor: hand;");
+            } else {
+                eyeIcon.setStyle("-fx-font-size: 16px; -fx-text-fill: #94a3b8; -fx-cursor: hand;");
+            }
+        });
+        
+        box.getChildren().addAll(lockIcon, fieldContainer, eyeIcon);
+        box.setPrefHeight(48);
+        return box;
+    }
+    
     private String getInputStyle() {
         return "-fx-background-color: transparent;" +
                "-fx-border-width: 0;" +
@@ -400,9 +485,13 @@ public class LoginView extends HBox {
             @Override
             protected Boolean call() throws Exception {
                 try {
-                    userApi.login(usernameField.getText(), passwordField.getText());
-                    LoginSession.setPegawaiDto(userApi.getPegawaionSession());
-                    return LoginSession.getJwt() != null;
+                    boolean success = userApi.login(usernameField.getText(), passwordField.getText());
+                    if (success) {
+                        LoginSession.setPegawaiDto(userApi.getPegawaionSession());
+                        // Double check JWT is present
+                        return LoginSession.getJwt() != null;
+                    }
+                    return false;
                 } catch (Exception e) {
                     e.printStackTrace();
                     return false;

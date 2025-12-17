@@ -59,12 +59,15 @@ public class AssetRemovalView extends VBox {
 
         TableColumn<Asset, String> jenisCol = new TableColumn<>("Jenis");
         jenisCol.setCellValueFactory(new PropertyValueFactory<>("jenisAset"));
+        jenisCol.setCellFactory(com.siata.client.util.AssetTypeUiUtils.createAssetTypeCellFactory());
 
         TableColumn<Asset, String> kondisiCol = new TableColumn<>("Kondisi");
         kondisiCol.setCellValueFactory(new PropertyValueFactory<>("kondisi"));
+        kondisiCol.setCellFactory(com.siata.client.util.StatusUiUtils.createKondisiCellFactory());
 
         TableColumn<Asset, String> SubdirCol = new TableColumn<>("Subdirektorat");
         SubdirCol.setCellValueFactory(new PropertyValueFactory<>("Subdir"));
+        SubdirCol.setCellFactory(com.siata.client.util.SubdirUiUtils.createSubdirCellFactory());
 
         TableColumn<Asset, String> tanggalCol = new TableColumn<>("Tanggal Perolehan");
         tanggalCol.setCellValueFactory(cellData -> {
@@ -159,13 +162,33 @@ public class AssetRemovalView extends VBox {
                                    "Aset akan muncul kembali di Manajemen Aset.");
         
         if (confirmAlert.showAndWait().orElse(ButtonType.CANCEL) == ButtonType.OK) {
-            boolean success = assetApi.undoDeleteAset(asset.getIdAset());
-            if (success) {
-                showSuccessAlert("Aset berhasil dikembalikan ke Manajemen Aset.");
-                refreshTable();
-            } else {
-                showAlert("Gagal mengembalikan aset. Silakan coba lagi.");
-            }
+            MainShellView.showLoading("Mengembalikan aset...");
+            
+            javafx.concurrent.Task<Boolean> task = new javafx.concurrent.Task<>() {
+                @Override
+                protected Boolean call() {
+                    return assetApi.undoDeleteAset(asset.getIdAset());
+                }
+            };
+            
+            task.setOnSucceeded(ev -> {
+                MainShellView.hideLoading();
+                if (task.getValue()) {
+                    dataService.clearAssetCache();
+                    MainShellView.showSuccess("Aset berhasil dikembalikan ke Manajemen Aset.");
+                    refreshTable();
+                    MainShellView.invalidateDataViews(); // Refresh view lain
+                } else {
+                    MainShellView.showError("Gagal mengembalikan aset. Silakan coba lagi.");
+                }
+            });
+            
+            task.setOnFailed(ev -> {
+                MainShellView.hideLoading();
+                MainShellView.showError("Error: " + task.getException().getMessage());
+            });
+            
+            new Thread(task).start();
         }
     }
 
@@ -198,34 +221,37 @@ public class AssetRemovalView extends VBox {
             
             confirmDialog.showAndWait().ifPresent(input -> {
                 if ("HAPUS".equals(input.trim())) {
-                    boolean success = assetApi.permanentDeleteAset(asset.getIdAset());
-                    if (success) {
-                        showSuccessAlert("Aset telah dihapus permanen dari database.");
-                        refreshTable();
-                    } else {
-                        showAlert("Gagal menghapus aset. Silakan coba lagi.");
-                    }
+                    MainShellView.showLoading("Menghapus aset permanen...");
+                    
+                    javafx.concurrent.Task<Boolean> task = new javafx.concurrent.Task<>() {
+                        @Override
+                        protected Boolean call() {
+                            return assetApi.permanentDeleteAset(asset.getIdAset());
+                        }
+                    };
+                    
+                    task.setOnSucceeded(ev -> {
+                        MainShellView.hideLoading();
+                        if (task.getValue()) {
+                            MainShellView.showSuccess("Aset telah dihapus permanen dari database.");
+                            refreshTable();
+                            MainShellView.invalidateDataViews(); // Refresh view lain
+                        } else {
+                            MainShellView.showError("Gagal menghapus aset. Silakan coba lagi.");
+                        }
+                    });
+                    
+                    task.setOnFailed(ev -> {
+                        MainShellView.hideLoading();
+                        MainShellView.showError("Error: " + task.getException().getMessage());
+                    });
+                    
+                    new Thread(task).start();
                 } else {
-                    showAlert("Konfirmasi tidak valid. Penghapusan dibatalkan.");
+                    MainShellView.showWarning("Konfirmasi tidak valid. Penghapusan dibatalkan.");
                 }
             });
         }
-    }
-
-    private void showAlert(String message) {
-        Alert alert = new Alert(Alert.AlertType.WARNING);
-        alert.setTitle("Peringatan");
-        alert.setHeaderText(null);
-        alert.setContentText(message);
-        alert.showAndWait();
-    }
-
-    private void showSuccessAlert(String message) {
-        Alert alert = new Alert(Alert.AlertType.INFORMATION);
-        alert.setTitle("Berhasil");
-        alert.setHeaderText(null);
-        alert.setContentText(message);
-        alert.showAndWait();
     }
 
     public void refreshTable() {
