@@ -31,3 +31,10 @@ build/
 
 ### VS Code ###
 .vscode/
+
+dokumentasi
+client/release
+client/installer
+client/target
+
+server/target
