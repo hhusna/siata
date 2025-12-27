@@ -23,7 +23,7 @@ https://drive.google.com/file/d/1UI6nXFA9GUctvg068zMPBg0ROm4L3PJc/view?usp=drive
 project-root/  
 ├─ client/  
 ├─ server/  
-├─ dokumentasi/
+├─ dokumentasi/  
 ├─ laporan_proyek/ (berisi BAST, Alih Guna Sistem, Laporan Milestone 4, dan PPT presentasi)  
 ├─ .gitignore  
 └─ README.md  
