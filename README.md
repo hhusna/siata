@@ -1,7 +1,6 @@
 # SIADA
 
-Sistem Informasi Administrasi Distribusi Aset Pegawai merupakan sebuah aplikasi ...
-
+Sistem Informasi Administrasi Distribusi Aset Pegawai adalah aplikasi yang dirancang untuk mendukung pengelolaan aset pegawai secara terstruktur dan terpusat. Sebelumnya, proses manajemen aset dilakukan menggunakan Microsoft Excel, yang berisiko menimbulkan human error serta kurang ramah bagi pengguna baru. Melalui aplikasi ini, proses pencatatan, pendistribusian, dan pemantauan aset dapat dilakukan dengan lebih akurat, konsisten, dan efisien. Aplikasi ini dikembangkan untuk kebutuhan internal di lingkungan Direktorat Angkutan Udara, Kementerian Perhubungan.  
 
 ## Fitur Utama
 1. Manajemen Aset
@@ -14,7 +13,6 @@ Daftar teknologi inti yang digunakan.
 - Framework : Spring Boot (RESTful API)
 - Library : JavaFX (Tampilan antarmuka aplikasi)
 - Database : MySQL
-
 
 ## Video Penggunaan aplikasi
 https://drive.google.com/file/d/1UI6nXFA9GUctvg068zMPBg0ROm4L3PJc/view?usp=drive_link
@@ -29,12 +27,7 @@ project-root/
 └─ README.md  
 
 ## Instalasi
-Langkah Minimal 
-
-## Cara Menjalankan
-
-
-## Lisensi
-
-
-## Kontak
+1. Akses https://drive.google.com/drive/folders/1WnDkGUEtiqAplLoKVnJiszFigrtWtSpc
+2. Download SIATA-1.0.msi
+3. Buka installer dan ikuti petunjuk instalasinya
+4. Aplikasi berhasil diinstall
