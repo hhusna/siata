@@ -14,7 +14,7 @@ Daftar teknologi inti yang digunakan.
 - Library : JavaFX (Tampilan antarmuka aplikasi)
 - Database : MySQL
 
-## Video Penggunaan aplikasi
+## Video Penggunaan Aplikasi
 https://drive.google.com/file/d/1UI6nXFA9GUctvg068zMPBg0ROm4L3PJc/view?usp=drive_link
 
 ## Struktur Folder
