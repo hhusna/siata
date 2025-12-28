@@ -38,10 +38,3 @@ project-root/
 - Alih Guna Sistem
 - Laporan Milestone 4  
 [Laporan Milestone 4.pdf](laporan_proyek/_RPL__Kelompok_6_-_Laporan_Akhir.pdf)
-
-## Instalasi
-1. Akses folder distribusi aplikasi  
-[Google Drive](https://drive.google.com/drive/folders/1WnDkGUEtiqAplLoKVnJiszFigrtWtSpc)
-2. Download SIATA-1.0.msi
-3. Buka installer dan ikuti petunjuk instalasinya
-4. Aplikasi berhasil diinstall
