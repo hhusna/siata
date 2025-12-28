@@ -36,7 +36,7 @@ project-root/
 [Petunjuk_Instalasi_SIADA.pdf](laporan_proyek/Petunjuk_Instalasi_SIADA.pdf)
 ## Instalasi
 1. Akses folder distribusi aplikasi  
-https://drive.google.com/drive/folders/1WnDkGUEtiqAplLoKVnJiszFigrtWtSpc
+[Google Drive](https://drive.google.com/drive/folders/1WnDkGUEtiqAplLoKVnJiszFigrtWtSpc)
 2. Download SIATA-1.0.msi
 3. Buka installer dan ikuti petunjuk instalasinya
 4. Aplikasi berhasil diinstall
