@@ -16,7 +16,11 @@ Daftar teknologi inti yang digunakan.
 
 ## Video Penggunaan Aplikasi
 [Lihat Video Penggunaan Aplikasi](https://drive.google.com/file/d/1UI6nXFA9GUctvg068zMPBg0ROm4L3PJc/view?usp=drive_link)
-[![Demo Video](dokumentasi/thumbnail.png)](https://drive.google.com/file/d/1UI6nXFA9GUctvg068zMPBg0ROm4L3PJc/view?usp=drive_link)
+<p align="center">
+  <a href="https://drive.google.com/file/d/1UI6nXFA9GUctvg068zMPBg0ROm4L3PJc/view?usp=drive_link">
+    <img src="dokumentasi/thumbnail.png" width="480" alt="Demo Video">
+  </a>
+</p>
 
 ## Struktur Folder
 project-root/  
