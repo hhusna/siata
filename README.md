@@ -15,7 +15,7 @@ Daftar teknologi inti yang digunakan.
 - Database : MySQL
 
 ## Video Penggunaan Aplikasi
-https://drive.google.com/file/d/1UI6nXFA9GUctvg068zMPBg0ROm4L3PJc/view?usp=drive_link
+[Lihat Video Penggunaan Aplikasi](https://drive.google.com/file/d/1UI6nXFA9GUctvg068zMPBg0ROm4L3PJc/view?usp=drive_link)
 
 ## Struktur Folder
 project-root/  
