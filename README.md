@@ -26,6 +26,8 @@ project-root/
 ├─ .gitignore  
 └─ README.md  
 
+## Lisensi dan Laporan
+[Petunjuk Instalasi](laporan_proyek/Petunjuk_Instalasi_SIADA.pdf)
 ## Instalasi
 1. Akses https://drive.google.com/drive/folders/1WnDkGUEtiqAplLoKVnJiszFigrtWtSpc
 2. Download SIATA-1.0.msi
