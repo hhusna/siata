@@ -18,7 +18,7 @@ Daftar teknologi inti yang digunakan.
 [Lihat Video Penggunaan Aplikasi](https://drive.google.com/file/d/1UI6nXFA9GUctvg068zMPBg0ROm4L3PJc/view?usp=drive_link)
 <p align="center">
   <a href="https://drive.google.com/file/d/1UI6nXFA9GUctvg068zMPBg0ROm4L3PJc/view?usp=drive_link">
-    <img src="dokumentasi/thumbnail.png" width="480" alt="Demo Video">
+    <img src="dokumentasi/thumbnail.png" width="240" alt="Demo Video">
   </a>
 </p>
 
