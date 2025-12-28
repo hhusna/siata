@@ -20,7 +20,6 @@ Daftar teknologi inti yang digunakan.
   <a href="https://drive.google.com/file/d/1UI6nXFA9GUctvg068zMPBg0ROm4L3PJc/view?usp=drive_link">
     <img src="dokumentasi/thumbnail.png" width="240" alt="Demo Video">
   </a>
-  Klik gambar untuk membuka video demo
 </p>
 
 ## Struktur Folder
@@ -35,7 +34,8 @@ project-root/
 ## Lisensi dan Laporan
 [Lihat Petunjuk Instalasi](laporan_proyek/Petunjuk_Instalasi_SIADA.pdf)
 ## Instalasi
-1. Akses https://drive.google.com/drive/folders/1WnDkGUEtiqAplLoKVnJiszFigrtWtSpc
+1. Akses folder distribusi aplikasi 
+    https://drive.google.com/drive/folders/1WnDkGUEtiqAplLoKVnJiszFigrtWtSpc
 2. Download SIATA-1.0.msi
 3. Buka installer dan ikuti petunjuk instalasinya
 4. Aplikasi berhasil diinstall
