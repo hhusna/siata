@@ -37,4 +37,5 @@ project-root/
 - Berita Acara Serah Terima (BAST)
 - Alih Guna Sistem
 - Laporan Milestone 4  
-[Laporan Milestone 4.pdf](laporan_proyek/_RPL__Kelompok_6_-_Laporan_Akhir.pdf)
+[Laporan Milestone 4.pdf](laporan_proyek/_RPL__Kelompok_6_-_Laporan_Akhir.pdf)  
+[PPT Milestone 4.pdf](laporan_proyek/_RPL__Kelompok_6_-_Presentasi_Akhir.pdf)
