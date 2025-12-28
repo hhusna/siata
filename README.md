@@ -36,7 +36,7 @@ project-root/
 [Petunjuk_Instalasi_SIADA.pdf](laporan_proyek/Petunjuk_Instalasi_SIADA.pdf)
 - Berita Acara Serah Terima (BAST)
 - Alih Guna Sistem
-- Laporan Milestone 4
+- Laporan Milestone 4  
 [Laporan Milestone 4.pdf](laporan_proyek/_RPL__Kelompok_6_-_Laporan_Akhir.pdf)
 
 ## Instalasi
