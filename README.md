@@ -20,6 +20,7 @@ Daftar teknologi inti yang digunakan.
   <a href="https://drive.google.com/file/d/1UI6nXFA9GUctvg068zMPBg0ROm4L3PJc/view?usp=drive_link">
     <img src="dokumentasi/thumbnail.png" width="240" alt="Demo Video">
   </a>
+  Klik gambar untuk membuka video demo
 </p>
 
 ## Struktur Folder
