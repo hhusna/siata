@@ -32,7 +32,8 @@ project-root/
 └─ README.md  
 
 ## Lisensi dan Laporan
-[Lihat Petunjuk Instalasi](laporan_proyek/Petunjuk_Instalasi_SIADA.pdf)
+- Petunjuk Instalasi  
+[Petunjuk_Instalasi_SIADA.pdf](laporan_proyek/Petunjuk_Instalasi_SIADA.pdf)
 ## Instalasi
 1. Akses folder distribusi aplikasi 
     https://drive.google.com/drive/folders/1WnDkGUEtiqAplLoKVnJiszFigrtWtSpc
