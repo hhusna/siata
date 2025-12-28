@@ -27,7 +27,7 @@ project-root/
 ├─ client/  
 ├─ server/  
 ├─ dokumentasi/  
-├─ laporan_proyek/ (berisi BAST, Alih Guna Sistem, Laporan Milestone 4, dan Petunjuk Instalasi)  
+├─ laporan_proyek/ (berisi BAST, Alih Guna Sistem, Laporan Milestone 4, PPT Milestone 4, dan Petunjuk Instalasi)  
 ├─ .gitignore  
 └─ README.md  
 
