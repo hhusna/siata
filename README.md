@@ -1,96 +1,95 @@
-# SIATA
+# SIATA (Sistem Informasi Manajemen Aset)
 
-(*TEMPORARY SELAMA DEVELOPMENT*)  
-## Branching Workflow
+**SIATA** (System Informasi Aset) adalah aplikasi manajemen aset berbasis Java yang terdiri dari modul Server (Spring Boot) dan Client (JavaFX) untuk mengelola siklus hidup aset mulai dari pengadaan, pemeliharaan, hingga penghapusan.
 
----
+## 🚀 Fitur Utama
+- **Multi-Role**: Dukungan role (Tim Manajemen Aset, PPBJ, PPK, Direktur) dengan hak akses granular.
+- **Manajemen Aset Lengkap**: CRUD, Soft Delete, Riwayat Log, dan Pelacakan Kondisi.
+- **Workflow Persetujuan**: Alur pengajuan dan persetujuan aset berjenjang.
+- **Laporan Dinamis**: Cetak laporan PDF/Excel.
+- **Audit Log**: Pencatatan otomatis setiap aktivitas perubahan data.
+- **Database Versioning**: Menggunakan **Flyway** untuk migrasi database yang aman.
 
-## 1. Struktur Branch
+## 🛠 Teknologi
+- **Server**: Java 21, Spring Boot 3, Spring Data JPA, Hibernate, MySQL, Flyway.
+- **Client**: Java 21, JavaFX, Unirest (HTTP Client).
+- **Security**: Spring Security + JWT, BCrypt Hashing.
+- **Tools**: Maven, WiX Toolset (untuk installer).
+
+## 📚 Dokumentasi Lengkap
+Silakan baca panduan berikut di folder `dokumentasi/`:
+
+1.  **[Panduan Instalasi & Deployment](dokumentasi/installation_guide.md)**
+    - Cara install di Localhost.
+    - Cara deploy ke VPS Linux (Ubuntu/Debian).
+    - Cara build Client dan membuat Installer Windows (.exe/.msi).
+    - Cara konfigurasi koneksi Client (`config.properties`).
+
+2.  **[Panduan Pengguna (User Manual)](dokumentasi/user_manual.md)**
+    - Panduan penggunaan fitur berdasarkan Role.
+    - Daftar akun default untuk login.
+
+## 📂 Struktur Project
+Berikut adalah gambaran besar struktur folder proyek:
 
 ```
-main     -> versi produksi / stabil  
-dev  -> tempat testing fitur
+siata/
+├── client/                     # Modul Client (JavaFX Desktop App)
+│   ├── installer/              # Output installer (.msi/.exe)
+│   ├── src/main/java/com/siata/client/
+│   │   ├── api/                # Komunikasi HTTP ke Server
+│   │   ├── component/          # Komponen UI Reusable
+│   │   ├── config/             # Konfigurasi Aplikasi (ApiConfig)
+│   │   ├── dto/                # Data Transfer Object
+│   │   ├── model/              # Model Data Client
+│   │   ├── view/               # Tampilan/Page (FXML Controller)
+│   │   ├── MainApplication.java
+│   │   └── Launcher.java
+│   └── src/main/resources/     # Asset (FXML, CSS, Images, Config)
+│
+├── server/                     # Modul Server (Spring Boot API)
+│   ├── src/main/java/siata/siata/
+│   │   ├── config/             # Konfigurasi Security, Swagger, dll
+│   │   ├── controller/         # Endpoint API
+│   │   ├── entity/             # Entity Database (JPA)
+│   │   ├── repository/         # Data Access Layer
+│   │   ├── security/           # JWT & Auth Logic
+│   │   ├── service/            # Business Logic
+│   │   └── SiataApplication.java
+│   └── src/main/resources/
+│       ├── db/migration/       # Skrip Migrasi Flyway (SQL)
+│       └── application.properties
+│
+└── dokumentasi/                # Dokumentasi Lengkap Proyek
+    ├── installation_guide.md   # Panduan Instalasi
+    └── user_manual.md          # Panduan Penggunaan
 ```
 
-Silahkan buat branch sendiri jika memang diperlukan lalu push ke remote repository untuk dibuat upstreamnya.
+## ⚡ Quick Start (Localhost)
 
-Gunakan perintah berikut untuk melihat daftar branch yang ada di remote repository:
-```bash
-git branch -r
-```
+1.  **Server**:
+    ```bash
+    cd server
+    mvn spring-boot:run
+    ```
+    *Database akan otomatis dibuat dan diisi data dummy (Seeding).*
 
+2.  **Client**:
+    ```bash
+    cd client
+    mvn clean package
+    java -jar target/siata-client-1.0-SNAPSHOT.jar
+    ```
 
-> Satu branch dapat digunakan oleh dua orang (frontend dan backend).  
-> Folder frontend dan backend **dipisah** agar meminimalkan merge conflict.  
-> Client = Mayoritas isinya adalah JavaFX, tidak menggunakan Spring Boot.  
-> Server = Mayoritas isinya adalah Web Service, menggunakan Spring Boot. 
+## 🔐 Akun Default
+Password untuk semua akun di bawah adalah: `password123`
 
----
-
-## 2. Alur Kerja
-
-### Set Identitas Git
-Lakukan satu kali untuk mengatur nama dan email commit:
-```bash
-git config user.email "you@example.com"
-git config user.name "Your Name"
-```
-
----
-
-### Clone Repository (Hanya Pertama Kali)
-```bash
-cd C:/xampp/htdocs           # contoh folder tempat menyimpan project
-git clone https://git.stis.ac.id/kelompok-6-rpl/siata.git
-cd siata
-```
+| Role | Username |
+|---|---|
+| **Admin Aset** | `admin_aset` |
+| **PPBJ** | `staff_ppbj` |
+| **PPK** | `staff_ppk` |
+| **Direktur** | `direktur` |
 
 ---
-
-### Mulai Bekerja di Suatu Branch
-Buka folder hasil clone di IntelliJ IDEA.  
-Gunakan terminal di IntelliJ atau Git Bash.
-
-#### Pastikan Working Directory Selalu Up-to-Date
-```bash
-git checkout (nama-branch)   # contoh: git checkout dashboard
-git pull                     # ambil update terbaru dari branch tersebut jika tidak up-to-date
-# jika ada conflict, resolve manual
-```
-
----
-
-### Setelah Selesai Bekerja
-```bash
-# pastikan berada di branch yang benar
-git pull                     # ambil update terbaru sebelum commit jika tidak up to date
-# jika ada conflict, resolve manual
-git add .
-git commit -m "deskripsi pekerjaan"
-git push
-```
-
-> Langkah `git pull` tidak wajib, tapi **sangat disarankan** untuk menghindari merge conflict dan error saat push.
-
----
-
-### Jika Fitur Sudah Selesai dan Stabil
-Lakukan merge ke branch `main`:
-```bash
-git checkout main
-git pull
-git merge (nama-branch)
-# jika ada conflict, resolve manual
-git add .
-git commit -m "merge fitur X ke main"
-git push
-```
-
----
-
-## Catatan
-- Selalu **pastikan branch lokal up-to-date** sebelum bekerja.  
-- **Jangan commit langsung ke main** kecuali untuk rilis versi stabil.  
-- Untuk tiap fitur baru, buat branch baru agar pengembangan terpisah dan lebih aman.
-
----
+**Sistem Informasi Aset - Kelompok 6 RPL**

@@ -13,7 +13,27 @@ public class ApiConfig {
      * - Development: http://localhost:8080
      * - Production: https://your-domain.com
      */
-    private static final String BASE_URL = "http://api.siada.tech";
+    private static final String BASE_URL;
+
+    static {
+        String url = "http://localhost:8080"; // Default
+        try (java.io.FileInputStream fis = new java.io.FileInputStream("config.properties")) {
+            java.util.Properties props = new java.util.Properties();
+            props.load(fis);
+            String configUrl = props.getProperty("api.base.url");
+            if (configUrl != null && !configUrl.isEmpty()) {
+                url = configUrl.trim();
+                // Remove trailing slash if present to maintain consistency
+                if (url.endsWith("/")) {
+                    url = url.substring(0, url.length() - 1);
+                }
+            }
+            System.out.println("Loaded API URL from config: " + url);
+        } catch (java.io.IOException e) {
+            System.out.println("Config file not found or invalid. Using default API URL: " + url);
+        }
+        BASE_URL = url;
+    }
     
     /**
      * Get the base URL for API requests.
