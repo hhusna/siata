@@ -50,9 +50,15 @@ siata/
 │       ├── db/migration/       # Skrip Migrasi Flyway (SQL)
 │       └── application.properties
 │
-└── dokumentasi/                # Dokumentasi Lengkap Proyek
-    ├── installation_guide.md   # Panduan Instalasi
-    └── user_manual.md          # Panduan Penggunaan
+├── laporan_proyek/             # Laporan Proyek
+│   ├── Lisensi.pdf
+│   ├── BAST.pdf
+│   ├── Laporan Milestone 4.pdf
+│   ├── PPT Milestone 4.pdf
+│   ├── Panduan Instalasi SIADA.pdf
+│   └── Panduan Penggunaan SIADA.pdf
+│
+└── dokumentasi/                # Dokumentasi API Swagger UI
 ```
 
 ## Lisensi dan Laporan
