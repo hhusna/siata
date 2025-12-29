@@ -19,20 +19,41 @@ Daftar teknologi inti yang digunakan.
 
 ## Video Penggunaan Aplikasi
 [Lihat Video Penggunaan Aplikasi](https://drive.google.com/file/d/1UI6nXFA9GUctvg068zMPBg0ROm4L3PJc/view?usp=drive_link)
-<p align="center">
-  <a href="https://drive.google.com/file/d/1UI6nXFA9GUctvg068zMPBg0ROm4L3PJc/view?usp=drive_link">
-    <img src="dokumentasi/thumbnail.png" width="240" alt="Demo Video">
-  </a>
-</p>
 
 ## Struktur Folder
-project-root/  
-├─ client/  
-├─ server/  
-├─ dokumentasi/  
-├─ laporan_proyek/ (berisi BAST, Alih Guna Sistem, Laporan Milestone 4, PPT Milestone 4, dan Petunjuk Instalasi)  
-├─ .gitignore  
-└─ README.md  
+Berikut adalah gambaran besar struktur folder proyek:
+```
+siata/
+├── client/                     # Modul Client (JavaFX Desktop App)
+│   ├── installer/              # Output installer (.msi/.exe)
+│   ├── src/main/java/com/siata/client/
+│   │   ├── api/                # Komunikasi HTTP ke Server
+│   │   ├── component/          # Komponen UI Reusable
+│   │   ├── config/             # Konfigurasi Aplikasi (ApiConfig)
+│   │   ├── dto/                # Data Transfer Object
+│   │   ├── model/              # Model Data Client
+│   │   ├── view/               # Tampilan/Page (FXML Controller)
+│   │   ├── MainApplication.java
+│   │   └── Launcher.java
+│   └── src/main/resources/     # Asset (FXML, CSS, Images, Config)
+│
+├── server/                     # Modul Server (Spring Boot API)
+│   ├── src/main/java/siata/siata/
+│   │   ├── config/             # Konfigurasi Security, Swagger, dll
+│   │   ├── controller/         # Endpoint API
+│   │   ├── entity/             # Entity Database (JPA)
+│   │   ├── repository/         # Data Access Layer
+│   │   ├── security/           # JWT & Auth Logic
+│   │   ├── service/            # Business Logic
+│   │   └── SiataApplication.java
+│   └── src/main/resources/
+│       ├── db/migration/       # Skrip Migrasi Flyway (SQL)
+│       └── application.properties
+│
+└── dokumentasi/                # Dokumentasi Lengkap Proyek
+    ├── installation_guide.md   # Panduan Instalasi
+    └── user_manual.md          # Panduan Penggunaan
+```
 
 ## Lisensi dan Laporan
 - Petunjuk Instalasi  
@@ -78,3 +99,4 @@ Password untuk semua akun di bawah adalah: `password123`
 | **PPBJ** | `staff_ppbj` |
 | **PPK** | `staff_ppk` |
 | **Direktur** | `direktur` |
+
