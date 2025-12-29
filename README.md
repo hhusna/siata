@@ -98,7 +98,7 @@ Silakan baca panduan berikut di folder `laporan_proyek/`:
     java -jar target/siata-client-1.0-SNAPSHOT.jar
     ```
 
-    Atau anda juga bisa menggunakan installer yang tersedia di [sini](client/installer)
+    Anda juga bisa menggunakan installer yang tersedia di [sini](client/installer)
 
 ## Akun Default
 Password untuk semua akun di bawah adalah: `password123`
