@@ -56,15 +56,12 @@ siata/
 ```
 
 ## Lisensi dan Laporan
-| Judul | Link Hyperlink | Link Download |
-|---|---|---|
-| Berita Acara Serah Terima (BAST) | [BAST.pdf](laporan_proyek/_RPL__Kelompok_6_Berita_Acara_Serah_Terima_Aplikasi_SIADA.pdf) | a |
-| Lisensi & Alih Guna Sistem | [Lisensi.pdf](laporan_proyek/laporan_proyek/_RPL__Kelompok_6_Alih_Hak_Sistem_Aplikasi_SIADA.pdf) | a |
-| Laporan Milestone 4 | [Laporan Milestone 4.pdf](laporan_proyek/_RPL__Kelompok_6_-_Laporan_Akhir.pdf) | a |
-| PPT Milestone 4 | [PPT Milestone 4.pdf](laporan_proyek/_RPL__Kelompok_6_-_Presentasi_Akhir.pdf) | a |
-- Berita Acara Serah Terima (BAST)
-- Alih Guna Sistem
-- Laporan Milestone 4  
+| Judul | Hyperlink |
+|---|---|
+| Berita Acara Serah Terima (BAST) | [BAST.pdf](laporan_proyek/_RPL__Kelompok_6_Berita_Acara_Serah_Terima_Aplikasi_SIADA.pdf) |
+| Lisensi & Alih Guna Sistem | [Lisensi.pdf](laporan_proyek/laporan_proyek/_RPL__Kelompok_6_Alih_Hak_Sistem_Aplikasi_SIADA.pdf) |
+| Laporan Milestone 4 | [Laporan Milestone 4.pdf](laporan_proyek/_RPL__Kelompok_6_-_Laporan_Akhir.pdf) |
+| PPT Milestone 4 | [PPT Milestone 4.pdf](laporan_proyek/_RPL__Kelompok_6_-_Presentasi_Akhir.pdf) |
 
 
 
