@@ -1,18 +1,21 @@
 # SIADA
 
-Sistem Informasi Administrasi Distribusi Aset Pegawai adalah aplikasi yang dirancang untuk mendukung pengelolaan aset pegawai secara terstruktur dan terpusat. Sebelumnya, proses manajemen aset dilakukan menggunakan Microsoft Excel, yang berisiko menimbulkan human error serta kurang ramah bagi pengguna baru. Melalui aplikasi ini, proses pencatatan, pendistribusian, dan pemantauan aset dapat dilakukan dengan lebih akurat, konsisten, dan efisien. Aplikasi ini dikembangkan untuk kebutuhan internal di lingkungan Direktorat Angkutan Udara, Kementerian Perhubungan.  
+**SIATA** (System Informasi Aset) adalah aplikasi manajemen aset berbasis Java yang terdiri dari modul Server (Spring Boot) dan Client (JavaFX) untuk mengelola siklus hidup aset mulai dari pengadaan, pemeliharaan, hingga penghapusan. 
 
 ## Fitur Utama
-1. Manajemen Aset
-2. Manajemen Pengajuan Aset
-3. Dashboard dan Rekapitulasi
+- **Multi-Role**: Dukungan role (Tim Manajemen Aset, PPBJ, PPK, Direktur) dengan hak akses granular.
+- **Manajemen Aset Lengkap**: CRUD, Soft Delete, Riwayat Log, dan Pelacakan Kondisi.
+- **Workflow Persetujuan**: Alur pengajuan dan persetujuan aset berjenjang.
+- **Laporan Dinamis**: Cetak laporan PDF/Excel.
+- **Audit Log**: Pencatatan otomatis setiap aktivitas perubahan data.
+- **Database Versioning**: Menggunakan **Flyway** untuk migrasi database yang aman.
 
 ## Teknologi
 Daftar teknologi inti yang digunakan.
-- Bahasa : Java
-- Framework : Spring Boot (RESTful API)
-- Library : JavaFX (Tampilan antarmuka aplikasi)
-- Database : MySQL
+- **Server**: Java 21, Spring Boot 3, Spring Data JPA, Hibernate, MySQL, Flyway.
+- **Client**: Java 21, JavaFX, Unirest (HTTP Client).
+- **Security**: Spring Security + JWT, BCrypt Hashing.
+- **Tools**: Maven, WiX Toolset (untuk installer).
 
 ## Video Penggunaan Aplikasi
 [Lihat Video Penggunaan Aplikasi](https://drive.google.com/file/d/1UI6nXFA9GUctvg068zMPBg0ROm4L3PJc/view?usp=drive_link)
@@ -39,3 +42,39 @@ project-root/
 - Laporan Milestone 4  
 [Laporan Milestone 4.pdf](laporan_proyek/_RPL__Kelompok_6_-_Laporan_Akhir.pdf)  
 [PPT Milestone 4.pdf](laporan_proyek/_RPL__Kelompok_6_-_Presentasi_Akhir.pdf)
+
+## Dokumentasi
+Silakan baca panduan berikut di folder `laporan_proyek/`:
+1.  **[Panduan Instalasi & Deployment](laporan_proyek/Panduan_Instalasi_SIADA.pdf)**
+    - Cara install di Localhost.
+    - Cara deploy ke VPS Linux (Ubuntu/Debian).
+    - Cara build Client dan membuat Installer Windows (.exe/.msi).
+    - Cara konfigurasi koneksi Client (`config.properties`).
+
+2.  **[Panduan Pengguna (User Manual)](laporan_proyek/Panduan_Penggunaan_SIADA.pdf)**
+    - Panduan penggunaan fitur berdasarkan Role.
+    - Daftar akun default untuk login.
+
+## Quick Start (Localhost)
+1.  **Server**:
+    ```bash
+    cd server
+    mvn spring-boot:run
+    ```
+    *Database akan otomatis dibuat dan diisi data dummy (Seeding).*
+
+2.  **Client**:
+    ```bash
+    cd client
+    mvn clean package
+    java -jar target/siata-client-1.0-SNAPSHOT.jar
+    ```
+
+## Akun Default
+Password untuk semua akun di bawah adalah: `password123`
+| Role | Username |
+|---|---|
+| **Admin Aset** | `admin_aset` |
+| **PPBJ** | `staff_ppbj` |
+| **PPK** | `staff_ppk` |
+| **Direktur** | `direktur` |
