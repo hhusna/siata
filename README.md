@@ -1,6 +1,6 @@
 # SIADA
 
-**SIATA** (System Informasi Aset) adalah aplikasi manajemen aset berbasis Java yang terdiri dari modul Server (Spring Boot) dan Client (JavaFX) untuk mengelola siklus hidup aset mulai dari pengadaan, pemeliharaan, hingga penghapusan. 
+**SIADA** (Sistem Informasi Administrasi Distribusi Aset Pegawai) adalah aplikasi manajemen aset berbasis Java yang terdiri dari modul Server (Spring Boot) dan Client (JavaFX) untuk mengelola siklus hidup aset mulai dari pengadaan, pemeliharaan, hingga penghapusan. 
 
 ## Fitur Utama
 - **Multi-Role**: Dukungan role (Tim Manajemen Aset, PPBJ, PPK, Direktur) dengan hak akses granular.
@@ -35,7 +35,7 @@ siata/
 │   │   ├── view/               # Tampilan/Page (FXML Controller)
 │   │   ├── MainApplication.java
 │   │   └── Launcher.java
-│   └── src/main/resources/     # Asset (FXML, CSS, Images, Config)
+│   └── src/main/resources/     # Asset (CSS, Images, Config)
 │
 ├── server/                     # Modul Server (Spring Boot API)
 │   ├── src/main/java/siata/siata/
